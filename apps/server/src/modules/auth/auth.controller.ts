@@ -1,0 +1,102 @@
+import { Body, Controller, Get, HttpStatus, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { AuthService } from "./auth.service";
+import type { Response, Request } from "express";
+import { SignInDto } from "./dto/sign-in.dto";
+import { Public } from "./decorators/public.decorator";
+import { TypedConfigService } from "../../config/typed-config.service";
+import { RefreshTokenGuard } from "../jwt/guards/refresh-token.guard";
+import { UserService } from "../users/user.service";
+import { RefreshTokenService } from "../jwt/refresh-token.service";
+import { JwtAuthGuard } from "../jwt/guards/jwt-auth.guard";
+
+
+// TODO: move // NOTE: javascript 'frameworks'
+interface UserProfileRequest extends Request {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  }
+}
+
+@Controller("auth")
+export class AuthController {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly userService: UserService,
+    private readonly refreshTokenService: RefreshTokenService, // TODO: Should this be emmbeded in this auth service @Cleanup
+    private readonly configService: TypedConfigService,
+  ) {}
+
+  @Public()
+  @Post("sign-in")
+  async signIn(
+    @Body() signInDto: SignInDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    // Validate credentials and generate tokens inside service
+    const { accessToken, refreshToken, user } = await this.authService.signIn(signInDto);
+
+    // 2. Set Refresh Token Cookie
+    response.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
+      path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
+    });
+
+    // 3. Return user profile data or a success flag back as JSON
+    return { accessToken, user };
+  }
+
+  @Post("sign-out")
+  async signOut() {
+    // TODO: await this.authService.
+  }
+
+  @Public()
+  @UseGuards(RefreshTokenGuard) // NOTE: Something wrong with this
+  @Post("refresh-token")
+  async refreshToken(
+    @Req() request: Request & { user: { id: string; email: string; name: string; refreshToken: string } },
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const oldRefreshToken = request.cookies['refresh_token'];
+
+    // 1. Validate Refresh Token and generate new tokens inside service
+    const { accessToken, refreshToken: newRefreshToken } =
+      await this.refreshTokenService.validateAndRotateRefreshToken(oldRefreshToken);
+
+    // 2. Set new Refresh Token Cookie
+    response.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
+      path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
+    });
+
+    // 3. Return new Access Token back as JSON
+    return { accessToken };
+  }
+
+  @Get("me")
+  async getCurrentUser(@Req() request: UserProfileRequest) {
+    const userId = request.user.id; // Assuming the user ID is attached to the request object by a middleware
+    console.log("Fetching current user for userId:", userId);
+
+    if (!userId) {
+      return { message: 'User not authenticated' };
+    }
+
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      return { message: 'User not found' };
+    }
+
+    // Exclude sensitive fields like passwordHashed before returning
+    const { passwordHashed, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+}

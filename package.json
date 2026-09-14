@@ -1,0 +1,9 @@
+{
+  "name": "my-monorepo",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "pnpm --filter client dev",
+    "dev:backend": "pnpm --filter server start:dev",
+    "build": "pnpm --filter \"./apps/**\" build"
+  }
+}
