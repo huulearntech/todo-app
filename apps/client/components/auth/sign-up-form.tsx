@@ -80,8 +80,8 @@ export default function SignUpForm() {
       <Button type="submit">Sign Up</Button>
       <p className="mt-4 text-sm">
         Already have an account?{" "}
-        <Link href="/auth/login" className="text-blue-500 hover:underline">
-          Log in
+        <Link href="/auth/sign-in" className="text-blue-500 hover:underline">
+          Sign In
         </Link>
       </p>
     </form>

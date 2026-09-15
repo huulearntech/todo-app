@@ -30,7 +30,7 @@ export class CloudinaryStorageProvider implements IImageStorageProvider {
   ): Promise<SignedUploadSignatureResponse> {
     const timestamp = Math.floor(Date.now() / 1000);
 
-    // TODO: remove 'any'.
+    // TODO: rigid types
     const paramsToSign: Record<string, unknown> = {
       folder,
       timestamp,

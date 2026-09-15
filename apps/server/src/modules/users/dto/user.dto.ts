@@ -13,7 +13,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsUrl()
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}

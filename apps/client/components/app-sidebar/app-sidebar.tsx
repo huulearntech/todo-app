@@ -5,17 +5,18 @@ import { useQuery } from "@tanstack/react-query"
 import { projectService } from "@/services/project.service"
 
 import {
-  CalendarPlus,
+  Calendar1,
   PlusCircle,
   Inbox,
-  Tags,
-  Search
+  Tags, // NOTE: this is for labels
+  Search,
+  CalendarDays
 } from "lucide-react"
 
 import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
 import { NavUser } from "./nav-user"
-import { TeamSwitcher } from "./team-switcher"
+
 import {
   Sidebar,
   SidebarContent,
@@ -26,11 +27,6 @@ import {
 
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/default-avatar.svg",
-  },
   navMain: [
     {
       name: "Add Task",
@@ -50,7 +46,17 @@ const data = {
     {
       name: "Today",
       url: "/today",
-      icon: CalendarPlus,
+      icon: Calendar1,
+    },
+    {
+      name: "Upcoming",
+      url: "/upcoming",
+      icon: CalendarDays,
+    },
+    {
+      name: "Labels",
+      url: "/labels",
+      icon: Tags,
     },
   ],
 }
@@ -70,7 +76,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -28,6 +28,12 @@ export default function Avatar({ avatarUrl }: { avatarUrl?: string | undefined }
       try {
         const [uploadedUrl] = await imageUploadService.uploadMultipleImagesDirect([file], 'avatars');
         setCurrentAvatarUrl(uploadedUrl.secure_url);
+
+        // FIX: This need to be webhook on the server side.
+        // The following code is just for demonstration purposes and should not be used in production.
+        // Update the user's avatar URL in the backend
+        await userService.updateUserProfile({ avatarUrl: uploadedUrl.secure_url });
+
       } catch (error) {
         console.error("Error uploading avatar:", error);
       }

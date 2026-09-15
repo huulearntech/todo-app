@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { TaskService } from "./task.service";
 import type { Request } from "express";
 import type { TaskPriority } from "./enums/task-priority.enum";
@@ -47,7 +47,17 @@ export class TasksController {
 
 
   @Delete(":id")
-  async deleteTask(@Param() id: number) {
+  async deleteTask(@Param() id: string) {
     return this.taskService.deleteTask(id);
+  }
+
+  @Patch(":id/reorder")
+  async updateTask(
+    @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
+    @Param("id") id: string,
+    @Body("prevId") prevId?: string,
+    @Body("nextId") nextId?: string
+  ) {
+    await this.taskService.updateTaskOrder(req.user.id, id, prevId, nextId);
   }
 }

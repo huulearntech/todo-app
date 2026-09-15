@@ -14,8 +14,8 @@ export const projectService = {
     return apiClient.get<Project[]>("/projects");
   },
   getMyProjects: async () => {
-    const result = await apiClient.get<Project[]>("/users/me/projects");
-    return result.data; // TODO: Consistency
+    const result = await apiClient.get<Project[]>("/projects/me");
+    return result.data;
   },
   getProjectById: async (id: string) => {
     return apiClient.get<Project>(`/projects/${id}`);

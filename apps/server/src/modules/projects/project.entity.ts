@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColum
 
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
+import { Section } from '../sections/section.entity';
 
 @Entity('projects')
 @Index(['ownerId', 'id'])
@@ -41,6 +42,10 @@ export class Project {
 
   @OneToMany(() => Task, task => task.project, { cascade: true })
   tasks!: Task[];
+
+  @OneToMany(() => Section, section => section.project, { cascade: true })
+  sections!: Section[];
+
 
   @Column({ type: 'boolean', name: 'is_default', default: false })
   isDefault!: boolean; // Indicates whether this project is a default project (e.g., Inbox, Today, Upcoming)

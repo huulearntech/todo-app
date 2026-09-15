@@ -9,12 +9,12 @@ function getAllTasks(): string[] {
   return ["Task 1", "Task 2", "Task 3"];
 }
 
-function removeTask(taskId: number): void {
+function removeTask(taskId: string): void {
   // Logic to remove the task from the task list
   console.log(`Task removed: ${taskId}`);
 }
 
-function updateTask(taskId: number, updatedTask: string): void {
+function updateTask(taskId: string, updatedTask: string): void {
   // Logic to update the task in the task list
   console.log(`Task updated: ${taskId}, New Task: ${updatedTask}`);
 }

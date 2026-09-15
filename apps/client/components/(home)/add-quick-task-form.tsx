@@ -7,7 +7,7 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// TODO: move
+// TODO: DTOs and types.
 import { z } from "zod";
 
 const taskSchema = z.object({

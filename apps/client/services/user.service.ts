@@ -12,10 +12,10 @@ export const userService = {
     }
   },
 
-  async updateUserProfile(profileData: User) {
+  async updateUserProfile(profileData: Partial<User>) {
     try {
       console.log(profileData);
-      const response = await apiClient.put<User>(`/users/me`, profileData);
+      const response = await apiClient.patch<User>(`/users/me`, profileData);
       return response.data;
     } catch (error) {
       console.error('Error updating user profile:', error);

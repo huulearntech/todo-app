@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
 import { Public } from "../auth/decorators/public.decorator";
@@ -10,7 +10,6 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly taskService: TaskService,
-    private readonly projectService: ProjectService
   ) {}
 
   @Public() // Of course need to allow public access to user creation, otherwise no one can sign up
@@ -25,30 +24,18 @@ export class UserController {
     return this.userService.deleteUser(id);
   }
 
-  @Put("me")
+  @Patch("me")
   async updateCurrentUser(@Req() req: Request & { user: { id: string } }, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.updateUser(req.user.id, updateUserDto);
   }
 
   // NOTE: Should this be?
-  @Put(":id")
+  @Patch(":id")
   async updateUser(@Param() id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.updateUser(id, updateUserDto);
   }
 
-  @Get("me/projects") // TODO: move
-  async getMyProjects(
-    @Req() req: Request & { user: { id: string } },
-    @Query("title") title?: string
-  ) {
-    if (!title) {
-      return this.projectService.getProjectsByOwnerId(req.user.id);
-    }
-
-    return this.projectService.getProjectsByOwnerIdAndTitle(req.user.id, title);
-  }
-
-  @Get(":id/tasks")
+  @Get(":id/tasks") // NOTE: Should this be here?
   async getTasksByOwnerId(@Param("id") ownerId: string) {
     return this.taskService.getTasksByOwnerId(ownerId);
   }

@@ -1,0 +1,11 @@
+{
+  "name": "@todo/shared",
+  "version": "1.0.0",
+  "private": true,
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts"
+    }
+  }
+}

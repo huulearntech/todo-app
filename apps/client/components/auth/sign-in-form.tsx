@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 
+import { toast } from "@/components/ui/toast";
+
 
 import Link from "next/link";
 
@@ -32,12 +34,11 @@ export default function SignInForm() {
 
   return (
     <form onSubmit={handleSubmit(async (data) => {
-      try {
-        const response = await authService.login(data);
-        console.log("Login successful:", response); // TODO: toast
-      } catch (error) {
-        console.error("Login failed:", error);
-      }
+      toast.promise(authService.signIn(data), {
+        loading: "Signing in...",
+        success: "Signed in successfully!",
+        error: (err) => `Error signing in: ${err.message}`,
+      });
     })}>
       <Controller
         name="email"
@@ -61,19 +62,20 @@ export default function SignInForm() {
           </div>
         )}
       />
-      <Button type="submit">Login</Button>
-        <p className="text-sm">
-          Don't have an account?{" "}
-          <Link href="/auth/register" className="text-blue-500 hover:underline">
-            Register here
-          </Link>
-        </p>
-        <p className="text-sm">
-          Forgot your password?{" "}
-          <Link href="/auth/forgot-password" className="text-blue-500 hover:underline">
-            Reset it here
-          </Link>
-        </p>
+      <Button type="submit">Sign In</Button>
+
+      <p className="text-sm">
+        Don't have an account?{" "}
+        <Link href="/auth/register" className="text-blue-500 hover:underline">
+          Register here
+        </Link>
+      </p>
+      <p className="text-sm">
+        Forgot your password?{" "}
+        <Link href="/auth/forgot-password" className="text-blue-500 hover:underline">
+          Reset it here
+        </Link>
+      </p>
     </form>
   );
 }

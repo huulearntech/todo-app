@@ -15,7 +15,7 @@ import { Card, CardContent, CardFooter } from "../ui/card";
 const userProfileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.email("Invalid email address"),
-  // avatarUrl: z.url("Invalid URL").optional(),
+  avatarUrl: z.url("Invalid URL").optional(),
 });
 
 type UserProfileFormData = z.infer<typeof userProfileSchema>;
@@ -26,7 +26,7 @@ export default function UserProfileForm({ user }: { user: CreateUserResDto }) {
     defaultValues: { // TODO: Default
       name: user.name || "",
       email: user.email || "",
-      //avatarUrl: "",
+      avatarUrl: user.avatarUrl || "",
     },
   });
 

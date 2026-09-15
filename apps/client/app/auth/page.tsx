@@ -2,7 +2,6 @@ import SignInForm from "@/components/auth/sign-in-form";
 import SignUpForm from "@/components/auth/sign-up-form";
 
 
-// TODO: may move this to the form itself
 import {
   Card,
   CardContent,
@@ -11,7 +10,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-// TODO: Or might make this separated routes
+// NOTE: Might make this separated routes
 import {
   Tabs,
   TabsContent,
@@ -21,27 +20,33 @@ import {
 
 export default function AuthPage() {
   return (
-    <Tabs defaultValue="login" className="w-full max-w-md">
+    <Tabs defaultValue="signin" className="w-full max-w-md">
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="login">Login</TabsTrigger>
+        <TabsTrigger value="signin">Sign In</TabsTrigger>
         <TabsTrigger value="signup">Sign Up</TabsTrigger>
       </TabsList>
-      <TabsContent value="login">
+      
+      <TabsContent value="signin">
         <Card className="w-full max-w-md p-6">
           <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>Enter your credentials to log in.</CardDescription>
+            <CardTitle>Sign In</CardTitle>
+            <CardDescription>
+              Enter your credentials to sign in to your account.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <SignInForm />
           </CardContent>
         </Card>
       </TabsContent>
+
       <TabsContent value="signup">
         <Card className="w-full max-w-md p-6">
           <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>Enter your credentials to log in.</CardDescription>
+            <CardTitle>Sign Up</CardTitle>
+            <CardDescription>
+              Create a new account by filling in the details below.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <SignUpForm />

@@ -13,20 +13,20 @@ export const authService = {
     return response.data;
   },
 
-  async login(loginUserDto: { email: string; password: string }) {
+  async signIn(signInUserDto: { email: string; password: string }) {
     const response = await apiClient.post<{ accessToken: string; user: {
       id: string;
       email: string;
       name: string;
-    }}>("/auth/sign-in", loginUserDto);
+    }}>("/auth/sign-in", signInUserDto);
 
     authSession.setAccessToken(response.data.accessToken);
     return response.data;
   },
 
-  async logout() {
+  async signOut() {
     authSession.clear();
-    const response = await apiClient.post("/auth/logout");
+    const response = await apiClient.post("/auth/sign-out");
     return response.data;
   },
 

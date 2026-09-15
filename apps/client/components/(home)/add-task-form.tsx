@@ -64,13 +64,14 @@ export default function AddTaskForm() {
   const { mutate, isPending, isError, error } = useMutation({
     mutationFn: (newTask: z.infer<typeof taskSchema>) => taskService.createTask(newTask),
     onSuccess: (addedTask) => {
-      // queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      // NOTE: Or we can use queryClient.setQueryData to update the cache directly, but invalidating is simpler for now.
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
-      queryClient.setQueryData<Task[]>(["tasks"], (oldTasks) => {
-        if (!oldTasks) return [addedTask];
-        return [...oldTasks, addedTask];
-      });
+      // NOTE: Or we can use queryClient.setQueryData to update the cache directly, but invalidating is simpler for now.
+      // But the following code is commented out because it is not working as expected.
+      // queryClient.setQueryData<Task[]>(["tasks"], (oldTasks) => {
+      //   if (!oldTasks) return [addedTask];
+      //   return [...oldTasks, addedTask];
+      // });
     },
   });
 

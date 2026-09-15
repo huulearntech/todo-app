@@ -4,8 +4,8 @@ import { User } from '../users/user.entity';
 
 @Entity('task_labels')
 export class TaskLabel {
-  @PrimaryGeneratedColumn()
-  id!: number;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column({ type: 'text' })
   name!: string;

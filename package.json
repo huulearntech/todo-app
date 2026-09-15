@@ -1,5 +1,5 @@
 {
-  "name": "my-monorepo",
+  "name": "todo",
   "private": true,
   "scripts": {
     "dev:frontend": "pnpm --filter client dev",

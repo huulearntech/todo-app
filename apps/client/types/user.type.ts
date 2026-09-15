@@ -22,12 +22,13 @@ type CreateUserResDto = {
   avatarUrl?: string;
 };
 
-type LoginUserReqDto = {
+// TODO: Remove @Redundant
+type SignInUserReqDto = {
   email: string;
   password: string;
 };
 
-type LoginUserResDto = {
+type SignInUserResDto = {
   accessToken: string;
 };
 
@@ -35,6 +36,6 @@ export type {
   User,
   CreateUserReqDto,
   CreateUserResDto,
-  LoginUserReqDto,
-  LoginUserResDto,
+  SignInUserReqDto,
+  SignInUserResDto,
 };

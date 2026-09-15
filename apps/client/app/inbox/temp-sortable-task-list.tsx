@@ -1,7 +1,10 @@
-"use client"
+"use client";
 
 import dynamic from "next/dynamic"
 import { useState } from "react"
+
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
+
 import { Badge } from "@/components/reui/badge"
 import {
   Sortable,
@@ -12,69 +15,129 @@ import {
 import { toast } from "@/components/ui/toast"
 import { GripVerticalIcon } from 'lucide-react'
 
-interface Item {
-  id: string
-  title: string
+import { taskService } from "@/services/task.service"
+
+type Item = {
+  id: string;
+  title: string;
+};
+
+type ReorderPayload = {
+  itemId: string;
+  prevId?: string;
+  nextId?: string;
+};
+
+const useItems = () => {
+  return useQuery({
+    queryKey: ["items"],
+    queryFn: () =>
+      taskService
+        .getMyTasks({
+          projectId: "9da6157d-8d63-4470-bcdd-f2b5c9064b10",
+        })
+        .then((tasks) => tasks.map((task) => ({ id: task.id, title: task.title }))),
+  });
+};
+
+function buildReorderPayload(previousIds: string[], nextIds: string[]): ReorderPayload | null {
+  const firstDiffIndex = previousIds.findIndex((id, index) => id !== nextIds[index]);
+  if (firstDiffIndex === -1) return null;
+
+  const movedItemId =
+    previousIds[firstDiffIndex] === nextIds[firstDiffIndex + 1]
+      ? nextIds[firstDiffIndex] // moved up
+      : previousIds[firstDiffIndex]; // moved down
+
+  const newIndex = nextIds.indexOf(movedItemId);
+
+  return {
+    itemId: movedItemId,
+    prevId: newIndex > 0 ? nextIds[newIndex - 1] : undefined,
+    nextId: newIndex < nextIds.length - 1 ? nextIds[newIndex + 1] : undefined,
+  };
 }
 
-const defaultItems: Item[] = [
-  { id: "1", title: "Draft the release notes" },
-  { id: "2", title: "Review open pull requests" },
-  { id: "3", title: "Update the changelog" },
-  { id: "4", title: "Cut the release tag" },
-  { id: "5", title: "Announce on the blog" },
-]
+function moveItemByNeighbors(items: Item[], payload: ReorderPayload): Item[] {
+  const next = [...items];
+  const currentIndex = next.findIndex((item) => item.id === payload.itemId);
 
-// Simulated backend. Swap for a tRPC mutation or fetch in your app. Rejects
-// roughly one in four calls so the optimistic rollback is easy to see.
-function persistOrder(meta: SortableCommitMeta<Item>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (Math.random() < 0.25) {
-        reject(new Error("Network error"))
-      } else {
-        resolve()
-      }
-    }, 700)
-  })
+  if (currentIndex === -1) return next;
+
+  const [moved] = next.splice(currentIndex, 1);
+
+  let insertIndex = next.length;
+
+  if (payload.nextId) {
+    const nextIndex = next.findIndex((item) => item.id === payload.nextId);
+    if (nextIndex !== -1) insertIndex = nextIndex;
+  } else if (payload.prevId) {
+    const prevIndex = next.findIndex((item) => item.id === payload.prevId);
+    if (prevIndex !== -1) insertIndex = prevIndex + 1;
+  }
+
+  next.splice(insertIndex, 0, moved);
+  return next;
 }
 
 function TempSortableTaskList() {
-  const [items, setItems] = useState<Item[]>(defaultItems)
+  const queryClient = useQueryClient();
+  const { data: tasks = [], isLoading } = useItems();
+  const [activeOrder, setActiveOrder] = useState<string[] | null>(null);
 
-  // Sortable commits once, on drop. `onValueChange` has already applied the
-  // new order optimistically; meta.previousValue is the order before the drag.
-  const handleValueCommit = (next: Item[], meta: SortableCommitMeta<Item>) => {
-    const previous = meta.previousValue
-    const moved = next[meta.overIndex]
+  const { mutate } = useMutation({
+    mutationFn: async ({ itemId, prevId, nextId }: ReorderPayload) => {
+      await taskService.updateTaskOrder(itemId, prevId, nextId);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["items"] });
+      const previousItems = queryClient.getQueryData<Item[]>(["items"]);
+      return { previousItems };
+    },
+    onError: (_err, _payload, context) => {
+      queryClient.setQueryData(["items"], context?.previousItems);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["items"] });
+    },
+  });
 
-    toast.promise(persistOrder(meta), {
-      loading: "Saving order...",
-      success: () => `Saved "${moved.title}" at position ${meta.overIndex + 1}`,
-      error: () => {
-        // Roll back to the pre-drag order. In production prefer a refetch here
-        // so a newer drag is not clobbered by this snapshot.
-        setItems(previous)
-        return "Could not save the new order. Restored."
-      },
-    })
-  }
+  const displayItems = activeOrder
+    ? [...tasks].sort((a, b) => activeOrder.indexOf(a.id) - activeOrder.indexOf(b.id))
+    : tasks;
+
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div className="mx-auto w-full max-w-xl p-6">
       <Sortable
-        value={items}
-        onValueChange={setItems}
-        onValueCommit={handleValueCommit}
-        getItemValue={(item) => item.id}
+        value={displayItems.map((item) => item.id)}
+        onValueChange={(newIds) => setActiveOrder(newIds)}
+        onValueCommit={(finalIds) => {
+          const previousIds = tasks.map((item) => item.id);
+          const payload = buildReorderPayload(previousIds, finalIds);
+
+          if (!payload) {
+            setActiveOrder(null);
+            return;
+          }
+
+          queryClient.setQueryData<Item[]>(["items"], (old = []) =>
+            moveItemByNeighbors(old, payload)
+          );
+
+          setActiveOrder(null);
+          mutate(payload);
+        }}
+        getItemValue={(item) => item}
         strategy="vertical"
         className="space-y-2"
       >
-        {items.map((item, index) => (
+        {displayItems.map((item, index) => (
           <SortableItem key={item.id} value={item.id}>
             <div className="bg-background border-border flex items-center gap-3 rounded-md border p-3">
               <SortableItemHandle className="text-muted-foreground hover:text-foreground">
-                <GripVerticalIcon  className="h-4 w-4" />
+                <GripVerticalIcon className="h-4 w-4" />
               </SortableItemHandle>
               <Badge variant="outline" className="tabular-nums">
                 {index + 1}
@@ -87,9 +150,9 @@ function TempSortableTaskList() {
         ))}
       </Sortable>
     </div>
-  )
+  );
 }
 
 export default dynamic(() => Promise.resolve(TempSortableTaskList), {
   ssr: false,
-})
+});

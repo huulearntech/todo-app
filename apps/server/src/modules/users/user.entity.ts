@@ -34,6 +34,16 @@ export class User {
   })
   updatedAt!: Date;
 
+
+  @Column({ type: 'text', name: 'avatar_url', nullable: true })
+  avatarUrl!: string | null;
+
+  // TODO: Verify email after registration.
+  // @Column({ name: 'is_email_verified', default: false })
+  // isEmailVerified!: boolean;
+
+
+
   @OneToMany(() => Task, task => task.owner, { cascade: true })
   tasks!: Task[];
 

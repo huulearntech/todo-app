@@ -33,8 +33,15 @@ export const taskService = {
     return response.data;
   },
 
-  async deleteTask(id: number) {
+  async deleteTask(id: string) {
     const response = await apiClient.delete(`/tasks/${id}`);
     return response.data;
   },
+
+  async updateTaskOrder(id: string, prevId?: string, nextId?: string) {
+    await apiClient.patch(`/tasks/${id}/reorder`, {
+      prevId,
+      nextId,
+    });
+  }
 };

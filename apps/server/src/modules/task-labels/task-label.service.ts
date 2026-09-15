@@ -20,11 +20,11 @@ export class TaskLabelService {
     return this.taskLabelRepository.find();
   }
 
-  async getTaskLabelById(id: number): Promise<TaskLabel | null> {
+  async getTaskLabelById(id: string): Promise<TaskLabel | null> {
     return this.taskLabelRepository.findOne({ where: { id } });
   }
 
-  async updateTaskLabel(id: number, updatedTaskLabel: Partial<TaskLabel>): Promise<TaskLabel | null> {
+  async updateTaskLabel(id: string, updatedTaskLabel: Partial<TaskLabel>): Promise<TaskLabel | null> {
     const taskLabel = await this.getTaskLabelById(id);
     if (!taskLabel) {
       return null;
@@ -33,7 +33,7 @@ export class TaskLabelService {
     return this.taskLabelRepository.save(taskLabel);
   }
 
-  async deleteTaskLabel(id: number): Promise<boolean> {
+  async deleteTaskLabel(id: string): Promise<boolean> {
     const result = await this.taskLabelRepository.delete(id);
     return result.affected !== 0;
   }

@@ -1,0 +1,1 @@
+NOTE: Somehow derive these type from the class-validator DTOs then move these to the packages/shared

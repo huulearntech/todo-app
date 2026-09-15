@@ -8,8 +8,8 @@ import { apiClient } from "@/lib/api-client";
 
 type AuthContextType = {
   user: CreateUserResDto | null;
-  login: (email: string, password: string) => Promise<CreateUserResDto>;
-  logout: () => void;
+  signIn: (email: string, password: string) => Promise<CreateUserResDto>;
+  signOut: () => void;
 };
 
 
@@ -18,15 +18,15 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CreateUserResDto | null>(null);
 
-  const login = async (email: string, password: string) => {
-    const { user } = await authService.login({ email, password });
+  const signIn = async (email: string, password: string) => {
+    const { user } = await authService.signIn({ email, password });
     setUser(user);
     return user;
   };
 
-  const logout = () => {
+  const signOut = () => {
     // TODO: Can request something on backend
-    console.log("Logging out user");
+    console.log("Signing out user");
     setUser(null);
   };
   
@@ -46,7 +46,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,5 +2,5 @@ import { IsNumber } from "class-validator";
 
 export default class RemoveTaskDto {
   @IsNumber()
-  taskId!: number;
+  taskId!: string;
 }
