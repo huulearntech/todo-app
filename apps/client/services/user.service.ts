@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api-client';
-import { User } from '@/types/user.type';
+import { type UserProfileDto } from "@todo/shared"
 
 export const userService = {
   async getUserProfile() {
@@ -12,14 +12,8 @@ export const userService = {
     }
   },
 
-  async updateUserProfile(profileData: Partial<User>) {
-    try {
-      console.log(profileData);
-      const response = await apiClient.patch<User>(`/users/me`, profileData);
-      return response.data;
-    } catch (error) {
-      console.error('Error updating user profile:', error);
-      throw error;
-    }
-  },
+  async updateUserProfile(userProfileDto: UserProfileDto) {
+    // TODO: how to handle error?
+    await apiClient.patch(`/users/me`, userProfileDto);
+  }
 };

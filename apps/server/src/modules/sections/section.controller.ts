@@ -15,6 +15,11 @@ export class SectionController {
     const userId = request.user.id;
     const { projectId, name, description } = body;
 
-    return this.sectionService.createSection(userId, projectId, name, description);
+    return this.sectionService.createSection({
+      ownerId: userId,
+      projectId,
+      name,
+      description,
+    });
   }
 }

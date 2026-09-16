@@ -12,19 +12,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 
+// TODO: actual functionality
 export default function TempEditTaskDialog() {
   return (
     <Dialog open={true}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Project name goes here</DialogTitle>
+          <DialogTitle>Task title goes here</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="name" className="text-right">
-              Name
+            <label htmlFor="title" className="text-right">
+              Title
             </label>
-            <Input id="name" value="Design new dashboard" className="col-span-3" />
+            <Input id="title" value="Task title" className="col-span-3" />
           </div>
         </div>
         <DialogFooter>

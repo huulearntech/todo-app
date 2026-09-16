@@ -16,16 +16,9 @@ type CreateUserReqDto = {
 };
 
 type CreateUserResDto = {
-  id: string;
   email: string;
   name: string;
   avatarUrl?: string;
-};
-
-// TODO: Remove @Redundant
-type SignInUserReqDto = {
-  email: string;
-  password: string;
 };
 
 type SignInUserResDto = {
@@ -36,6 +29,5 @@ export type {
   User,
   CreateUserReqDto,
   CreateUserResDto,
-  SignInUserReqDto,
   SignInUserResDto,
 };

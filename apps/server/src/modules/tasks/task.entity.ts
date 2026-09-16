@@ -6,7 +6,7 @@ import { TaskPriority } from './enums/task-priority.enum';
 import { Section } from '../sections/section.entity';
 
 
-// TODO: Lexorank: Implement Lexorank for task ordering
+// TODO: Lexorank: Implement Lexorank buckets for task ordering
 // NOTE: sections also have lexorank. and at some level, section's lexorank
 // acts as a prefix for the task's lexorank.
 

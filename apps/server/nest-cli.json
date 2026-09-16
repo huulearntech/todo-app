@@ -3,6 +3,12 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "tsConfigPath": "tsconfig.json",
+    "watchAssets": false
+  },
+  "watchOptions": {
+    "watch": ["src/**/*", "../../packages/shared/src/**/*"],
+    "ignored": ["**/node_modules", "**/dist", "**/*.d.ts", "**/*.js", "**/*.js.map"]
   }
 }

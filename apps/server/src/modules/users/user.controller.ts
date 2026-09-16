@@ -3,7 +3,6 @@ import { UserService } from "./user.service";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
 import { Public } from "../auth/decorators/public.decorator";
 import { TaskService } from "../tasks/task.service";
-import { ProjectService } from "../projects/project.service";
 
 @Controller("users")
 export class UserController {

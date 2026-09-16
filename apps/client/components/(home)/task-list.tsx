@@ -24,7 +24,7 @@ export default function TaskList() {
     }
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     mutation.mutate(id);
   };
 

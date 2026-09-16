@@ -3,7 +3,6 @@
 import { useForm } from "react-hook-form";
 import { authService } from "@/services/auth.service";
 
-import { z } from "zod";
 import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
@@ -13,16 +12,12 @@ import { FieldGroup, FieldLabel, Field } from "@/components/ui/field";
 
 import Link from "next/link";
 
-// TODO: move
-const signUpFormSchema = z.object({
-  email: z.email("Invalid email address"),
-  name: z.string().min(1, "Name is required"),
-  password: z.string().min(6, "Password must be at least 6 characters long"),
-});
+import { signUpSchema, type SignUpDto } from "@todo/shared";
+
 
 export default function SignUpForm() {
-  const form = useForm<z.infer<typeof signUpFormSchema>>({
-    resolver: zodResolver(signUpFormSchema),
+  const form = useForm<SignUpDto>({
+    resolver: zodResolver(signUpSchema),
     defaultValues: {
       email: "",
       name: "",

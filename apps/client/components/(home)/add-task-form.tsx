@@ -20,8 +20,6 @@ import {
 
 import { toast } from "@/components/ui/toast";
 
-// TODO: move
-import { z } from "zod";
 import { taskService } from "@/services/task.service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
@@ -29,15 +27,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task.type";
 import { projectService } from "@/services/project.service";
 
+import { createTaskSchema, type CreateTaskDto } from "@todo/shared";
 
-const taskSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  dueDate: z.date().optional(),
-  priority: z.enum(["low", "medium", "high"]).optional(),
-  completed: z.boolean().optional(), // NOTE: of course this should be false.
-  projectId: z.string().optional(), // NOTE: this is the id of the project that the task belongs to. If not provided, the task will be added to the default project (Inbox).
-});
 
 export default function AddTaskForm() {
   const [open, setOpen] = useState(false);
@@ -49,7 +40,7 @@ export default function AddTaskForm() {
 
   const projectItems = projects.map((project) => ({
     value: project.id,
-    label: project.title,
+    label: project.name,
   }));
 
   const priorityItems = [
@@ -62,7 +53,7 @@ export default function AddTaskForm() {
 
   // NOTE: This is only the mutation for creating a task. We will need to add more mutations for updating and deleting tasks.
   const { mutate, isPending, isError, error } = useMutation({
-    mutationFn: (newTask: z.infer<typeof taskSchema>) => taskService.createTask(newTask),
+    mutationFn: (newTask: CreateTaskDto) => taskService.createTask(newTask),
     onSuccess: (addedTask) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
@@ -75,8 +66,8 @@ export default function AddTaskForm() {
     },
   });
 
-  const { control, handleSubmit, reset } = useForm({
-    resolver: zodResolver(taskSchema),
+  const { control, handleSubmit, reset } = useForm<CreateTaskDto>({
+    resolver: zodResolver(createTaskSchema),
     // NOTE: react-hook-form will complain if defaultValues is not provided
     defaultValues: {
       title: "",
@@ -88,7 +79,7 @@ export default function AddTaskForm() {
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof taskSchema>) => {
+  const onSubmit = async (data: CreateTaskDto) => {
     mutate(
       data,
       {

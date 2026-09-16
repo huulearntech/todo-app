@@ -10,8 +10,11 @@ export const taskLabelService = {
   createTaskLabel: async (createTaskLabelDto: CreateTaskLabelDto) => {
     return apiClient.post<TaskLabel>("/task-labels", createTaskLabelDto);
   },
-  getAllTaskLabels: async () => {
+
+  getMyTaskLabels: async () => {
+    return apiClient.get<TaskLabel[]>("/task-labels/me");
   },
+
   getTaskLabelById: async (id: string) => {
   },
   updateTaskLabel: async (id: string, name: string, description?: string) => {

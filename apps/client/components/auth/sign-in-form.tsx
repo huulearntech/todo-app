@@ -3,7 +3,6 @@
 import { useForm } from "react-hook-form";
 import { authService } from "@/services/auth.service";
 
-import { z } from "zod";
 import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
@@ -14,16 +13,12 @@ import { toast } from "@/components/ui/toast";
 
 
 import Link from "next/link";
+import { signInSchema, type SignInDto } from "@todo/shared";
 
-// TODO: move
-const signInFormSchema = z.object({
-  email: z.email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters long"),
-});
 
 export default function SignInForm() {
-  const form = useForm<z.infer<typeof signInFormSchema>>({
-    resolver: zodResolver(signInFormSchema),
+  const form = useForm<SignInDto>({
+    resolver: zodResolver(signInSchema),
     defaultValues: {
       email: "",
       password: "",

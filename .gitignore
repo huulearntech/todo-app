@@ -9,6 +9,11 @@ apps/frontend/out/
 # NestJS build output
 apps/backend/dist/
 
+# Shared build output and stuffs
+/packages/shared/dist/
+/packages/shared/node_modules/
+/packages/shared/*.tsbuildinfo
+
 # Environment files
 .env
 .env.local

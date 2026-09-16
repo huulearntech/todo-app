@@ -19,9 +19,17 @@ export class TaskLabelController {
     return this.taskLabelService.createTaskLabel(userId, name, description);
   }
 
+  // TODO: @Cleanup
   @Get()
   async getAllTaskLabels() {
     return this.taskLabelService.getAllTaskLabels();
+  }
+
+  @Get("me")
+  async getMyTaskLabels(
+    @Req() request: Request & { user: { id: string } }
+  ) {
+    return this.taskLabelService.getTaskLabelsByOwnerId(request.user.id);
   }
 
   @Get(':id')

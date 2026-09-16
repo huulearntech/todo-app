@@ -21,12 +21,12 @@ export class ProjectController {
   @Get("me")
   async getMyProjects(
     @Req() req: Request & { user: { id: string } },
-    @Query("title") title?: string
+    @Query("name") name?: string
   ) {
-    if (!title) {
+    if (!name) {
       return this.projectService.getProjectsByOwnerId(req.user.id);
     }
 
-    return this.projectService.getProjectsByOwnerIdAndTitle(req.user.id, title);
+    return this.projectService.getProjectsByOwnerIdAndName(req.user.id, name);
   }
 }

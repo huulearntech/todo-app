@@ -1,6 +1,5 @@
 'use client';
 
-// NOTE: What does this file do? // TODO: Remove if it does nothing
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 

@@ -13,8 +13,8 @@ export class ProjectService {
     private readonly projectRepository: Repository<Project>
   ) {}
 
-  async createProject(ownerId: string, title: string, description?: string): Promise<Project> {
-    const project = this.projectRepository.create({ ownerId, title, description });
+  async createProject(ownerId: string, name: string, description?: string): Promise<Project> {
+    const project = this.projectRepository.create({ ownerId, name, description });
     return this.projectRepository.save(project);
   }
 
@@ -26,15 +26,15 @@ export class ProjectService {
     return this.projectRepository.find({ where: { ownerId } });
   }
 
-  async getProjectsByOwnerIdAndTitle(ownerId: string, title: string): Promise<Project[]> { // TODO: pagination
+  async getProjectsByOwnerIdAndName(ownerId: string, name: string): Promise<Project[]> { // TODO: pagination
     return this.projectRepository.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`); // Set a lower threshold for similarity
       return transactionalEntityManager
         .createQueryBuilder(Project, "project")
         .where("project.ownerId = :ownerId", { ownerId })
-        .andWhere("project.title % :title", { title }) // Using the % operator for full-text search
-        .orderBy("similarity(project.title, :title)", "DESC")
-        .setParameters({ ownerId, title })
+        .andWhere("project.name % :name", { name }) // Using the % operator for full-text search
+        .orderBy("similarity(project.name, :name)", "DESC")
+        .setParameters({ ownerId, name })
         .getMany();
     });
   }

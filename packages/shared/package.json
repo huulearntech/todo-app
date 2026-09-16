@@ -2,10 +2,24 @@
   "name": "@todo/shared",
   "version": "1.0.0",
   "private": true,
-  "types": "./index.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "typescript": "^5"
   }
 }

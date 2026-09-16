@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 
 import { Section } from "./section.entity";
 import { Project } from "../projects/project.entity";
+import { type CreateSectionDto } from "./dto/create-section.dto";
 
 
 
@@ -14,20 +15,15 @@ export class SectionService {
     private readonly sectionRepository: Repository<Section>
   ) {}
 
-  // TODO: implement DTO
-  async createSection(
-    ownerId: string,
-    projectId: string,
-    title: string,
-    description?: string
-  ): Promise<Section> {
+  async createSection(createSectionDto: CreateSectionDto): Promise<Section> {
+    const { ownerId, projectId, name, description } = createSectionDto;
     const exists = await this.sectionRepository.manager.exists(Project, { where: { id: projectId, ownerId } });
 
     if (!exists) {
       throw new Error("Project not found or you do not have permission to add a section to this project.");
     }
 
-    const section = this.sectionRepository.create({ projectId, title, description });
+    const section = this.sectionRepository.create({ projectId, name, description });
     return this.sectionRepository.save(section);
   }
 
@@ -39,15 +35,15 @@ export class SectionService {
     return this.sectionRepository.find({ where: { projectId } });
   }
 
-  async getSectionsByProjectIdAndTitle(projectId: string, title: string): Promise<Section[]> { // TODO: pagination
+  async getSectionsByProjectIdAndName(projectId: string, name: string): Promise<Section[]> { // TODO: pagination
     return this.sectionRepository.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`); // Set a lower threshold for similarity
       return transactionalEntityManager
         .createQueryBuilder(Section, "section")
         .where("section.projectId = :projectId", { projectId })
-        .andWhere("section.title % :title", { title }) // Using the % operator for full-text search
-        .orderBy("similarity(section.title, :title)", "DESC")
-        .setParameters({ projectId, title })
+        .andWhere("section.name % :name", { name }) // Using the % operator for full-text search
+        .orderBy("similarity(section.name, :name)", "DESC")
+        .setParameters({ projectId, name })
         .getMany();
     });
   }

@@ -1,6 +1,8 @@
 import { apiClient } from "@/lib/api-client";
 import { authSession } from "@/lib/auth-session";
-import { CreateUserReqDto, CreateUserResDto } from "@/types/user.type";
+
+import { CreateUserResDto } from "@/types/user.type";
+import { type SignUpDto } from "@todo/shared";
 
 type RefreshTokenResDto = {
   accessToken: string;
@@ -8,8 +10,8 @@ type RefreshTokenResDto = {
 
 // TODO: Consistency between URLs @Robustness
 export const authService = {
-  async register(createUserDto: CreateUserReqDto) {
-    const response = await apiClient.post<CreateUserResDto>("/users", createUserDto);
+  async register(signUpDto: SignUpDto) {
+    const response = await apiClient.post<CreateUserResDto>("/users", signUpDto);
     return response.data;
   },
 

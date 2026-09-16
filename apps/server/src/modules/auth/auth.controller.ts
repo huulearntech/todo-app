@@ -7,10 +7,10 @@ import { TypedConfigService } from "../../config/typed-config.service";
 import { RefreshTokenGuard } from "../jwt/guards/refresh-token.guard";
 import { UserService } from "../users/user.service";
 import { RefreshTokenService } from "../jwt/refresh-token.service";
-import { JwtAuthGuard } from "../jwt/guards/jwt-auth.guard";
+import { GuestGuard } from "../jwt/guards/guest.guard";
 
 
-// TODO: move // NOTE: javascript 'frameworks'
+// TODO: move // NOTE: How am I supposed to know?
 interface UserProfileRequest extends Request {
   user: {
     id: string;
@@ -29,6 +29,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @UseGuards(GuestGuard)
   @Post("sign-in")
   async signIn(
     @Body() signInDto: SignInDto,
@@ -56,7 +57,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(RefreshTokenGuard) // NOTE: Something wrong with this
+  @UseGuards(RefreshTokenGuard)
   @Post("refresh-token")
   async refreshToken(
     @Req() request: Request & { user: { id: string; email: string; name: string; refreshToken: string } },

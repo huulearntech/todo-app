@@ -1,18 +1,12 @@
 import { apiClient } from "@/lib/api-client";
 import { Task } from "@/types/task.type";
 
-// TODO: @Cleanup @Robustness
-type CreateTaskReqDto = {
-  title: string;
-  description?: string;
-  dueDate?: Date;
-  priority?: "low" | "medium" | "high";
-  completed?: boolean;
-};
+import type { TaskFilterDto, CreateTaskDto } from "@todo/shared";
+
 
 export const taskService = {
-  async createTask(createTaskReqDto: CreateTaskReqDto) {
-    const response = await apiClient.post<Task>("/tasks", createTaskReqDto);
+  async createTask(createTaskDto: CreateTaskDto) {
+    const response = await apiClient.post<Task>("/tasks", createTaskDto);
     console.log("createTask response:", response.data);
     return response.data;
   },
@@ -22,11 +16,7 @@ export const taskService = {
     return response.data;
   },
 
-  async getMyTasks(filter?: {
-    title?: string;
-    status?: string;
-    projectId?: string;
-  }) { // TODO: should make a type out of this
+  async getMyTasks(filter?: TaskFilterDto) {
     const response = await apiClient.get<Task[]>("/tasks/me", {
       params: filter,
     });

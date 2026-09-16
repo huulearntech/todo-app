@@ -1,8 +1,9 @@
-import { Column, Entity, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 
 @Entity('task_labels')
+@Index(['name', 'ownerId'], { unique: true }) // NOTE: This ensures that a user cannot create two labels with the same name.
 export class TaskLabel {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -22,7 +23,7 @@ export class TaskLabel {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt!: Date;
 
-  @Column({ type: 'uuid', name: 'owner_id' }) // NOTE: This is the ID of the user who created the label. How to name it?
+  @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;
 
   @ManyToOne(() => User, owner => owner.taskLabels, { onDelete: 'CASCADE' })

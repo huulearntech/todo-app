@@ -2,7 +2,7 @@
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 import { userService } from "@/services/user.service";
 import { CreateUserResDto, User } from "@/types/user.type";
 
@@ -11,35 +11,25 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardFooter } from "../ui/card";
 
-// TODO: move
-const userProfileSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.email("Invalid email address"),
-  avatarUrl: z.url("Invalid URL").optional(),
-});
+import { userProfileSchema, type UserProfileDto } from "@todo/shared";
 
-type UserProfileFormData = z.infer<typeof userProfileSchema>;
+import { toast } from "@/components/ui/toast";
 
 export default function UserProfileForm({ user }: { user: CreateUserResDto }) {
-  const { control, handleSubmit, reset } = useForm<UserProfileFormData>({
+  const { control, handleSubmit, reset } = useForm<UserProfileDto>({
     resolver: zodResolver(userProfileSchema),
-    defaultValues: { // TODO: Default
+    defaultValues: {
       name: user.name || "",
-      email: user.email || "",
       avatarUrl: user.avatarUrl || "",
     },
   });
 
-  const onSubmit = async (data: UserProfileFormData) => {
-    try {
-      console.log("Submitting user profile data:", data);
-      // TODO: Propriate schema for updateUserProfile
-      const updatedUser: User = await userService.updateUserProfile(data as User);
-      console.log("User profile updated:", updatedUser);
-      reset(updatedUser); // Reset the form with the updated user data
-    } catch (error) {
-      console.error("Error updating user profile:", error);
-    }
+  const onSubmit = async (data: UserProfileDto) => {
+    toast.promise(userService.updateUserProfile(data), {
+      loading: "Updating profile...",
+      success: "Profile updated successfully!",
+      error: "Failed to update profile.",
+    });
   };
 
   return (
@@ -59,17 +49,10 @@ export default function UserProfileForm({ user }: { user: CreateUserResDto }) {
               )}
             />
 
-            <Controller
-              name="email"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input {...field} placeholder="Email" type="email" />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input placeholder="Email" type="email" value={user.email} readOnly aria-readonly />
+            </Field>
 
           </FieldGroup>
         </form>

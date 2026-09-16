@@ -8,7 +8,8 @@ import { GetMyTasksFilterDto } from "./dto/get-my-tasks.dto";
 // TODO: @Cleanup @Robustness
 
 type CreateTaskReqDto = {
-  title: string; description?: string;
+  title: string;
+  description?: string;
   dueDate?: Date;
   priority?: TaskPriority;
   completed?: boolean;

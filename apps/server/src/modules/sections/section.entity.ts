@@ -7,7 +7,7 @@ import { Project } from '../projects/project.entity';
 
 @Entity('sections')
 @Unique(['id', 'projectId'])
-@Index(['projectId', 'title'], { unique: true }) // Ensure that each project can only have one section with a given title
+@Index(['projectId', 'name'], { unique: true }) // Ensure that each project can only have one section with a given name
 export class Section {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -16,7 +16,7 @@ export class Section {
   projectId!: string;
 
   @Column()
-  title!: string;
+  name!: string;
 
   @Column({ type: 'text', nullable: true })
   description!: string | null;

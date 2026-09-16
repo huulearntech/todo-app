@@ -6,14 +6,14 @@ import { Section } from '../sections/section.entity';
 
 @Entity('projects')
 @Index(['ownerId', 'id'])
-@Index(['ownerId', 'title'], { unique: true }) // Ensure that each user can only have one project with a given title
+@Index(['ownerId', 'name'], { unique: true }) // Ensure that each user can only have one project with a given name
 @Index(['ownerId', 'isDefault'], { unique: true, where: '"is_default" = true' }) // Ensure that each user can only have one default project
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column()
-  title!: string;
+  name!: string;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
