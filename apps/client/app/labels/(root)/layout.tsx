@@ -2,11 +2,6 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Log in to Todoist",
-  description: "Trusted by 50+ million people and teams, the Todoist app is the world's favorite task manager and to-do list app. Organize your work and life, finally.",
-};
-
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex w-full min-h-screen flex-1 flex-col items-stretch justify-start">
@@ -18,3 +13,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     </div>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Labels",
+  description: "Manage your task labels.",
+};

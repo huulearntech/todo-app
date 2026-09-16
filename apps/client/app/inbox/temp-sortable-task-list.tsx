@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/toast"
 import { GripVerticalIcon } from 'lucide-react'
 
 import { taskService } from "@/services/task.service"
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Item = {
   id: string;
@@ -139,9 +140,10 @@ function TempSortableTaskList() {
               <SortableItemHandle className="text-muted-foreground hover:text-foreground">
                 <GripVerticalIcon className="h-4 w-4" />
               </SortableItemHandle>
-              <Badge variant="outline" className="tabular-nums">
+              {/* <Badge variant="outline" className="tabular-nums">
                 {index + 1}
-              </Badge>
+              </Badge> */}
+              <Checkbox className="size-5 rounded-full border-blue-500 data-checked:bg-blue-500 data-checked:border-blue-500" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">
                 {item.title}
               </span>

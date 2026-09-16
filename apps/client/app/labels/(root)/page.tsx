@@ -1,4 +1,3 @@
-import AddLabelForm from "./add-label-form";
 import TempTaskLabelList from "./temp-label-list";
 
 export default function LabelsPage() {
@@ -7,7 +6,6 @@ export default function LabelsPage() {
       <h1>Labels Page</h1>
 
       <TempTaskLabelList />
-      <AddLabelForm />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
 import { UserService } from "./user.service";
-import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
+import { SignUpDto, UpdateUserProfileDto } from "./dto/user.dto";
 import { Public } from "../auth/decorators/public.decorator";
 import { TaskService } from "../tasks/task.service";
 
@@ -14,8 +14,8 @@ export class UserController {
   @Public() // Of course need to allow public access to user creation, otherwise no one can sign up
   // Need non-registered user
   @Post()
-  async createUser(@Body() createUserDto: CreateUserDto) {
-    return this.userService.createUser(createUserDto);
+  async createUser(@Body() signUpDto: SignUpDto) {
+    return this.userService.createUser(signUpDto);
   }
 
   @Delete(":id")
@@ -24,13 +24,13 @@ export class UserController {
   }
 
   @Patch("me")
-  async updateCurrentUser(@Req() req: Request & { user: { id: string } }, @Body() updateUserDto: UpdateUserDto) {
+  async updateCurrentUser(@Req() req: Request & { user: { id: string } }, @Body() updateUserDto: UpdateUserProfileDto) {
     return this.userService.updateUser(req.user.id, updateUserDto);
   }
 
   // NOTE: Should this be?
   @Patch(":id")
-  async updateUser(@Param() id: string, @Body() updateUserDto: UpdateUserDto) {
+  async updateUser(@Param() id: string, @Body() updateUserDto: UpdateUserProfileDto) {
     return this.userService.updateUser(id, updateUserDto);
   }
 

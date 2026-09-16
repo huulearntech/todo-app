@@ -1,8 +1,6 @@
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
-// TODO: metadata
-
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full w-full flex-1 flex-col items-stretch justify-start">

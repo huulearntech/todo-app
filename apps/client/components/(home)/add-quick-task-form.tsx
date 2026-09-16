@@ -7,16 +7,8 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// TODO: DTOs and types.
-import { z } from "zod";
+import { createTaskSchema, type CreateTaskDto } from "@todo/shared";
 
-const taskSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  dueDate: z.date().optional(),
-  priority: z.enum(["low", "medium", "high"]).optional(),
-  completed: z.boolean().optional(), // NOTE: of course this should be false.
-});
 
 export default function AddQuickTaskForm() {
   const taskInputRef = useRef<HTMLInputElement>(null);
@@ -24,12 +16,19 @@ export default function AddQuickTaskForm() {
     taskInputRef.current?.focus();
   });
 
-  const { handleSubmit } = useForm({
-    resolver: zodResolver(taskSchema),
+  const { handleSubmit } = useForm<CreateTaskDto>({
+    resolver: zodResolver(createTaskSchema),
+    defaultValues: { // NOTE:
+      title: "",
+      description: "",
+      dueDate: undefined,
+      priority: "high",
+      completed: false,
+    },
   });
 
-  // TODO:
-  const onSubmit = (data: z.infer<typeof taskSchema>) => {
+  const onSubmit = (data: CreateTaskDto) => {
+    // TODO:
     console.log(data);
   };
 

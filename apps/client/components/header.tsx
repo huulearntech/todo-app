@@ -6,7 +6,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 
-import TaskSearchBar from "./(home)/task-search-bar";
+import ProjectSearchBar from "./(home)/project-search-bar";
 
 export default function Header() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function Header() {
           orientation="vertical"
           className="mr-2 data-[orientation=vertical]:h-4"
         />
-        <TaskSearchBar />
+        <ProjectSearchBar />
       </div>
       <div>
         {!user && (

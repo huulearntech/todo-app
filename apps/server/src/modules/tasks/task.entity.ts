@@ -2,8 +2,9 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, M
 import { User } from '../users/user.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
 import { Project } from '../projects/project.entity';
-import { TaskPriority } from './enums/task-priority.enum';
 import { Section } from '../sections/section.entity';
+
+import { TaskPriority } from "@todo/shared";
 
 
 // TODO: Lexorank: Implement Lexorank buckets for task ordering
@@ -43,6 +44,7 @@ export class Task {
   @Column({ type: 'text', nullable: true })
   category: string | null;
 
+  // NOTE: This is redundant. @Robustness
   @Column({ type: 'uuid', name: 'owner_id' })
   ownerId: string;
 

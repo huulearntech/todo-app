@@ -1,8 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
-import { projectService } from "@/services/project.service"
 
 import {
   Calendar1,
@@ -62,18 +60,13 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => projectService.getMyProjects(),
-  })
-
   return (
     <Sidebar collapsible="icon" {...props}>
       {/* <SidebarHeader>
       </SidebarHeader> */}
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={projects} />
+        <NavProjects />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

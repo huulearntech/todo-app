@@ -1,19 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { TaskService } from "./task.service";
 import type { Request } from "express";
-import type { TaskPriority } from "./enums/task-priority.enum";
-import { GetMyTasksFilterDto } from "./dto/get-my-tasks.dto";
 
+import { GetMyTasksFilterDto } from "./dto/get-my-tasks.dto"; // TODO: move
+import { type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
 
-// TODO: @Cleanup @Robustness
-
-type CreateTaskReqDto = {
-  title: string;
-  description?: string;
-  dueDate?: Date;
-  priority?: TaskPriority;
-  completed?: boolean;
-};
 
 @Controller("tasks")
 export class TasksController {
@@ -22,7 +13,7 @@ export class TasksController {
   @Post()
   async createTask(
     @Req() req: Request & { user: { id: string } },
-    @Body() createTaskReqDto: CreateTaskReqDto
+    @Body() createTaskReqDto: CreateTaskDto
   ) {
     return this.taskService.createTask(req.user.id, createTaskReqDto);
   }

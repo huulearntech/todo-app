@@ -46,4 +46,8 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
   }
+
+  async signOut(userId: string): Promise<void> {
+    await this.refreshTokenService.revokeAllUserTokens(userId);
+  }
 }

@@ -22,24 +22,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { sectionService } from "@/services/section.service";
+import { createSectionSchema, type CreateSectionDto } from "@todo/shared";
 
-const sectionSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-});
-
-type SectionFormData = z.infer<typeof sectionSchema>;
 
 export default function AddSectionForm({ projectId }: { projectId: string }) {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<SectionFormData>({
-    resolver: zodResolver(sectionSchema),
+  const { control, handleSubmit, formState: { errors }, reset } = useForm<CreateSectionDto>({
+    resolver: zodResolver(createSectionSchema),
     defaultValues: {
+      projectId,
       name: '',
+      description: '',
     },
   });
+
+  const onSubmit = (data: CreateSectionDto) => {
+    sectionService.createSection(data).then(() => reset());
+  };
 
   return (
     <Card>
@@ -50,7 +51,7 @@ export default function AddSectionForm({ projectId }: { projectId: string }) {
       <CardContent>
         <form
           id="add-section-form"
-          onSubmit={handleSubmit((data) => sectionService.createSection({ projectId, ...data }).then(() => reset()))}
+          onSubmit={handleSubmit(onSubmit)}
         >
           <FieldGroup>
             <Controller

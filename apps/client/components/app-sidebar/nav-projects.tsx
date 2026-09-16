@@ -1,5 +1,8 @@
 "use client"
 
+import { useQuery } from "@tanstack/react-query"
+import { projectService } from "@/services/project.service"
+
 import {
   Folder,
   Forward,
@@ -25,15 +28,24 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-export function NavProjects({
-  projects,
-}: {
-  projects: {
-    title: string,
-    id: string
-  }[]
-}) {
+export function NavProjects() {
   const { isMobile } = useSidebar()
+
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => projectService.getMyNonDefaultProjects(),
+  })
+
+  if (isLoading) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel>Projects</SidebarGroupLabel>
+        <div className="flex items-center justify-center p-4">
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </SidebarGroup>
+    )
+  }
 
   return (
     <SidebarGroup>
@@ -43,7 +55,7 @@ export function NavProjects({
           <SidebarMenuItem key={item.id}>
             <SidebarMenuButton render={<a href={`/projects/${item.id}`} />}>
               <Hash />
-              <span>{item.title}</span>
+              <span>{item.name}</span>
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger render={<SidebarMenuAction showOnHover />}>

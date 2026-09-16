@@ -3,10 +3,11 @@ import { Repository } from "typeorm";
 import { Task } from "./task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
-import { type AddTaskDto } from "./dto/add-task.dto";
+import { CreateTaskDto } from "./dto/add-task.dto";
 import { GetMyTasksFilterDto } from "./dto/get-my-tasks.dto";
 import { Lexorank } from "../../common/utils/lexorank.util";
 
+// TODO: @Cleanup
 @Injectable()
 export class TaskService {
   constructor(
@@ -14,17 +15,17 @@ export class TaskService {
     private readonly taskRepository: Repository<Task>
   ) {}
 
-  async createTask(ownerId: string, addTaskDto: AddTaskDto ): Promise<Task> {
-    const lastTask = await this.taskRepository.findOne({
+  async createTask(ownerId: string, createTaskDto: CreateTaskDto ): Promise<Task> {
+    const taskHasHighestLexorank = await this.taskRepository.findOne({
       where: { ownerId },
       select: { lexorank: true },
       order: { lexorank: 'DESC' },
     });
 
-    const prevRank = lastTask ? lastTask.lexorank : '';
-    const newRank = Lexorank.getMidpoint(prevRank, ''); // passing '' means no upper limit
+    const highestLexorank = taskHasHighestLexorank?.lexorank || '';
+    const newRank = Lexorank.getMidpoint(highestLexorank, ''); // passing '' means no upper limit
 
-    const newTask = this.taskRepository.create({ ownerId, ...addTaskDto, lexorank: newRank });
+    const newTask = this.taskRepository.create({ ownerId, ...createTaskDto, lexorank: newRank });
     return this.taskRepository.save(newTask);
   }
 

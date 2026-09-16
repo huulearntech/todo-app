@@ -42,4 +42,9 @@ export class Section {
 
   @OneToMany(() => Task, task => task.project, { cascade: true })
   tasks!: Task[];
+
+  // TODO: need to factor this out
+  @Index()
+  @Column({ type: 'varchar', length: 255, nullable: false })
+  lexorank: string;
 }

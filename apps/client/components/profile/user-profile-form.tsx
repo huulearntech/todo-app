@@ -11,20 +11,20 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardFooter } from "../ui/card";
 
-import { userProfileSchema, type UserProfileDto } from "@todo/shared";
+import { updateUserProfileSchema, type UpdateUserProfileDto } from "@todo/shared";
 
 import { toast } from "@/components/ui/toast";
 
 export default function UserProfileForm({ user }: { user: CreateUserResDto }) {
-  const { control, handleSubmit, reset } = useForm<UserProfileDto>({
-    resolver: zodResolver(userProfileSchema),
+  const { control, handleSubmit, reset } = useForm<UpdateUserProfileDto>({
+    resolver: zodResolver(updateUserProfileSchema),
     defaultValues: {
       name: user.name || "",
       avatarUrl: user.avatarUrl || "",
     },
   });
 
-  const onSubmit = async (data: UserProfileDto) => {
+  const onSubmit = async (data: UpdateUserProfileDto) => {
     toast.promise(userService.updateUserProfile(data), {
       loading: "Updating profile...",
       success: "Profile updated successfully!",

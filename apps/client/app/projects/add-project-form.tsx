@@ -22,21 +22,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { projectService } from "@/services/project.service";
 
-const projectSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-});
-
-type ProjectFormData = z.infer<typeof projectSchema>;
+import { createProjectSchema, type CreateProjectDto } from "@todo/shared";
 
 export default function AddProjectForm() {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
+  const { control, handleSubmit, formState: { errors }, reset } = useForm<CreateProjectDto>({
+    resolver: zodResolver(createProjectSchema),
     defaultValues: {
       name: '',
       description: '',

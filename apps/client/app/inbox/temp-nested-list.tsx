@@ -109,7 +109,7 @@ interface TaskColumnProps extends Omit<
 
 function TaskColumn({ value, tasks, isOverlay, ...props }: TaskColumnProps) {
   return (
-    <KanbanColumn value={value} {...props}>
+    <KanbanColumn value={value} {...props} className="flex flex-col gap-2">
       <Card className="mb-2.5">
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -222,7 +222,7 @@ function DndKanban() {
       onValueChange={setColumns}
       getItemValue={(item) => item.id}
     >
-      <KanbanBoard className="grid auto-rows-fr grid-cols-3">
+      <KanbanBoard className="flex flex-col gap-6">
         {Object.entries(columns).map(([columnValue, tasks]) => (
           <TaskColumn key={columnValue} value={columnValue} tasks={tasks} />
         ))}

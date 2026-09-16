@@ -8,6 +8,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import * as crypto from 'crypto';
 import { TypedConfigService } from '../../config/typed-config.service';
 
+// NOTE: This does not handle the case where a user has multiple refresh tokens (e.g., from different devices). In a real-world application, you might want to associate refresh tokens with specific devices or sessions and handle them accordingly.
 @Injectable()
 export class RefreshTokenService {
   constructor(
@@ -42,7 +43,7 @@ export class RefreshTokenService {
     const oldHash = this.hashToken(oldToken);
     
     const record = await this.tokenRepository.findOne({
-      where: { token: oldHash, isRevoked: false }, // TODO: Take one more step to check if the token is revoked or not. if revoked, may be someone is trying to hack
+      where: { token: oldHash, isRevoked: false }, // NOTE: if revoked, may be someone is trying to hack
     });
 
     // 1. Check if token exists, is expired, or already revoked
@@ -90,7 +91,8 @@ export class RefreshTokenService {
     await this.tokenRepository.save(tokenEntity);
   }
 
+  // NOTE: not handle multiple refresh tokens yet
   async revokeAllUserTokens(userId: string) {
-    await this.tokenRepository.update({ userId }, { isRevoked: true });
+    await this.tokenRepository.update({ userId, isRevoked: false }, { isRevoked: true });
   }
 }

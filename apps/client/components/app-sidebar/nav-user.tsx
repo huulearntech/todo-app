@@ -34,7 +34,7 @@ import { useAuth } from "@/providers/AuthProvider"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   if (!user) {
     return null
@@ -97,7 +97,10 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              signOut()
+            }}>
+              {/** TODO: alert dialog */}
               <LogOut />
               Log out
             </DropdownMenuItem>

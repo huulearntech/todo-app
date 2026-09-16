@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Raw, Repository, type FindOptionsOrderValue } from "typeorm";
 
 import { Project } from "./project.entity";
+import { CreateProjectDto } from "./dto/create-project.dto";
 
 
 
@@ -13,7 +14,8 @@ export class ProjectService {
     private readonly projectRepository: Repository<Project>
   ) {}
 
-  async createProject(ownerId: string, name: string, description?: string): Promise<Project> {
+  async createProject(ownerId: string, createProjectDto: CreateProjectDto): Promise<Project> {
+    const { name, description } = createProjectDto; // NOTE: avoid any changes afterwards from breaking this
     const project = this.projectRepository.create({ ownerId, name, description });
     return this.projectRepository.save(project);
   }
@@ -22,20 +24,32 @@ export class ProjectService {
     return this.projectRepository.find();
   }
 
-  async getProjectsByOwnerId(ownerId: string): Promise<Project[]> { // TODO: pagination
-    return this.projectRepository.find({ where: { ownerId } });
-  }
+  async getProjectsByOwnerIdAndFilter(ownerId: string, filter?: {
+    name?: string;
+    isDefault?: boolean; // TODO: type of filter
+  }): Promise<Project[]> { // TODO: pagination
 
-  async getProjectsByOwnerIdAndName(ownerId: string, name: string): Promise<Project[]> { // TODO: pagination
+    if (filter?.name) 
     return this.projectRepository.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`); // Set a lower threshold for similarity
-      return transactionalEntityManager
-        .createQueryBuilder(Project, "project")
-        .where("project.ownerId = :ownerId", { ownerId })
-        .andWhere("project.name % :name", { name }) // Using the % operator for full-text search
-        .orderBy("similarity(project.name, :name)", "DESC")
-        .setParameters({ ownerId, name })
-        .getMany();
+      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
+
+      return transactionalEntityManager.find(Project, {
+        where: {
+          ownerId,
+          ...filter,
+          name: Raw((alias) => `${alias} % :name`, { name: filter.name }),
+        },
+        order: {
+          name: Raw((alias) => `similarity(${alias}, :name)`, { name: filter.name }) as FindOptionsOrderValue,
+        }
+      });
+    })
+
+    return this.projectRepository.find({
+      where: {
+        ownerId,
+        ...filter,
+      }
     });
   }
 

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto/user.dto';
+import { SignUpDto, UpdateUserProfileDto, UserResponse } from './dto/user.dto';
 import argon2 from 'argon2';
 
 @Injectable()
@@ -12,8 +12,8 @@ export class UserService {
     private readonly userRepository: Repository<User>
   ) {}
 
-  async createUser(createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    const { password, ...userData } = createUserDto;
+  async createUser(signUp: SignUpDto): Promise<UserResponse> {
+    const { password, ...userData } = signUp;
     const passwordHashed = await argon2.hash(password);
     const user = this.userRepository.create({
       ...userData,
@@ -74,19 +74,13 @@ export class UserService {
     return this.userRepository.findOne({ where: { id } });
   }
 
-  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<User | null> { // TODO: replace reponse user with the DTO
+  async updateUser(id: string, updateUserDto: UpdateUserProfileDto): Promise<User | null> { // TODO: replace reponse user with the DTO
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       return null;
     }
 
-    const { password, ...userData } = updateUserDto;
-
-    if (password) {
-      user.passwordHashed = await argon2.hash(password);
-    }
-
-    Object.assign(user, userData);
+    Object.assign(user, updateUserDto);
     return this.userRepository.save(user);
   }
 }

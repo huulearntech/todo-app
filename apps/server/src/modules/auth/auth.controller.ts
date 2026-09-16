@@ -52,8 +52,20 @@ export class AuthController {
   }
 
   @Post("sign-out")
-  async signOut() {
-    // TODO: await this.authService.
+  async signOut(
+    @Req() request: Request & { user: { id: string; email: string; name: string } },
+    @Res({ passthrough: true }) res: Response
+  ) {
+    await this.authService.signOut(request.user.id);
+
+    res.clearCookie("refresh_token", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
+      path: "/",
+    });
+
+    return { message: "Signed out" };
   }
 
   @Public()

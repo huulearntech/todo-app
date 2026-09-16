@@ -5,6 +5,7 @@ import { authService } from "@/services/auth.service";
 import { type CreateUserResDto } from "@/types/user.type";
 
 import { apiClient } from "@/lib/api-client";
+import { authSession } from "@/lib/auth-session"
 
 type AuthContextType = {
   user: CreateUserResDto | null;
@@ -24,12 +25,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return user;
   };
 
-  const signOut = () => {
-    // TODO: Can request something on backend
-    console.log("Signing out user");
+  const signOut = async () => {
+    await authService.signOut();
+    authSession.clear(); // NOTE: this stuff is funny @Fix
     setUser(null);
   };
-  
+
   useEffect(() => {
 
     const bootstrapAuth = async () => {

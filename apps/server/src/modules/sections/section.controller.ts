@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from "@nestjs/common";
+import { Body, Controller, Param, Patch, Post, Req } from "@nestjs/common";
 import { SectionService } from "./section.service";
 import { CreateSectionDto } from "./dto/create-section.dto";
 
@@ -13,13 +13,18 @@ export class SectionController {
     @Body() body: CreateSectionDto
   ) {
     const userId = request.user.id;
-    const { projectId, name, description } = body;
 
-    return this.sectionService.createSection({
-      ownerId: userId,
-      projectId,
-      name,
-      description,
-    });
+    return this.sectionService.createSection(userId, body);
+  }
+
+
+  @Patch(":id/reorder")
+  async updateTask(
+    @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
+    @Param("id") id: string,
+    @Body("prevId") prevId?: string,
+    @Body("nextId") nextId?: string
+  ) {
+    await this.sectionService.updateSectionOrder(req.user.id, id, prevId, nextId);
   }
 }

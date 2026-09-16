@@ -5,6 +5,7 @@ export type TaskLabel = {
   createdAt: Date;
   updatedAt: Date;
   userId: string;
+  color?: string; // Optional color property for the label
 }
 
 

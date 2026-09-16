@@ -3,9 +3,10 @@ import Footer from "@/components/footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Log in to Todoist",
-  description: "Trusted by 50+ million people and teams, the Todoist app is the world's favorite task manager and to-do list app. Organize your work and life, finally.",
-};
+  title: "Inbox",
+  description: "Inbox page for the application", // TODO: 
+}
+
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

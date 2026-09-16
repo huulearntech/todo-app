@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Req, Query } from "@nestjs/common";
+import { Body, Controller, Post, Get, Req, Query, Param } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
 
@@ -13,20 +13,23 @@ export class ProjectController {
     @Body() body: CreateProjectDto
   ) {
     const userId = request.user.id;
-    const { name, description } = body;
 
-    return this.projectService.createProject(userId, name, description);
+    return this.projectService.createProject(userId, body);
   }
 
   @Get("me")
   async getMyProjects(
     @Req() req: Request & { user: { id: string } },
-    @Query("name") name?: string
-  ) {
-    if (!name) {
-      return this.projectService.getProjectsByOwnerId(req.user.id);
+    @Query() filter?: {
+      name?: string;
+      isDefault?: boolean;
     }
+  ) {
+    return this.projectService.getProjectsByOwnerIdAndFilter(req.user.id, filter);
+  }
 
-    return this.projectService.getProjectsByOwnerIdAndName(req.user.id, name);
+  @Get(":id")
+  async getProjectById(@Param("id") id: string) {
+    return this.projectService.getProjectById(id);
   }
 }

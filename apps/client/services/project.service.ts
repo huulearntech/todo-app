@@ -13,12 +13,25 @@ export const projectService = {
   getAllProjects: async () => {
     return apiClient.get<Project[]>("/projects");
   },
-  getMyProjects: async () => {
-    const result = await apiClient.get<Project[]>("/projects/me");
+  getMyProjects: async (filter?: {
+    name?: string;
+  }) => {
+    const result = await apiClient.get<Project[]>("/projects/me", {
+      params: filter,
+    });
+    return result.data;
+  },
+  getMyNonDefaultProjects: async () => {
+    const result = await apiClient.get<Project[]>("/projects/me", {
+      params: {
+        isDefault: false,
+      },
+    });
     return result.data;
   },
   getProjectById: async (id: string) => {
-    return apiClient.get<Project>(`/projects/${id}`);
+    const response = await apiClient.get<Project>(`/projects/${id}`);
+    return response.data;
   },
   updateProject: async (id: string, name: string, description?: string) => {
     return apiClient.put<Project>(`/projects/${id}`, { name, description });
