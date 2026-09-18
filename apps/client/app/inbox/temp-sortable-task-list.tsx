@@ -61,6 +61,8 @@ function buildReorderPayload(previousIds: string[], nextIds: string[]): ReorderP
 
 function moveItemByNeighbors(items: Item[], payload: ReorderPayload): Item[] {
   const next = [...items];
+  console.log("moveItemByNeighbors items:", next.map((item) => item.id));
+
   const currentIndex = next.findIndex((item) => item.id === payload.itemId);
 
   if (currentIndex === -1) return next;
@@ -78,6 +80,8 @@ function moveItemByNeighbors(items: Item[], payload: ReorderPayload): Item[] {
   }
 
   next.splice(insertIndex, 0, moved);
+
+  console.log("moveItemByNeighbors result:", next.map((item) => item.id));
   return next;
 }
 
@@ -134,15 +138,12 @@ function TempSortableTaskList() {
         strategy="vertical"
         className="space-y-2"
       >
-        {displayItems.map((item, index) => (
+        {displayItems.map((item) => (
           <SortableItem key={item.id} value={item.id}>
             <div className="bg-background border-border flex items-center gap-3 rounded-md border p-3">
               <SortableItemHandle className="text-muted-foreground hover:text-foreground">
                 <GripVerticalIcon className="h-4 w-4" />
               </SortableItemHandle>
-              {/* <Badge variant="outline" className="tabular-nums">
-                {index + 1}
-              </Badge> */}
               <Checkbox className="size-5 rounded-full border-blue-500 data-checked:bg-blue-500 data-checked:border-blue-500" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">
                 {item.title}

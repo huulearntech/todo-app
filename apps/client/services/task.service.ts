@@ -23,13 +23,29 @@ export const taskService = {
     return response.data;
   },
 
+  // TODO: @Cleanup @Temporary
+  async getMyTasks_New(filter?: TaskFilterDto) {
+    const response = await apiClient.get<Task[]>("/tasks/me/new", {
+      params: filter,
+    });
+    return response.data;
+  },
+
+  // TODO: @Cleanup @Temporary
+  async getMyTasksByLabelId(labelId: string) {
+    console.log("getMyTasksByLabelId called with labelId:", labelId);
+    const response = await apiClient.get<Task[]>(`/tasks/tempbylabel/${labelId}`);
+    return response.data;
+  },
+
   async deleteTask(id: string) {
     const response = await apiClient.delete(`/tasks/${id}`);
     return response.data;
   },
 
-  async updateTaskOrder(id: string, prevId?: string, nextId?: string) {
+  async updateTaskOrder(id: string, prevId?: string, nextId?: string, sectionId?: string) {
     await apiClient.patch(`/tasks/${id}/reorder`, {
+      sectionId,
       prevId,
       nextId,
     });

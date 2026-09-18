@@ -1,7 +1,10 @@
+// NOTE: Some serious shit happen sometimes, it rerender indefinitely, causing the page to freeze.
+// NOTE: The mello mezon app send the whole Object.keys(finalColumns) to the server,
+// and limit the number of columns as well.
 "use client"
 
 import dynamic from "next/dynamic"
-import { ComponentProps, useState } from "react"
+import { ComponentProps, useState, Fragment, useEffect } from "react"
 import { Badge } from "@/components/reui/badge"
 import {
   Kanban,
@@ -14,31 +17,19 @@ import {
   KanbanOverlay,
 } from "@/components/reui/kanban"
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { GripVerticalIcon } from 'lucide-react'
 
-interface Task {
-  id: string
-  title: string
-  priority: "low" | "medium" | "high"
-  description?: string
-  assignee?: string
-  assigneeAvatar?: string
-  dueDate?: string
-}
+import TaskItemListView from "./task-item__list-view"
 
-const COLUMN_TITLES: Record<string, string> = {
-  backlog: "Backlog",
-  inProgress: "In Progress",
-  review: "Review",
-  done: "Done",
-}
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { taskService } from "@/services/task.service"
+
+import type { Task } from "@/types/task.type"
+import { sectionService } from "@/services/section.service"
+import { Section } from "@/types/section.type"
+import AddTaskDialog from "./add-task-form"
 
 interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -50,51 +41,13 @@ interface TaskCardProps extends Omit<
 }
 
 function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
-  const cardContent = (
-    <Card>
-      <CardContent className="space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="line-clamp-1 text-sm font-medium">{task.title}</span>
-          <Badge
-            variant={
-              task.priority === "high"
-                ? "destructive-light"
-                : task.priority === "medium"
-                  ? "primary-light"
-                  : "warning-light"
-            }
-            className="pointer-events-none h-5 shrink-0 rounded-sm px-1.5 text-xs capitalize"
-          >
-            {task.priority}
-          </Badge>
-        </div>
-        <div className="text-muted-foreground flex items-center justify-between text-xs">
-          {task.assignee && (
-            <div className="flex items-center gap-1">
-              <Avatar className="size-4">
-                <AvatarImage src={task.assigneeAvatar} />
-                <AvatarFallback>{task.assignee.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span className="line-clamp-1">{task.assignee}</span>
-            </div>
-          )}
-          {task.dueDate && (
-            <time className="text-[10px] whitespace-nowrap tabular-nums">
-              {task.dueDate}
-            </time>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
+  const Wrapper = (asHandle && !isOverlay) ? KanbanItemHandle : Fragment
 
   return (
     <KanbanItem value={task.id} {...props}>
-      {asHandle && !isOverlay ? (
-        <KanbanItemHandle>{cardContent}</KanbanItemHandle>
-      ) : (
-        cardContent
-      )}
+      <Wrapper>
+        <TaskItemListView task={task} />
+      </Wrapper>
     </KanbanItem>
   )
 }
@@ -107,24 +60,20 @@ interface TaskColumnProps extends Omit<
   isOverlay?: boolean
 }
 
-function TaskColumn({ value, tasks, isOverlay, ...props }: TaskColumnProps) {
+function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProps) {
   return (
     <KanbanColumn value={value} {...props}>
       <Card className="mb-2.5">
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="text-sm font-semibold">
-              {COLUMN_TITLES[value]}
+              {title}
             </span>
             <Badge variant="outline">{tasks.length}</Badge>
           </div>
-          <KanbanColumnHandle
-            render={(props) => (
-              <Button {...props} size="icon-xs" variant="ghost">
-                <GripVerticalIcon />
-              </Button>
-            )}
-          />
+          <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" />} >
+            <GripVerticalIcon />
+          </KanbanColumnHandle>
         </CardHeader>
         <CardContent>
           <KanbanColumnContent value={value} className="flex flex-col gap-2.5">
@@ -137,6 +86,9 @@ function TaskColumn({ value, tasks, isOverlay, ...props }: TaskColumnProps) {
               />
             ))}
           </KanbanColumnContent>
+
+          <AddTaskDialog sectionId={value} />
+
         </CardContent>
       </Card>
     </KanbanColumn>
@@ -144,91 +96,199 @@ function TaskColumn({ value, tasks, isOverlay, ...props }: TaskColumnProps) {
 }
 
 function DndKanban() {
-  const [columns, setColumns] = useState<Record<string, Task[]>>({
-    backlog: [
-      {
-        id: "1",
-        title: "Add authentication",
-        priority: "high",
-        assignee: "Alex Johnson",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=96&h=96&dpr=2&q=80",
-        dueDate: "Jan 10, 2025",
-      },
-      {
-        id: "2",
-        title: "Create API endpoints",
-        priority: "medium",
-        assignee: "Sarah Chen",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=96&h=96&dpr=2&q=80",
-        dueDate: "Jan 15, 2025",
-      },
-      {
-        id: "3",
-        title: "Write documentation",
-        priority: "low",
-        assignee: "Michael Rodriguez",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1584308972272-9e4e7685e80f?w=96&h=96&dpr=2&q=80",
-        dueDate: "Jan 20, 2025",
-      },
-    ],
-    inProgress: [
-      {
-        id: "4",
-        title: "Design system updates",
-        priority: "high",
-        assignee: "Emma Wilson",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1485893086445-ed75865251e0?w=96&h=96&dpr=2&q=80",
-        dueDate: "Aug 25, 2025",
-      },
-      {
-        id: "5",
-        title: "Implement dark mode",
-        priority: "medium",
-        assignee: "David Kim",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=96&h=96&dpr=2&q=80",
-        dueDate: "Aug 25, 2025",
-      },
-    ],
-    done: [
-      {
-        id: "7",
-        title: "Setup project",
-        priority: "high",
-        assignee: "Aron Thompson",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=96&h=96&dpr=2&q=80",
-        dueDate: "Sep 25, 2025",
-      },
-      {
-        id: "8",
-        title: "Initial commit",
-        priority: "low",
-        assignee: "James Brown",
-        assigneeAvatar:
-          "https://images.unsplash.com/photo-1543299750-19d1d6297053?w=96&h=96&dpr=2&q=80",
-        dueDate: "Sep 20, 2025",
-      },
-    ],
+  const projectId = "9da6157d-8d63-4470-bcdd-f2b5c9064b10" // TODO: pass as prop
+  const {
+    data,
+    isLoading,
+  } = useQuery<{
+    tasks: Task[]
+    sections: { id: string, name: string }[] // TODO: fix type
+  }>({
+    queryKey: ["tasks", "sections", { projectId }],
+    queryFn: async () => {
+      const [tasks, sections] = await Promise.all([
+        taskService.getMyTasks_New({ projectId }),
+        sectionService.getSectionsByProjectId(projectId),
+      ]);
+
+      console.log("QUERY tasks", tasks)
+      console.log("QUERY sections", sections)
+
+      return {
+        tasks,
+        sections,
+      };
+    },
+  });
+
+  const tasks = data?.tasks ?? []
+  const sections = data?.sections ?? []
+
+  const [columns, setColumns] = useState<Record<string, Task[]>>({});
+
+  useEffect(() => {
+    const acc: Record<string, Task[]> = { "no-section": [] }
+
+    for (const section of sections) {
+      acc[section.id] = []
+    }
+
+    for (const task of tasks) {
+      const sectionId: string = task.section?.id ?? "no-section";
+      (acc[sectionId] ??= []).push(task)
+    }
+
+    setColumns(acc)
+    console.log(sections)
+  }, [data])
+
+  const moveTasksMutation = useMutation({
+    mutationFn: async ({ taskId, sectionId, prevId, nextId }: {
+      taskId: string;
+      sectionId?: string;
+      prevId?: string;
+      nextId?: string;
+    }) => {
+      await taskService.updateTaskOrder(taskId, prevId, nextId, sectionId);
+    },
+    onMutate: async ({}, context) => {
+      await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] })
+      const previousTasks = context.client.getQueryData<Task[]>(["tasks", { projectId }])
+
+      console.log("moveTasksMutation", { previousTasks })
+
+
+      return { previousTasks }
+    },
+    onError: (_error, _nextColumns, onMutateResult, context) => {
+      if (onMutateResult?.previousTasks) {
+        context.client.setQueryData(["tasks", { projectId }], onMutateResult.previousTasks)
+      }
+    },
+    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+      context.client.invalidateQueries({ queryKey: ["tasks", { projectId }] })
+    },
   })
 
+  const moveSectionMutation = useMutation({
+    mutationFn: async ({ sectionId, prevId, nextId }: {
+      sectionId: string;
+      prevId?: string;
+      nextId?: string;
+    }) => {
+      console.log("moveSectionMutation", { sectionId, prevId, nextId })
+      await sectionService.updateSectionOrder(sectionId, prevId, nextId);
+    },
+    onMutate: async ({ sectionId, nextId }, context) => {
+      await context.client.cancelQueries({ queryKey: ["sections", { projectId }] })
+      const previousSections = context.client.getQueryData<Section[]>(["sections", { projectId }])
+
+      // NOTE: Optimistically update the UI state for immediate feedback
+      context.client.setQueryData<Section[]>(
+        ["sections", { projectId }],
+        (oldItems = []) => {
+          const newItems = [...oldItems];
+          const movedItemIndex = newItems.findIndex((item) => item.id === sectionId);
+          if (movedItemIndex === -1) return oldItems;
+
+          const [movedItem] = newItems.splice(movedItemIndex, 1);
+          const newIndex = nextId
+            ? newItems.findIndex((item) => item.id === nextId)
+            : newItems.length;
+
+          newItems.splice(newIndex, 0, movedItem);
+          return newItems;
+        }
+      );
+
+      return { previousSections }
+    },
+    onError: (_err, _payload, onMutateResult, context) => {
+      if (onMutateResult?.previousSections) {
+        context.client.setQueryData(
+          ["sections", { projectId }],
+          onMutateResult.previousSections
+        )
+      }
+    },
+    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+      context.client.invalidateQueries({ queryKey: ["sections", { projectId }] })
+    },
+  })
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
   return (
+    <div
+      // TODO: make it scrollable horizontally, and make the columns have a fixed width
+      className="w-screen overflow-x-auto"
+    >
     <Kanban
       value={columns}
       onValueChange={setColumns}
+      onValueCommit={(finalColumns, meta) => {
+        if (meta.kind == "column") { // Move section
+          const {
+            activeContainer: movedItemId,
+            activeIndex,
+            overIndex
+          } = meta;
+          if (activeIndex === overIndex) return;
+
+          const newIndex = overIndex;
+
+          const payload = {
+            sectionId: movedItemId,
+            prevId: newIndex > 0
+              ? Object.keys(finalColumns)[newIndex - 1]
+              : undefined,
+            nextId: newIndex < Object.keys(finalColumns).length - 1
+              ? Object.keys(finalColumns)[newIndex + 1]
+              : undefined,
+          };
+          moveSectionMutation.mutate(payload);
+
+          return;
+        }
+
+        { // Move task
+          const newIndex = meta.overIndex;
+          const targetSectionId = meta.overContainer;
+
+          const payload = {
+            sectionId: targetSectionId,
+            taskId: meta.event.active.id.toString(),
+            prevId: newIndex > 0
+              ? finalColumns[targetSectionId][newIndex - 1].id
+              : undefined,
+            nextId: newIndex < finalColumns[targetSectionId].length - 1
+              ? finalColumns[targetSectionId][newIndex + 1].id
+              : undefined,
+          }
+          moveTasksMutation.mutate(payload);
+
+          return;
+        }
+      }}
       getItemValue={(item) => item.id}
     >
-      <KanbanBoard className="grid auto-rows-fr grid-cols-3">
-        {Object.entries(columns).map(([columnValue, tasks]) => (
-          <TaskColumn key={columnValue} value={columnValue} tasks={tasks} />
+      {/* <KanbanBoard className="grid auto-rows-fr grid-cols-3"> */}
+      <KanbanBoard className="flex gap-2.5">
+        {Object.entries(columns).map(([sectionId, tasks]) => (
+          <TaskColumn
+            key={sectionId}
+            value={sectionId}
+            title={sections.find((s) => s.id === sectionId)?.name ?? "No Section"}
+            tasks={tasks}
+          />
         ))}
       </KanbanBoard>
       <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
     </Kanban>
+
+    </div>
   )
 }
 

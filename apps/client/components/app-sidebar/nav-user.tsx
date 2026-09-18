@@ -30,11 +30,12 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 
-import { useAuth } from "@/providers/AuthProvider"
+import { useAuth } from "@/providers/AuthProvider.draft"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, signOut } = useAuth();
+  console.log("NavUser user:", user); // Debugging line
 
   if (!user) {
     return null

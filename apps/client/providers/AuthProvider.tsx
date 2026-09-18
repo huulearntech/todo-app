@@ -2,7 +2,7 @@
 
 import { useEffect, useState, createContext, useContext } from "react";
 import { authService } from "@/services/auth.service";
-import { type CreateUserResDto } from "@/types/user.type";
+import { type CreateUserResDto } from "@/types/user.type"; // TODO: clean up types @Cleanup
 
 import { apiClient } from "@/lib/api-client";
 import { authSession } from "@/lib/auth-session"
@@ -16,6 +16,7 @@ type AuthContextType = {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// TODO: use tanstack react-query to manage auth state.
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CreateUserResDto | null>(null);
 

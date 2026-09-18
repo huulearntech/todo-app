@@ -18,12 +18,32 @@ export const sectionService = {
     const result = await apiClient.get<Section[]>("/sections/me");
     return result.data;
   },
+
+  // TODO: @Cleanup @Temporary
+  getSectionsByProjectId: async (projectId: string) => {
+    const result = await apiClient.get<{
+      id: string;
+      name: string;
+    }[]>(`/sections/project/${projectId}`);
+    return result.data;
+  },
+
   getSectionById: async (id: string) => {
     return apiClient.get<Section>(`/sections/${id}`);
   },
+
+  // TODO: body data
   updateSection: async (id: string, name: string, description?: string) => {
     return apiClient.put<Section>(`/sections/${id}`, { name, description });
   },
+
+  updateSectionOrder: async (id: string, prevId?: string, nextId?: string) => {
+    await apiClient.patch(`/sections/${id}/reorder`, {
+      prevId,
+      nextId,
+    });
+  },
+
   deleteSection: async (id: string) => {
     return apiClient.delete(`/sections/${id}`);
   },

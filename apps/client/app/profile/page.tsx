@@ -2,7 +2,7 @@
 
 import Avatar from "@/components/profile/avatar";
 import UserProfileForm from "@/components/profile/user-profile-form";
-import { useAuth } from "@/providers/AuthProvider";
+import { useAuth } from "@/providers/AuthProvider.draft";
 
 
 export default function ProfilePage() { // NOTE: Async page is not so good @Perf

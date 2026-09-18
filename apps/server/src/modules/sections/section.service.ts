@@ -24,7 +24,16 @@ export class SectionService {
       throw new Error("Project not found or you do not have permission to add a section to this project.");
     }
 
-    const section = this.sectionRepository.create({ projectId, name, description });
+    const sectionWithHighestLexorank = await this.sectionRepository.findOne({
+      where: { projectId },
+      select: { lexorank: true },
+      order: { lexorank: 'DESC' },
+    });
+
+    const highestLexorank = sectionWithHighestLexorank?.lexorank || '';
+    const newRank = Lexorank.getMidpoint(highestLexorank, ''); // passing '' means no upper limit
+
+    const section = this.sectionRepository.create({ projectId, name, description, lexorank: newRank });
     return this.sectionRepository.save(section);
   }
 
@@ -34,6 +43,14 @@ export class SectionService {
 
   async getSectionsByProjectId(projectId: string): Promise<Section[]> { // TODO: pagination
     return this.sectionRepository.find({ where: { projectId } });
+  }
+
+  async getSectionsIdAndNameByProjectId(projectId: string): Promise<Section[]> { // TODO: pagination
+    return this.sectionRepository.find({
+      where: { projectId },
+      select: { id: true, name: true },
+      order: { lexorank: 'ASC' },
+    });
   }
 
   async getSectionsByProjectIdAndName(projectId: string, name: string): Promise<Section[]> { // TODO: pagination

@@ -7,7 +7,7 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { createTaskSchema, type CreateTaskDto } from "@todo/shared";
+import { createTaskSchema, TaskPriority, type CreateTaskDto } from "@todo/shared";
 
 
 export default function AddQuickTaskForm() {
@@ -22,8 +22,7 @@ export default function AddQuickTaskForm() {
       title: "",
       description: "",
       dueDate: undefined,
-      priority: "high",
-      completed: false,
+      priority: TaskPriority.HIGH,
     },
   });
 

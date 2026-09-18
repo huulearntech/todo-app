@@ -10,5 +10,9 @@ export type Task = {
   status: 'to_do' | 'in_progress' | 'done';
   category?: string;
   userId: string;
+  section: {
+    id: string;
+    name: string;
+  } | null;
 };
 

@@ -47,6 +47,8 @@ export function NavProjects() {
     )
   }
 
+  console.log("projects", projects)
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Projects</SidebarGroupLabel>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { SidebarTrigger } from "./ui/sidebar";
-import { useAuth } from "@/providers/AuthProvider";
+import { useAuth } from "@/providers/AuthProvider.draft";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 

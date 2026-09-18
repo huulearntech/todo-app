@@ -27,10 +27,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task.type";
 import { projectService } from "@/services/project.service";
 
-import { createTaskSchema, type CreateTaskDto } from "@todo/shared";
+import { createTaskSchema, TaskPriority, type CreateTaskDto } from "@todo/shared";
+import { Plus } from "lucide-react";
 
 
-export default function AddTaskForm() {
+export default function AddTaskForm({ sectionId }: { sectionId?: string }) { // TODO: consider not using undefined (i.e. do not allow tasks to have no section.)
   const [open, setOpen] = useState(false);
 
   const { data: projects = [], isLoading: isProjectsLoading } = useQuery({
@@ -73,20 +74,20 @@ export default function AddTaskForm() {
       title: "",
       description: "",
       dueDate: undefined,
-      priority: "high",
-      completed: false,
+      priority: TaskPriority.HIGH,
       projectId: "", // TODO: this need to be set to the default project (Inbox) if not provided
     },
   });
 
   const onSubmit = async (data: CreateTaskDto) => {
+    Object.assign(data, { sectionId }); // Add sectionId to the data object // TODO: @Cleanup
     mutate(
       data,
       {
         onSuccess: (addedTask) => {
           // queryClient.invalidateQueries({ queryKey: ["tasks"] });
           // NOTE: Or we can use queryClient.setQueryData to update the cache directly, but invalidating is simpler for now.
-          queryClient.setQueryData<Task[]>(["tasks"], (oldTasks) => {
+          queryClient.setQueryData<Task[]>(["tasks", { sectionId }], (oldTasks) => {
             if (!oldTasks) return [addedTask];
             return [...oldTasks, addedTask];
           });
@@ -104,14 +105,16 @@ export default function AddTaskForm() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={
-        <Button variant="secondary" className="w-full">
-          Add Task
-        </Button>
-      } />
+      <DialogTrigger render={<Button variant="outline" />} className="w-full inline-flex items-center justify-center gap-1.5">
+        <Plus />
+        Add Task
+      </DialogTrigger>
+
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Task</DialogTitle>
+          <DialogTitle>
+            Add Task
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} id="add-task-form">

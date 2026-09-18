@@ -18,23 +18,30 @@ export class TasksController {
     return this.taskService.createTask(req.user.id, createTaskReqDto);
   }
 
-  // @Get()
-  // async getAllTasks( // TODO: @Cleanup @Robustness @Confuse
-  //   @Req() req: Request & { user: { id: string } },
-  //   @Query() projectId?: string
-  // ) {
-  //   if (projectId) {
-  //     return this.taskService.getTasksByOwnerIdAndProjectId(req.user.id, projectId);
-  //   }
-  //   return this.taskService.getAllTasks();
-  // }
-
   @Get("me")
   async getMyTasks(
     @Req() req: Request & { user: { id: string } },
     @Query() filter: GetMyTasksFilterDto,
   ) {
     return this.taskService.getTasksByOwnerIdAndFilter(req.user.id, filter);
+  }
+
+  // TODO: @Cleanup @Temporary
+  @Get("me/new")
+  async getMyTasks_New(
+    @Req() req: Request & { user: { id: string } },
+    @Query() filter: GetMyTasksFilterDto,
+  ) {
+    return this.taskService.getTasksByOwnerIdAndProjectIdWithSectionIdAndName(req.user.id, filter.projectId || '');
+  }
+
+  // TODO: @Cleanup @Temporary
+  @Get("tempbylabel/:labelId")
+  async getMyTasksByLabelId(
+    @Req() req: Request & { user: { id: string } },
+    @Param("labelId") labelId: string
+  ) {
+    return this.taskService.getTasksByOwnerIdAndLabelId(req.user.id, labelId);
   }
 
 
@@ -47,9 +54,10 @@ export class TasksController {
   async updateTask(
     @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
     @Param("id") id: string,
+    @Body("sectionId") sectionId?: string,
     @Body("prevId") prevId?: string,
     @Body("nextId") nextId?: string
   ) {
-    await this.taskService.updateTaskOrder(req.user.id, id, prevId, nextId);
+    await this.taskService.updateTaskOrder(req.user.id, id, sectionId, prevId, nextId);
   }
 }
