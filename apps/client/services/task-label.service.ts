@@ -1,10 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 import { TaskLabel } from "@/types/task-label.type";
 
-export type CreateTaskLabelDto = {
-  name: string;
-  description?: string;
-};
+import { CreateTaskLabelDto, UpdateTaskLabelDto } from "@todo/shared";
 
 export const taskLabelService = {
   createTaskLabel: async (createTaskLabelDto: CreateTaskLabelDto) => {
@@ -17,7 +14,8 @@ export const taskLabelService = {
 
   getTaskLabelById: async (id: string) => {
   },
-  updateTaskLabel: async (id: string, name: string, description?: string) => {
+  updateTaskLabel: async (updateTaskLabelDto: UpdateTaskLabelDto) => {
+    return apiClient.patch<TaskLabel>(`/task-labels/${updateTaskLabelDto.id}`, updateTaskLabelDto);
   },
   deleteTaskLabel: async (id: string) => {
   },

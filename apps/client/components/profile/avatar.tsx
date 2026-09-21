@@ -16,7 +16,6 @@ import {
 import Image from "next/image";
 import { imageUploadService } from "@/services/image-upload.service";
 
-// TODO: signed uploading avatar to cloudinary. also handle state
 export default function Avatar({ avatarUrl }: { avatarUrl?: string | undefined }) {
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | undefined>(avatarUrl);
 
@@ -70,7 +69,7 @@ export default function Avatar({ avatarUrl }: { avatarUrl?: string | undefined }
        
 
         <DialogFooter>
-          <input type="file" accept="image/*" onChange={handleFileChange} />
+          <input type="file" accept="image/*" onChange={handleFileChange} className="hidden"/>
         </DialogFooter>
       </DialogContent>
     </Dialog>

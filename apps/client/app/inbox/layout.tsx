@@ -1,5 +1,4 @@
 import Header from "@/components/header";
-import Footer from "@/components/footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,12 +9,9 @@ export const metadata: Metadata = {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex w-full min-h-screen flex-1 flex-col items-stretch justify-start">
+    <div className="flex flex-col min-h-screen overflow-hidden">
       <Header />
-      <main className="flex flex-1 w-full flex-col items-center bg-white dark:bg-black sm:items-center justify-center">
-        {children}
-      </main>
-      <Footer />
+      {children}
     </div>
   );
 }

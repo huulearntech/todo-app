@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Boost your productivity with our tools and resources.",
 };
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function ProductivityLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex w-full min-h-screen flex-1 flex-col items-stretch justify-start">
       <Header />

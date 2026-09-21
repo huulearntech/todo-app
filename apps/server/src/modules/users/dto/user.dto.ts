@@ -23,4 +23,7 @@ export class UserResponse {
   @IsOptional()
   @IsUrl()
   avatarUrl?: string | null;
+
+  @IsString()
+  defaultProjectId: string;
 }

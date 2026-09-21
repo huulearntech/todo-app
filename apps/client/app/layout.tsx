@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/providers/QueryProvider";
-import AuthProvider from "@/providers/AuthProvider.draft";
+import AuthProvider from "@/providers/AuthProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar/app-sidebar";
 
 import Script from "next/script";
+import { MyStoreProvider } from "@/providers/MyStoreProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
 
 // NOTE: AuthProvider should be within QueryProvider,
 // because fetching the current user is also a query.
+// NOTE: should it be?
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -36,22 +38,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <QueryProvider>
           <AuthProvider>
-            <TooltipProvider>
-              <SidebarProvider
-                defaultOpen={false}
-                style={
-                  {
-                    "--sidebar-width": "350px",
-                  } as React.CSSProperties
-                }
-              >
-                <AppSidebar />
-                <SidebarInset>
+            <MyStoreProvider>
+              <TooltipProvider>
+                <SidebarProvider
+                  defaultOpen={false}
+                  style={
+                    {
+                      "--sidebar-width": "350px",
+                    } as React.CSSProperties
+                  }
+                >
+                  <AppSidebar />
                   {children}
-                </SidebarInset>
-                <Toaster />
-              </SidebarProvider>
-            </TooltipProvider>
+                  <Toaster />
+                </SidebarProvider>
+              </TooltipProvider>
+            </MyStoreProvider>
           </AuthProvider>
         </QueryProvider>
         <Script

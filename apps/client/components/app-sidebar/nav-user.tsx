@@ -1,11 +1,10 @@
 "use client"
 
 import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  LogOut,
-  Target,
+  User2Icon,
+  ChevronsUpDownIcon,
+  LogOutIcon,
+  TargetIcon,
 } from "lucide-react"
 
 import {
@@ -30,12 +29,11 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 
-import { useAuth } from "@/providers/AuthProvider.draft"
+import { useAuth } from "@/providers/AuthProvider"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, signOut } = useAuth();
-  console.log("NavUser user:", user); // Debugging line
 
   if (!user) {
     return null
@@ -60,7 +58,7 @@ export function NavUser() {
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs">{user.email}</span>
             </div>
-            <ChevronsUpDown className="ml-auto size-4" />
+            <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
@@ -85,25 +83,21 @@ export function NavUser() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem render={<Link href="/profile" />}>
-                <BadgeCheck />
+                <User2Icon />
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem render={<Link href="/productivity" />}>
-                <Target />
+                <TargetIcon />
                 Productivity
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              signOut()
-            }}>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => signOut()}>
               {/** TODO: alert dialog */}
-              <LogOut />
-              Log out
+              <LogOutIcon />
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

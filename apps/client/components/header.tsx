@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { SidebarTrigger } from "./ui/sidebar";
-import { useAuth } from "@/providers/AuthProvider.draft";
+import { useAuth } from "@/providers/AuthProvider";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 
@@ -15,10 +15,7 @@ export default function Header() {
     <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4"
-        />
+        <Separator orientation="vertical" />
         <ProjectSearchBar />
       </div>
       <div>

@@ -1,4 +1,3 @@
-// NOTE: Some serious shit happen sometimes, it rerender indefinitely, causing the page to freeze.
 // NOTE: The mello mezon app send the whole Object.keys(finalColumns) to the server,
 // and limit the number of columns as well.
 "use client"
@@ -19,9 +18,9 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { GripVerticalIcon } from 'lucide-react'
+import { GripVerticalIcon, Plus } from 'lucide-react'
 
-import TaskItemListView from "./task-item__list-view"
+import TaskItemListView from "./task-item__list-view.draft"
 
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { taskService } from "@/services/task.service"
@@ -29,7 +28,10 @@ import { taskService } from "@/services/task.service"
 import type { Task } from "@/types/task.type"
 import { sectionService } from "@/services/section.service"
 import { Section } from "@/types/section.type"
-import AddTaskDialog from "./add-task-form"
+
+import { AddTaskFormTrigger } from "./add-task-form"
+
+import AddSectionForm from "../../app/projects/add-section-form";
 
 interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -85,9 +87,10 @@ function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProp
                 isOverlay={isOverlay}
               />
             ))}
-          </KanbanColumnContent>
+            {/* <AddTaskDialog sectionId={value} /> */}
 
-          <AddTaskDialog sectionId={value} />
+            <AddTaskFormTrigger sectionId={value} />
+          </KanbanColumnContent>
 
         </CardContent>
       </Card>
@@ -95,8 +98,24 @@ function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProp
   )
 }
 
-function DndKanban() {
-  const projectId = "9da6157d-8d63-4470-bcdd-f2b5c9064b10" // TODO: pass as prop
+function AddSectionDialogTrigger({ sectionId }: { sectionId: string }) {
+  return (
+    <button
+      data-slot="button"
+      type="button"
+      onClick={() => {
+        console.log("AddSectionDialogTrigger clicked", { sectionId })
+      }}
+      className="relative opacity-0 hover:opacity-100 transition-opacity duration-200 w-4 flex justify-center cursor-pointer">
+      <span className="z-1000 whitespace-nowrap border border-muted-foreground bg-secondary rounded-full p-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <Plus className="text-muted-foreground"/>
+      </span>
+      <div className="w-px h-full bg-muted-foreground" />
+    </button>
+  )
+}
+
+function DndKanban({ projectId }: { projectId: string }) {
   const {
     data,
     isLoading,
@@ -107,7 +126,7 @@ function DndKanban() {
     queryKey: ["tasks", "sections", { projectId }],
     queryFn: async () => {
       const [tasks, sections] = await Promise.all([
-        taskService.getMyTasks_New({ projectId }),
+        taskService.getTasksByProjectId(projectId),
         sectionService.getSectionsByProjectId(projectId),
       ]);
 
@@ -127,29 +146,26 @@ function DndKanban() {
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
 
   useEffect(() => {
-    const acc: Record<string, Task[]> = { "no-section": [] }
+    const acc: Record<string, Task[]> = {}
 
     for (const section of sections) {
       acc[section.id] = []
     }
 
     for (const task of tasks) {
-      const sectionId: string = task.section?.id ?? "no-section";
-      (acc[sectionId] ??= []).push(task)
+      (acc[task.section!.id] ??= []).push(task) // TODO: remove '!' after solidifying the type of section.
     }
 
     setColumns(acc)
-    console.log(sections)
   }, [data])
 
   const moveTasksMutation = useMutation({
-    mutationFn: async ({ taskId, sectionId, prevId, nextId }: {
+    mutationFn: async ({ taskId, sectionId, prevId }: {
       taskId: string;
-      sectionId?: string;
-      prevId?: string;
-      nextId?: string;
+      sectionId: string;
+      prevId: string | null;
     }) => {
-      await taskService.updateTaskOrder(taskId, prevId, nextId, sectionId);
+      await taskService.updateTaskOrder({ taskId, prevId, sectionId });
     },
     onMutate: async ({}, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] })
@@ -171,15 +187,13 @@ function DndKanban() {
   })
 
   const moveSectionMutation = useMutation({
-    mutationFn: async ({ sectionId, prevId, nextId }: {
+    mutationFn: async ({ sectionId, prevId }: {
       sectionId: string;
-      prevId?: string;
-      nextId?: string;
+      prevId: string | null;
     }) => {
-      console.log("moveSectionMutation", { sectionId, prevId, nextId })
-      await sectionService.updateSectionOrder(sectionId, prevId, nextId);
+      await sectionService.updateSectionOrder({ id: sectionId, prevId });
     },
-    onMutate: async ({ sectionId, nextId }, context) => {
+    onMutate: async ({ sectionId, prevId }, context) => {
       await context.client.cancelQueries({ queryKey: ["sections", { projectId }] })
       const previousSections = context.client.getQueryData<Section[]>(["sections", { projectId }])
 
@@ -187,16 +201,16 @@ function DndKanban() {
       context.client.setQueryData<Section[]>(
         ["sections", { projectId }],
         (oldItems = []) => {
-          const newItems = [...oldItems];
-          const movedItemIndex = newItems.findIndex((item) => item.id === sectionId);
-          if (movedItemIndex === -1) return oldItems;
+          const sectionToMove = oldItems.find((s) => s.id === sectionId);
+          if (!sectionToMove) return oldItems;
 
-          const [movedItem] = newItems.splice(movedItemIndex, 1);
-          const newIndex = nextId
-            ? newItems.findIndex((item) => item.id === nextId)
-            : newItems.length;
+          const newItems = oldItems.filter((s) => s.id !== sectionId);
 
-          newItems.splice(newIndex, 0, movedItem);
+          const prevIndex = prevId ? newItems.findIndex((s) => s.id === prevId) : -1;
+          const newIndex = prevIndex + 1;
+
+          newItems.splice(newIndex, 0, sectionToMove);
+
           return newItems;
         }
       );
@@ -221,74 +235,69 @@ function DndKanban() {
   }
 
   return (
-    <div
-      // TODO: make it scrollable horizontally, and make the columns have a fixed width
-      className="w-screen overflow-x-auto"
+    <section
+      className="flex flex-1 min-h-0 overflow-x-auto px-4 py-3 bg-secondary"
     >
-    <Kanban
-      value={columns}
-      onValueChange={setColumns}
-      onValueCommit={(finalColumns, meta) => {
-        if (meta.kind == "column") { // Move section
-          const {
-            activeContainer: movedItemId,
-            activeIndex,
-            overIndex
-          } = meta;
-          if (activeIndex === overIndex) return;
+      <Kanban
+        value={columns}
+        onValueChange={setColumns}
+        onValueCommit={(finalColumns, meta) => {
+          if (meta.kind == "column") { // Move section
+            const {
+              activeContainer: movedItemId,
+              activeIndex,
+              overIndex
+            } = meta;
+            if (activeIndex === overIndex) return;
 
-          const newIndex = overIndex;
+            const newIndex = overIndex;
 
-          const payload = {
-            sectionId: movedItemId,
-            prevId: newIndex > 0
-              ? Object.keys(finalColumns)[newIndex - 1]
-              : undefined,
-            nextId: newIndex < Object.keys(finalColumns).length - 1
-              ? Object.keys(finalColumns)[newIndex + 1]
-              : undefined,
-          };
-          moveSectionMutation.mutate(payload);
+            const payload = {
+              sectionId: movedItemId,
+              prevId: newIndex > 0
+                ? Object.keys(finalColumns)[newIndex - 1]
+                : null,
+            };
+            moveSectionMutation.mutate(payload);
 
-          return;
-        }
-
-        { // Move task
-          const newIndex = meta.overIndex;
-          const targetSectionId = meta.overContainer;
-
-          const payload = {
-            sectionId: targetSectionId,
-            taskId: meta.event.active.id.toString(),
-            prevId: newIndex > 0
-              ? finalColumns[targetSectionId][newIndex - 1].id
-              : undefined,
-            nextId: newIndex < finalColumns[targetSectionId].length - 1
-              ? finalColumns[targetSectionId][newIndex + 1].id
-              : undefined,
+            return;
           }
-          moveTasksMutation.mutate(payload);
 
-          return;
-        }
-      }}
-      getItemValue={(item) => item.id}
-    >
-      {/* <KanbanBoard className="grid auto-rows-fr grid-cols-3"> */}
-      <KanbanBoard className="flex gap-2.5">
-        {Object.entries(columns).map(([sectionId, tasks]) => (
-          <TaskColumn
-            key={sectionId}
-            value={sectionId}
-            title={sections.find((s) => s.id === sectionId)?.name ?? "No Section"}
-            tasks={tasks}
-          />
-        ))}
-      </KanbanBoard>
-      <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
-    </Kanban>
+          { // Move task
+            const newIndex = meta.overIndex;
+            const targetSectionId = meta.overContainer;
 
-    </div>
+            const payload = {
+              sectionId: targetSectionId,
+              taskId: meta.event.active.id.toString(),
+              prevId: newIndex > 0
+                ? finalColumns[targetSectionId][newIndex - 1].id
+                : null,
+            }
+            moveTasksMutation.mutate(payload);
+
+            return;
+          }
+        }}
+        getItemValue={(item) => item.id}
+      >
+        <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4">
+          {Object.entries(columns).map(([sectionId, tasks]) => (
+              <TaskColumn
+                key={sectionId}
+                value={sectionId}
+                title={sections.find((s) => s.id === sectionId)!.name}
+                tasks={tasks}
+              />
+          ))}
+
+          <div data-slot="kanban-column" className="ml-4">
+            <AddSectionForm projectId={projectId} />
+          </div>
+        </KanbanBoard>
+        <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
+      </Kanban>
+    </section>
   )
 }
 

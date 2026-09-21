@@ -20,21 +20,19 @@ export const authService = {
       id: string;
       email: string;
       name: string;
+      defaultProjectId: string;
     }}>("/auth/sign-in", signInUserDto);
 
-    authSession.setAccessToken(response.data.accessToken);
     return response.data;
   },
 
   async signOut() {
-    authSession.clear();
-    const response = await apiClient.post("/auth/sign-out");
-    return response.data;
+    await apiClient.post("/auth/sign-out");
   },
 
   async refreshToken() {
     const response = await apiClient.post<RefreshTokenResDto>("/auth/refresh-token");
-    authSession.setAccessToken(response.data.accessToken);
+    authSession.setAccessToken(response.data.accessToken); // TODO: move
     return response.data;
   },
 };

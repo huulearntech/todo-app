@@ -7,10 +7,7 @@ import { Section } from '../sections/section.entity';
 import { TaskPriority } from "@todo/shared";
 
 
-// TODO: Lexorank: Implement Lexorank buckets for task ordering
-// NOTE: sections also have lexorank. and at some level, section's lexorank
-// acts as a prefix for the task's lexorank.
-
+// TODO: Lexorank: Implement Lexorank reordering cronjob
 
 // TODO: add feature streak of days that meet the goal of completing tasks. This is a good feature to motivate users to complete tasks and use the app more often. It can be implemented by adding a new column to the task table that stores the date of the last completed task. Then, we can calculate the streak by comparing the current date with the last completed task date. If the difference is 1 day, we increment the streak. If it's more than 1 day, we reset the streak to 0. We can also add a new table to store the streak history for each user.
 
@@ -44,33 +41,14 @@ export class Task {
   @Column({ type: 'text', nullable: true })
   category: string | null;
 
-  // NOTE: This is redundant. @Robustness
-  @Column({ type: 'uuid', name: 'owner_id' })
-  ownerId: string;
 
-  @ManyToOne(() => User, user => user.tasks, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'owner_id' })
-  owner: User;
+  // TODO: may have creatorId in the future
 
-  // TODO: collaboration between users in projects. Then consider redundancy: project belongs to user
-  @Column({ type: 'uuid', name: 'project_id' })
-  projectId: string;
+  @Column({ type: 'uuid', name: 'section_id' })
+  sectionId: string;
 
-  @ManyToOne(() => Project, project => project.tasks, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
-  project: Project;
-
-
-  // TODO: This is hella redundant. But for now I'm gonna keep this. @Robustness.
-  // The foreign key is either project_id or section_id.
-  @Column({ type: 'uuid', name: 'section_id', nullable: true })
-  sectionId: string | null;
-
-  @ManyToOne(() => Section, section => section.tasks, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn([
-    { name: 'section_id', referencedColumnName: 'id' },
-    { name: 'project_id', referencedColumnName: 'projectId' },
-  ])
+  @ManyToOne(() => Section, section => section.tasks, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'section_id' })
   section: Section;
 
 

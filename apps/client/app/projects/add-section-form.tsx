@@ -39,6 +39,7 @@ export default function AddSectionForm({ projectId }: { projectId: string }) {
   });
 
   const onSubmit = (data: CreateSectionDto) => {
+    // TODO: mutate the query for sections after creating a new section, so that the new section appears in the UI without a page refresh.
     sectionService.createSection(data).then(() => reset());
   };
 

@@ -22,11 +22,13 @@ export class SectionController {
   async updateSection(
     @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
     @Param("id") id: string,
-    @Body("prevId") prevId?: string,
-    @Body("nextId") nextId?: string
+    @Body("prevId") prevId: string | null,
   ) {
-    // FIX: Fix temporary hardcoded just for test
-    await this.sectionService.updateSectionOrder("9da6157d-8d63-4470-bcdd-f2b5c9064b10", id, prevId, nextId);
+    // TODO: verify user has permission to reorder sections in this project.
+    await this.sectionService.updateSectionOrder({
+      sectionId: id,
+      prevId
+    });
   }
 
   // TODO: @Cleanup @Temporary

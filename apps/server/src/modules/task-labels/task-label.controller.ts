@@ -1,12 +1,16 @@
-import { Body, Controller, Delete, Get, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Req } from '@nestjs/common';
 
 import { Request } from 'express';
 import { TaskLabelService } from './task-label.service';
 import { TaskLabelDto } from './task-label.dto';
+import { TaskService } from '../tasks/task.service';
 
 @Controller('task-labels')
 export class TaskLabelController {
-  constructor(private readonly taskLabelService: TaskLabelService) {}
+  constructor(
+    private readonly taskLabelService: TaskLabelService,
+    private readonly taskService: TaskService
+  ) {}
 
   @Post()
   async createTaskLabel(
@@ -35,6 +39,14 @@ export class TaskLabelController {
   @Get(':id')
   async getTaskLabelById() {
   
+  }
+
+  @Get(':id')
+  async getTasksByTaskLabelId(
+    @Req() request: Request & { user: { id: string } },
+    @Param('id') labelId: string
+  ) {
+    return this.taskService.getTasksByOwnerIdAndLabelId(request.user.id, labelId);
   }
 
   @Put(':id')

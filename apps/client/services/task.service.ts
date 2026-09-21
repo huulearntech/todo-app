@@ -24,10 +24,22 @@ export const taskService = {
   },
 
   // TODO: @Cleanup @Temporary
-  async getMyTasks_New(filter?: TaskFilterDto) {
-    const response = await apiClient.get<Task[]>("/tasks/me/new", {
+  // async getMyTasks_New(filter?: TaskFilterDto) {
+  //   const response = await apiClient.get<Task[]>("/tasks/me/new", {
+  //     params: filter,
+  //   });
+  //   return response.data;
+  // },
+
+  async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterDto, "projectId">) {
+    const response = await apiClient.get<Task[]>(`/projects/${projectId}/tasks`, {
       params: filter,
     });
+    return response.data;
+  },
+
+  async getMyTasksDueToday() {
+    const response = await apiClient.get<Task[]>("/tasks/me/due-today");
     return response.data;
   },
 
@@ -43,11 +55,16 @@ export const taskService = {
     return response.data;
   },
 
-  async updateTaskOrder(id: string, prevId?: string, nextId?: string, sectionId?: string) {
-    await apiClient.patch(`/tasks/${id}/reorder`, {
+  async updateTaskOrder({
+    taskId, prevId, sectionId
+  }: {
+    taskId: string;
+    sectionId: string;
+    prevId: string | null;
+  }) {
+    await apiClient.patch(`/tasks/${taskId}/reorder`, {
       sectionId,
       prevId,
-      nextId,
     });
   }
 };

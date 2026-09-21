@@ -1,3 +1,5 @@
+import { TaskPriority } from "@todo/shared";
+
 export type Task = {
   id: string;
   title: string;
@@ -6,10 +8,8 @@ export type Task = {
   completedAt?: Date;
   dueDate?: Date;
   description?: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'to_do' | 'in_progress' | 'done';
-  category?: string;
-  userId: string;
+  priority: TaskPriority;
+  ownerId: string;
   section: {
     id: string;
     name: string;

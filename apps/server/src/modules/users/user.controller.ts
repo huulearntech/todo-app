@@ -33,9 +33,4 @@ export class UserController {
   async updateUser(@Param() id: string, @Body() updateUserDto: UpdateUserProfileDto) {
     return this.userService.updateUser(id, updateUserDto);
   }
-
-  @Get(":id/tasks") // NOTE: Should this be here?
-  async getTasksByOwnerId(@Param("id") ownerId: string) {
-    return this.taskService.getTasksByOwnerId(ownerId);
-  }
 }

@@ -40,9 +40,6 @@ export class Project {
   @JoinColumn({ name: 'owner_id' })
   owner!: User;
 
-  @OneToMany(() => Task, task => task.project, { cascade: true })
-  tasks!: Task[];
-
   @OneToMany(() => Section, section => section.project, { cascade: true })
   sections!: Section[];
 

@@ -1,3 +1,4 @@
+// FIX: Remove this.
 let accessToken: string | null = null;
 
 export const authSession = {

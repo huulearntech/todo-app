@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query"
 import { projectService } from "@/services/project.service"
 
 import {
-  Folder,
-  Forward,
-  Hash,
-  MoreHorizontal,
-  Trash2,
+  FolderIcon,
+  ForwardIcon,
+  HashIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  Trash2Icon,
 } from "lucide-react"
 
 import {
@@ -32,7 +33,7 @@ export function NavProjects() {
   const { isMobile } = useSidebar()
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects"],
+    queryKey: ["projects", "non_default"],
     queryFn: () => projectService.getMyNonDefaultProjects(),
   })
 
@@ -56,12 +57,12 @@ export function NavProjects() {
         {projects.map((item) => (
           <SidebarMenuItem key={item.id}>
             <SidebarMenuButton render={<a href={`/projects/${item.id}`} />}>
-              <Hash />
+              <HashIcon />
               <span>{item.name}</span>
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger render={<SidebarMenuAction showOnHover />}>
-                <MoreHorizontal />
+                <MoreHorizontalIcon />
                 <span className="sr-only">More</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -70,22 +71,28 @@ export function NavProjects() {
                 align={isMobile ? "end" : "start"}
               >
                 <DropdownMenuItem>
-                  <Folder className="text-muted-foreground" />
+                  <FolderIcon className="text-muted-foreground" />
                   <span>View Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Forward className="text-muted-foreground" />
+                  <ForwardIcon className="text-muted-foreground" />
                   <span>Share Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <Trash2 className="text-muted-foreground" />
+                  <Trash2Icon className="text-muted-foreground" />
                   <span>Delete Project</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
+        <SidebarMenuItem>
+          <SidebarMenuButton>
+            <PlusIcon />
+            <span> New project </span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   )

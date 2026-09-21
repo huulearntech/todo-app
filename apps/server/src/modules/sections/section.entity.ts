@@ -40,7 +40,7 @@ export class Section {
   @JoinColumn({ name: 'project_id' })
   project!: Project;
 
-  @OneToMany(() => Task, task => task.project, { cascade: true })
+  @OneToMany(() => Task, task => task.section, { cascade: true })
   tasks!: Task[];
 
   // TODO: need to factor this out

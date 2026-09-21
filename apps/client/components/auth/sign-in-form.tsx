@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { authService } from "@/services/auth.service";
+import { useAuth } from "@/providers/AuthProvider";
 
 import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +17,8 @@ import { signInSchema, type SignInDto } from "@todo/shared";
 
 
 export default function SignInForm() {
+  const { signIn } = useAuth();
+
   const form = useForm<SignInDto>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -29,7 +31,7 @@ export default function SignInForm() {
 
   return (
     <form onSubmit={handleSubmit(async (data) => {
-      toast.promise(authService.signIn(data), {
+      toast.promise(signIn(data), {
         loading: "Signing in...",
         success: "Signed in successfully!",
         error: (err) => `Error signing in: ${err.message}`,

@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SignUpDto, UpdateUserProfileDto, UserResponse } from './dto/user.dto';
 import argon2 from 'argon2';
+import { Project } from '../projects/project.entity';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly dataSource: DataSource,
+    @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
   async createUser(signUp: SignUpDto): Promise<UserResponse> {
@@ -19,8 +20,23 @@ export class UserService {
       ...userData,
       passwordHashed,
     });
-    const savedUser = await this.userRepository.save(user);
-    const { passwordHashed: _, ...userResponse } = savedUser;
+
+    const userResponse = await this.dataSource.transaction(async (transactionalEntityManager) => {
+      const savedUser = await transactionalEntityManager.save(User, user);
+      const defaultProject = await transactionalEntityManager.save(Project, {
+        name: 'Inbox',
+        owner: savedUser,
+      });
+      savedUser.defaultProjectId = defaultProject.id;
+      await transactionalEntityManager.save(User, savedUser);
+
+      return {
+        email: savedUser.email,
+        name: savedUser.name,
+        avatarUrl: savedUser.avatarUrl,
+        defaultProjectId: defaultProject.id,
+      };
+    });
 
     return userResponse;
   }

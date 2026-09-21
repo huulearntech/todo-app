@@ -11,11 +11,14 @@ import {
   ItemMedia,
   ItemTitle
 } from "@/components/ui/item";
-import { Pencil, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { TagIcon } from "lucide-react";
 
 import Dialog_AddLabel from "./add-label-form";
 import Link from "next/link";
+import { Badge } from "@/components/reui/badge";
+import { useState } from "react";
+import { TaskLabel } from "@/types/task-label.type";
+import Dialog_EditLabel from "./temp-edit-label-form";
 
 export default function TempTaskLabelList() {
   const { data: labels = [], isLoading } = useQuery({
@@ -26,40 +29,43 @@ export default function TempTaskLabelList() {
     },
   });
 
+  const [label, setLabel] = useState<TaskLabel | null>(null);
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h2>Temporary Label List</h2>
+    <div className="flex flex-col gap-4 w-full max-w-2xl p-4">
+      <div className="flex w-full items-center justify-between">
+        <div className="inline-flex items-center gap-2">
+          <h1>Labels</h1>
+          <Badge variant="outline">{labels.length}</Badge>
+        </div>
         <Dialog_AddLabel />
       </div>
-      <div className="my-4">
-        <p>Below is a temporary list of labels fetched from the server.</p>
-      </div>
-      <div className="mb-4">
-        <p>Total Labels: {labels.length}</p>
-      </div>
-      <ul>
+      <ul className="flex flex-col gap-2">
         {labels.map((label) => (
-          <Item key={label.id} render={<Link href={`/labels/${label.id}`} />}>
-            <ItemMedia>
-              <Tag className="fill" />
-            </ItemMedia>
-            <ItemContent className="gap-1">
-              <ItemTitle>{label.name}</ItemTitle>
-              <ItemDescription>{label.description}</ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Pencil />
-              </Button>
-            </ItemActions>
-          </Item>
+          <li key={label.id}>
+            <Item
+              variant="outline"
+              data-label-id={label.id}
+              render={<button />}
+              onClick={() => setLabel(label)}
+              className="cursor-pointer"
+            >
+              <ItemMedia>
+                <TagIcon />
+              </ItemMedia>
+              <ItemContent className="gap-1">
+                <ItemTitle>{label.name}</ItemTitle>
+                <ItemDescription>{label.description}</ItemDescription>
+              </ItemContent>
+            </Item>
+          </li>
         ))}
       </ul>
+      <Dialog_EditLabel label={label} setLabel={setLabel} />
     </div>
   );
 }

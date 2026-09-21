@@ -1,6 +1,11 @@
 "use client"
 
-import { type LucideIcon } from "lucide-react"
+import {
+  InboxIcon,
+  TagsIcon,
+  CalendarDaysIcon,
+  HomeIcon
+} from "lucide-react"
 
 import {
   SidebarGroup,
@@ -11,15 +16,30 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 
-export function NavMain({
-  items,
-}: {
-  items: {
-    name: string
-    url: string
-    icon: LucideIcon
-  }[]
-}) {
+const items = [
+  {
+    name: "Home",
+    url: "/",
+    icon: HomeIcon,
+  },
+  {
+    name: "Inbox",
+    url: "/inbox",
+    icon: InboxIcon,
+  },
+  {
+    name: "Upcoming",
+    url: "/upcoming",
+    icon: CalendarDaysIcon,
+  },
+  {
+    name: "Labels",
+    url: "/labels",
+    icon: TagsIcon,
+  },
+];
+
+export function NavMain() {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>

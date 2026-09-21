@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/providers/AuthProvider.draft";
+import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";

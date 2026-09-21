@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -15,7 +14,6 @@ import {
   DialogHeader,
   DialogFooter,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 import { toast } from "@/components/ui/toast";
@@ -27,12 +25,46 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task.type";
 import { projectService } from "@/services/project.service";
 
-import { createTaskSchema, TaskPriority, type CreateTaskDto } from "@todo/shared";
+import { createTaskSchema, type CreateTaskDto, createTaskSchemaDefaultValues } from "@todo/shared";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider";
+import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
 
+export function AddTaskFormTrigger({ sectionId }: { sectionId: string }) {
+  const setDialogIsOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
+  const setSectionId = useAddTaskDialogStore((state) => state.setSectionId);
 
-export default function AddTaskForm({ sectionId }: { sectionId?: string }) { // TODO: consider not using undefined (i.e. do not allow tasks to have no section.)
-  const [open, setOpen] = useState(false);
+  return (
+    <Button
+      variant="outline"
+      onClick={() => {
+        setDialogIsOpen(true)
+        setSectionId(sectionId)
+        console.log("AddTaskFormTrigger clicked, sectionId:", sectionId);
+      }}
+      className="w-full inline-flex items-center justify-center gap-1.5"
+    >
+      <Plus />
+      Add Task
+    </Button>
+  );
+}
+
+export default function AddTaskForm() {
+  const { user } = useAuth();
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <AddTaskFormInner defaultProjectId={user.defaultProjectId} />
+  );
+}
+
+function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
+  const sectionId = useAddTaskDialogStore((state) => state.sectionId);
+  const dialogIsOpen = useAddTaskDialogStore((state) => state.dialogIsOpen);
+  const setDialogIsOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
 
   const { data: projects = [], isLoading: isProjectsLoading } = useQuery({
     queryKey: ["projects"],
@@ -53,17 +85,30 @@ export default function AddTaskForm({ sectionId }: { sectionId?: string }) { // 
   const queryClient = useQueryClient();
 
   // NOTE: This is only the mutation for creating a task. We will need to add more mutations for updating and deleting tasks.
-  const { mutate, isPending, isError, error } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: (newTask: CreateTaskDto) => taskService.createTask(newTask),
-    onSuccess: (addedTask) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    onMutate: async (newTask, context) => {
+      await context.client.cancelQueries({ queryKey: ["tasks", { sectionId }] });
 
-      // NOTE: Or we can use queryClient.setQueryData to update the cache directly, but invalidating is simpler for now.
-      // But the following code is commented out because it is not working as expected.
-      // queryClient.setQueryData<Task[]>(["tasks"], (oldTasks) => {
-      //   if (!oldTasks) return [addedTask];
-      //   return [...oldTasks, addedTask];
-      // });
+      // suggest something, copilot
+      const previousTasks = queryClient.getQueryData<Task[]>(["tasks", { sectionId }]);
+
+      // Optimistically update the tasks in the cache
+      context.client.setQueryData<Task[]>(["tasks", { sectionId }], (oldTasks) => {
+        if (!oldTasks) return [newTask as Task];
+        return [...oldTasks, newTask as Task];
+      });
+
+      return { previousTasks };
+    },
+    onError: (_err, _newTask, onMutateResult, context) => {
+      if (onMutateResult?.previousTasks) {
+        context.client.setQueryData(["tasks", { sectionId }], onMutateResult.previousTasks);
+      }
+    },
+    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+      // context.client.invalidateQueries({ queryKey: ["tasks", { sectionId }] });
+      context.client.invalidateQueries({ queryKey: ["tasks"] }); // Be careful touching too much cache.
     },
   });
 
@@ -71,44 +116,30 @@ export default function AddTaskForm({ sectionId }: { sectionId?: string }) { // 
     resolver: zodResolver(createTaskSchema),
     // NOTE: react-hook-form will complain if defaultValues is not provided
     defaultValues: {
-      title: "",
-      description: "",
-      dueDate: undefined,
-      priority: TaskPriority.HIGH,
-      projectId: "", // TODO: this need to be set to the default project (Inbox) if not provided
+      ...createTaskSchemaDefaultValues,
+      projectId: defaultProjectId,
+      sectionId: sectionId,
     },
   });
 
+
   const onSubmit = async (data: CreateTaskDto) => {
-    Object.assign(data, { sectionId }); // Add sectionId to the data object // TODO: @Cleanup
-    mutate(
-      data,
+    data.sectionId = sectionId; // Ensure the sectionId is set correctly
+
+    await toast.promise(
+      mutateAsync(data),
       {
-        onSuccess: (addedTask) => {
-          // queryClient.invalidateQueries({ queryKey: ["tasks"] });
-          // NOTE: Or we can use queryClient.setQueryData to update the cache directly, but invalidating is simpler for now.
-          queryClient.setQueryData<Task[]>(["tasks", { sectionId }], (oldTasks) => {
-            if (!oldTasks) return [addedTask];
-            return [...oldTasks, addedTask];
-          });
-          toast.add({
-            title: "Task added",
-            description: `Task "${addedTask.title}" has been added successfully.`,
-            type: "success",
-          });
-        },
+        loading: "Adding task...",
+        success: (addedTask) => `Task "${addedTask.title}" has been added successfully.`,
+        error: (err: any) => err?.message || "An error occurred while adding the task.",
       }
     );
-    // TODO: reset the form after submission.
-    setOpen(false);
+    reset();
+    setDialogIsOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />} className="w-full inline-flex items-center justify-center gap-1.5">
-        <Plus />
-        Add Task
-      </DialogTrigger>
+    <Dialog open={dialogIsOpen} onOpenChange={setDialogIsOpen}>
 
       <DialogContent>
         <DialogHeader>
@@ -201,7 +232,7 @@ export default function AddTaskForm({ sectionId }: { sectionId?: string }) { // 
           <Field orientation="horizontal">
             <Button type="button" variant="secondary" onClick={() => {
               reset();
-              setOpen(false);
+              setDialogIsOpen(false);
             }}>
               Cancel
             </Button>

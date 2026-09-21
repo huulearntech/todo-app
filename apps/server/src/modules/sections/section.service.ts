@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { MoreThan, Repository } from "typeorm";
 
 import { Section } from "./section.entity";
 import { Project } from "../projects/project.entity";
@@ -81,42 +81,58 @@ export class SectionService {
   }
 
   // NOTE: how can you know if it is the owner request this or not?
-  async updateSectionOrder(projectId: string, sectionId: string, prevId?: string, nextId?: string): Promise<void> {
+  async updateSectionOrder({
+    sectionId, prevId
+  }: {
+    sectionId: string;
+    prevId: string | null
+  }): Promise<void> {
     const sectionToMove = await this.sectionRepository.findOne({
-      where: { id: sectionId, projectId },
-      select: { id: true, lexorank: true },
+      where: { id: sectionId },
+      select: { lexorank: true, projectId: true },
     });
 
     if (!sectionToMove) {
       throw new Error("Section not found or does not belong to the project.");
       // TODO: handle error more robustly. @Robustness
     }
+    if (!prevId) {
 
-    let prevRank = '';
-    let nextRank = '';
-
-    if (prevId) {
-      const prevTask = await this.sectionRepository.findOne({
-        where: { id: prevId, projectId },
+      // If prevId is null, it means the task is being moved to the top of the list.
+      // So we need to find the first task in the section to get its lexorank.
+      const firstSectionInProject = await this.sectionRepository.findOne({
+        where: { projectId: sectionToMove.projectId },
         select: { lexorank: true },
+        order: { lexorank: 'ASC' },
       });
-      if (prevTask) prevRank = prevTask.lexorank;
+
+      await this.sectionRepository.update(
+        { id: sectionId },
+        { lexorank: Lexorank.getMidpoint('', firstSectionInProject?.lexorank || '') }
+      );
+      return;
     }
 
-    if (nextId) {
-      const nextTask = await this.sectionRepository.findOne({
-        where: { id: nextId, projectId },
-        select: { lexorank: true },
-      });
-      if (nextTask) nextRank = nextTask.lexorank;
-    }
+    const prevSection = await this.sectionRepository.findOne({
+      where: { id: prevId, projectId: sectionToMove.projectId },
+      select: { lexorank: true },
+    });
     
-    sectionToMove.lexorank = Lexorank.getMidpoint(prevRank, nextRank);
+    if (!prevSection) {
+      throw new Error("Previous section not found or does not belong to the project.");
+    }
 
-    // return this.taskRepository.save(taskToMove);
+    const nextSection = await this.sectionRepository.findOne({
+      where: { projectId: sectionToMove.projectId, lexorank: MoreThan(prevSection.lexorank) },
+      select: { lexorank: true },
+      order: { lexorank: 'ASC' },
+    });
+
+    const newLexorank = Lexorank.getMidpoint(prevSection.lexorank, nextSection?.lexorank || '');
+
     await this.sectionRepository.update(
-      { id: sectionToMove.id, projectId },
-      { lexorank: sectionToMove.lexorank }
+      { id: sectionToMove.id },
+      { lexorank: newLexorank }
     )
   }
 

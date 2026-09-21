@@ -1,23 +1,27 @@
 import { Injectable } from "@nestjs/common";
-import { FindOptionsOrderValue, MoreThan, Raw, Repository } from "typeorm";
+import { EntityNotFoundError, FindOptionsOrderValue, MoreThan, Raw, Repository } from "typeorm";
 import { Task } from "./task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
 import { CreateTaskDto } from "./dto/add-task.dto";
-import { GetMyTasksFilterDto } from "./dto/get-my-tasks.dto";
+import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto";
 import { Lexorank } from "../../common/utils/lexorank.util";
+import { Section } from "../sections/section.entity";
+import { DataSource } from "typeorm";
 
 // TODO: @Cleanup
 @Injectable()
 export class TaskService {
   constructor(
-    @InjectRepository(Task)
-    private readonly taskRepository: Repository<Task>
+    private readonly dataSource: DataSource,
+    @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
+    @InjectRepository(Section) private readonly sectionRepository: Repository<Section>
   ) { }
 
   async createTask(ownerId: string, createTaskDto: CreateTaskDto): Promise<Task> {
+    // NOTE: This may introduce a race condition.
     const taskHasHighestLexorank = await this.taskRepository.findOne({
-      where: { ownerId },
+      where: { sectionId: createTaskDto.sectionId },
       select: { lexorank: true },
       order: { lexorank: 'DESC' },
     });
@@ -25,7 +29,7 @@ export class TaskService {
     const highestLexorank = taskHasHighestLexorank?.lexorank || '';
     const newRank = Lexorank.getMidpoint(highestLexorank, ''); // passing '' means no upper limit
 
-    const newTask = this.taskRepository.create({ ownerId, ...createTaskDto, lexorank: newRank });
+    const newTask = this.taskRepository.create({ ...createTaskDto, lexorank: newRank });
     return this.taskRepository.save(newTask);
   }
 
@@ -37,77 +41,92 @@ export class TaskService {
     return this.taskRepository.findOne({ where: { id } });
   }
 
-  async getTasksByOwnerId(ownerId: string): Promise<Task[]> {
-    return this.taskRepository.find({ where: { ownerId } });
-  }
+  // NOTE: may distinguish between getting tasks and getting tasks with title.
+  async getTasksByOwnerIdProjectIdAndFilter(ownerId: string, projectId: string, filter?: Dto_Filter_GetTasks): Promise<Task[]> { // TODO: pagination
+    if (filter?.title) 
+    return this.dataSource.transaction(async (transactionalEntityManager) => {
+      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
 
-  async getTasksByOwnerIdAndTitle(ownerId: string, title: string): Promise<Task[]> {
-    return this.taskRepository.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`); // Set a lower threshold for similarity
-      return transactionalEntityManager
-        .createQueryBuilder(Task, "task")
-        .where("task.ownerId = :ownerId", { ownerId })
-        .andWhere("task.title % :title", { title }) // Using the % operator for full-text search
-        .orderBy("similarity(task.title, :title)", "DESC")
-        .setParameters({ ownerId, title })
-        .getMany();
-    });
-  }
+      return transactionalEntityManager.find(Task, {
+        where: {
+          section: { project: { id: projectId, ownerId } },
+          ...filter,
+          title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
+        },
+        relations: { section: { project: true } },
+        order: {
+          title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
+          lexorank: 'ASC',
+        }
+      });
+    })
 
-  async getTasksByOwnerIdAndFilter(ownerId: string, filter: GetMyTasksFilterDto): Promise<Task[]> {
     return this.taskRepository.find({
       where: {
-        ownerId,
-        ...filter
+        section: { project: { id: projectId, ownerId } },
+        ...filter,
       },
-      order: { lexorank: 'ASC' },
+      relations: { section: { project: true } },
+      order: {
+        lexorank: 'ASC',
+      }
     });
   }
+  // TODO: @Cleanup @Temporary
+  // NOTE: may distinguish between getting tasks and getting tasks with title.
+  async getTasksByOwnerId(ownerId: string, filter?: Dto_Filter_GetTasks): Promise<Task[]> {
+    if (filter?.title) 
+    return this.dataSource.transaction(async (transactionalEntityManager) => {
+      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
 
-  // async getTasksByOwnerIdAndFilter_New(ownerId: string, filter?: GetMyTasksFilterDto): Promise<Task[]> { // TODO: pagination
-  //   if (filter?.title) 
-  //   return this.taskRepository.manager.transaction(async (transactionalEntityManager) => {
-  //     await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
+      return transactionalEntityManager.find(Task, {
+        where: {
+          section: { project: { ownerId } },
+          ...filter,
+          title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
+        },
+        relations: { section: { project: true } },
+        order: {
+          title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
+          lexorank: 'ASC',
+        }
+      });
+    })
 
-  //     return transactionalEntityManager.find(Task, {
-  //       where: {
-  //         ownerId,
-  //         ...filter,
-  //         title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
-  //       },
-  //       order: {
-  //         title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
-  //       }
-  //     });
-  //   })
-
-  //   return this.taskRepository.find({
-  //     where: {
-  //       ownerId,
-  //       ...filter,
-  //     }
-  //   });
-  // }
+    return this.taskRepository.find({
+      where: {
+        section: { project: { ownerId } },
+        ...filter,
+      },
+      relations: { section: { project: true } },
+      order: {
+        lexorank: 'ASC',
+      }
+    });
+  }
 
   // TODO: @Temporary @Cleanup
   async getTasksByOwnerIdAndLabelId(ownerId: string, labelId: string): Promise<Task[]> {
     return this.taskRepository.find({
       where: {
-        ownerId,
+        section: { project: { ownerId } },
         labels: { id: labelId },
       },
       relations: {
+        section: { project: true },
         labels: true,
       }
     });
   }
 
-  async getTasksByOwnerIdAndProjectIdWithSectionIdAndName(ownerId: string, projectId: string): Promise<Task[]> {
+  async getTasksByOwnerIdAndProjectIdWithSectionIdAndName({
+    ownerId, projectId,
+  }: {
+    ownerId: string;
+    projectId: string;
+  }): Promise<Task[]> {
     return this.taskRepository.find({
-      where: {
-        ownerId,
-        projectId,
-      },
+      where: { section: { project: { id: projectId, ownerId } } },
       select: {
         id: true,
         title: true,
@@ -135,45 +154,55 @@ export class TaskService {
     return this.taskRepository.save(task);
   }
 
-  async updateTaskOrder_New(ownerId: string, taskId: string, sectionId: string, prevId: string | null): Promise<void> {
-    // TODO: check task if exist
-    const taskToMove = await this.taskRepository.findOne({
-      where: { id: taskId, ownerId },
-      select: { id: true },
+  // NOTE: too much failure points.
+  async updateTaskOrder_New({
+    ownerId, taskId, sectionId, prevId
+  }: {
+    ownerId: string;
+    taskId: string;
+    sectionId: string;
+    prevId: string | null
+  }): Promise<void> {
+    const taskDoesExist = await this.taskRepository.exists({
+      where: { id: taskId, section: { project: { ownerId } } },
+    });
+    if (!taskDoesExist) {
+      throw new EntityNotFoundError(Task, `Task with ID ${taskId} does not exist or does not belong to the user.`);
+    }
+
+    const sectionDoesBelongToUser = await this.sectionRepository.exists({
+      where: { id: sectionId, project: { ownerId } },
     });
 
-    if (!taskToMove) {
-      throw new Error("Task not found or does not belong to the owner.");
-      // TODO: handle error more robustly. @Robustness
+    if (!sectionDoesBelongToUser) {
+      throw new EntityNotFoundError(Section, `Section with ID ${sectionId} does not exist or does not belong to the user.`);
     }
 
     if (!prevId) {
       // If prevId is null, it means the task is being moved to the top of the list.
       // So we need to find the first task in the section to get its lexorank.
       const firstTaskInSection = await this.taskRepository.findOne({
-        where: { sectionId, ownerId }, // FIX: This is not correct, as it can move from other section to this section. The "section" here mean "targetSection"
+        where: { sectionId },
         select: { lexorank: true },
         order: { lexorank: 'ASC' },
       });
 
       await this.taskRepository.update(
-        { id: taskId }, // TODO: check if task is correctly in the project. (and may need to check user also?)
+        { id: taskId },
         {
           lexorank: Lexorank.getMidpoint('', firstTaskInSection?.lexorank || ''),
-          ...(sectionId !== undefined ? { sectionId } : {}), // Only update sectionId if it's provided @Cleanup
+          sectionId: sectionId,
         }
       );
       return;
     }
 
 
-    // NOTE: Is there any way to merge these two queries into one?
-    const prevTask = await this.taskRepository.findOne({
+    // If prevId is provided, it must be a valid task.
+    const prevTask = await this.taskRepository.findOneOrFail({
       where: { id: prevId, sectionId },
       select: { lexorank: true },
     });
-    // NOTE: if prevTask is empty, it means something is very wrong. // TODO: @Robustness
-    if (!prevTask) return;
 
     const nextTask = await this.taskRepository.findOne({
       where: { sectionId, lexorank: MoreThan(prevTask.lexorank) },
@@ -182,62 +211,17 @@ export class TaskService {
     });
 
 
-    taskToMove.lexorank = Lexorank.getMidpoint(prevTask.lexorank, nextTask?.lexorank || '');
+    const newLexorank = Lexorank.getMidpoint(prevTask.lexorank, nextTask?.lexorank || '');
 
     await this.taskRepository.update(
-      { id: taskToMove.id, ownerId },
+      { id: taskId },
       {
-        lexorank: taskToMove.lexorank,
-        ...(sectionId !== undefined ? { sectionId } : {}), // Only update sectionId if it's provided @Cleanup
+        lexorank: newLexorank,
+        sectionId: sectionId,
       }
     )
   }
 
-
-
-
-  // NOTE: This version is not robust.
-  async updateTaskOrder(ownerId: string, taskId: string, sectionId?: string, prevId?: string, nextId?: string): Promise<void> {
-    const taskToMove = await this.taskRepository.findOne({
-      where: { id: taskId, ownerId },
-      select: { id: true, lexorank: true },
-    });
-
-    if (!taskToMove) {
-      throw new Error("Task not found or does not belong to the owner.");
-      // TODO: handle error more robustly. @Robustness
-    }
-
-    let prevRank = '';
-    let nextRank = '';
-
-    if (prevId) {
-      const prevTask = await this.taskRepository.findOne({
-        where: { id: prevId, ownerId },
-        select: { lexorank: true },
-      });
-      if (prevTask) prevRank = prevTask.lexorank;
-    }
-
-    if (nextId) {
-      const nextTask = await this.taskRepository.findOne({
-        where: { id: nextId, ownerId },
-        select: { lexorank: true },
-      });
-      if (nextTask) nextRank = nextTask.lexorank;
-    }
-
-    taskToMove.lexorank = Lexorank.getMidpoint(prevRank, nextRank);
-
-    // return this.taskRepository.save(taskToMove);
-    await this.taskRepository.update(
-      { id: taskToMove.id, ownerId },
-      {
-        lexorank: taskToMove.lexorank,
-        ...(sectionId !== undefined ? { sectionId } : {}), // Only update sectionId if it's provided @Cleanup
-      }
-    )
-  }
 
   async deleteTask(id: string): Promise<boolean> {
     const result = await this.taskRepository.delete(id);

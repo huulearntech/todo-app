@@ -613,7 +613,8 @@ function KanbanBoard({ className, render, ...props }: KanbanBoardProps) {
 
   const defaultProps = {
     "data-slot": "kanban-board",
-    className: cn("grid auto-rows-fr gap-4 sm:grid-cols-3", className),
+    // className: cn("grid auto-rows-fr gap-4 sm:grid-cols-3", className),
+    className,
     children: props.children,
   }
 

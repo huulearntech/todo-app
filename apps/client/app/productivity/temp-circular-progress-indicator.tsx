@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 interface CircularProgressProps {
   size?: number;
   strokeWidth?: number;
-  progress: number; // 0 to 100
+  progress: number; // 0 to 1
   className?: string;
   fillColor?: string;
   icon?: ReactNode;

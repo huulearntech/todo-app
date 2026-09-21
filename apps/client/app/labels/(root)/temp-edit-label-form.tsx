@@ -1,4 +1,3 @@
-// TODO: move this to components
 "use client";
 
 import { useState } from "react";
@@ -31,24 +30,34 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-import { createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
+import { updateTaskLabelSchema, type UpdateTaskLabelDto } from "@todo/shared";
+import { TaskLabel } from "@/types/task-label.type";
 
 
-export default function Dialog_AddLabel() {
+export default function Dialog_EditLabel({
+  label,
+  setLabel,
+}: {
+  label: TaskLabel | null;
+  setLabel: (label: TaskLabel | null) => void;
+}) {
   const queryClient = useQueryClient();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<CreateTaskLabelDto>({
-    resolver: zodResolver(createTaskLabelSchema),
-    defaultValues: {
-      name: '',
-      description: '',
+  const { control, handleSubmit, formState: { errors }, reset } = useForm<UpdateTaskLabelDto>({
+    resolver: zodResolver(updateTaskLabelSchema),
+    defaultValues: label && {
+      id: label.id,
+      name: label.name,
+      description: label.description || "",
+    } || {
+      id: "",
+      name: "",
+      description: "",
     },
   });
 
-  const createLabelMutation = useMutation({
-    mutationFn: (data: CreateTaskLabelDto) => taskLabelService.createTaskLabel(data),
+  const updateLabelMutation = useMutation({
+    mutationFn: (data: UpdateTaskLabelDto) => taskLabelService.updateTaskLabel(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["labels"] });
       reset();
@@ -63,28 +72,31 @@ export default function Dialog_AddLabel() {
     }
   });
 
-  const onSubmit = async (data: CreateTaskLabelDto) => {
+  const onSubmit = async (data: UpdateTaskLabelDto) => {
     toast.promise(
-      createLabelMutation.mutateAsync(data),
+      updateLabelMutation.mutateAsync(data),
       {
         loading: "Creating label...",
         success: "Label created successfully!",
         error: "Error creating label.",
       }
     );
-    setDialogOpen(false);
+    setLabel(null);
   };
 
+  if (!label) {
+    return null;
+  }
+
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
-        <Plus />
-      </DialogTrigger>
+    <Dialog open={!!label} onOpenChange={(open) => {
+      if(!open) setLabel(null);
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Label</DialogTitle>
+          <DialogTitle>{label.name}</DialogTitle>
           <DialogDescription>
-            Fill in the details below to create a new label.
+            {label.description}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -117,8 +129,10 @@ export default function Dialog_AddLabel() {
           </FieldGroup>
         </form>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => reset()}>Reset</Button>
-          <Button type="submit" form="add-task-label-form">Add Label</Button>
+          <Button type="button" variant="outline" onClick={() => setLabel(null)}>
+            Cancel
+            </Button>
+          <Button type="submit" form="add-task-label-form">Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

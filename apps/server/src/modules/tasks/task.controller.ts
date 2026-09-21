@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@
 import { TaskService } from "./task.service";
 import type { Request } from "express";
 
-import { GetMyTasksFilterDto } from "./dto/get-my-tasks.dto"; // TODO: move
+// import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto"; // TODO: move
 import { type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
 
 
@@ -18,31 +18,13 @@ export class TasksController {
     return this.taskService.createTask(req.user.id, createTaskReqDto);
   }
 
-  @Get("me")
-  async getMyTasks(
-    @Req() req: Request & { user: { id: string } },
-    @Query() filter: GetMyTasksFilterDto,
-  ) {
-    return this.taskService.getTasksByOwnerIdAndFilter(req.user.id, filter);
-  }
-
-  // TODO: @Cleanup @Temporary
-  @Get("me/new")
-  async getMyTasks_New(
-    @Req() req: Request & { user: { id: string } },
-    @Query() filter: GetMyTasksFilterDto,
-  ) {
-    return this.taskService.getTasksByOwnerIdAndProjectIdWithSectionIdAndName(req.user.id, filter.projectId || '');
-  }
-
-  // TODO: @Cleanup @Temporary
-  @Get("tempbylabel/:labelId")
-  async getMyTasksByLabelId(
-    @Req() req: Request & { user: { id: string } },
-    @Param("labelId") labelId: string
-  ) {
-    return this.taskService.getTasksByOwnerIdAndLabelId(req.user.id, labelId);
-  }
+  // @Get("me")
+  // async getMyTasks(
+  //   @Req() req: Request & { user: { id: string } },
+  //   @Query() filter: GetMyTasksFilterDto,
+  // ) {
+  //   return this.taskService.getTasksByOwnerIdAndFilter(req.user.id, filter);
+  // }
 
 
   @Delete(":id")
@@ -54,10 +36,13 @@ export class TasksController {
   async updateTask(
     @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
     @Param("id") id: string,
-    @Body("sectionId") sectionId?: string,
-    @Body("prevId") prevId?: string,
-    @Body("nextId") nextId?: string
+    @Body() { sectionId, prevId }: { sectionId: string; prevId: string | null }
   ) {
-    await this.taskService.updateTaskOrder(req.user.id, id, sectionId, prevId, nextId);
+    await this.taskService.updateTaskOrder_New({
+      ownerId: req.user.id,
+      taskId: id,
+      sectionId,
+      prevId,
+    });
   }
 }

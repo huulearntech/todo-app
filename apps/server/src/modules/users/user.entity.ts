@@ -38,14 +38,17 @@ export class User {
   @Column({ type: 'text', name: 'avatar_url', nullable: true })
   avatarUrl!: string | null;
 
+  @Column({ type: 'uuid', name: 'default_project_id', nullable: true })
+  defaultProjectId!: string | null;
+
   // TODO: Verify email after registration.
   // @Column({ name: 'is_email_verified', default: false })
   // isEmailVerified!: boolean;
 
 
 
-  @OneToMany(() => Task, task => task.owner, { cascade: true })
-  tasks!: Task[];
+  // @OneToMany(() => Task, task => task.owner, { cascade: true })
+  // tasks!: Task[];
 
   @OneToMany(() => TaskLabel, taskLabel => taskLabel.owner, { cascade: true })
   taskLabels!: TaskLabel[];

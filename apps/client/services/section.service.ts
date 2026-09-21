@@ -37,11 +37,8 @@ export const sectionService = {
     return apiClient.put<Section>(`/sections/${id}`, { name, description });
   },
 
-  updateSectionOrder: async (id: string, prevId?: string, nextId?: string) => {
-    await apiClient.patch(`/sections/${id}/reorder`, {
-      prevId,
-      nextId,
-    });
+  updateSectionOrder: async ({ id, prevId }: { id: string, prevId: string | null }) => {
+    await apiClient.patch(`/sections/${id}/reorder`, { prevId });
   },
 
   deleteSection: async (id: string) => {
