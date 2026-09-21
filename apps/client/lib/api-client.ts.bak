@@ -145,7 +145,6 @@ async function refreshAccessToken(): Promise<string> {
     { withCredentials: true },
   );
 
-  authSession.setAccessToken(data.accessToken);
   return data.accessToken;
 }
 
@@ -177,7 +176,6 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        authSession.clear();
         return Promise.reject(refreshError);
       }
     }

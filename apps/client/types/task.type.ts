@@ -14,5 +14,9 @@ export type Task = {
     id: string;
     name: string;
   } | null;
+  labels: {
+    id: string;
+    name: string;
+  }[];
 };
 

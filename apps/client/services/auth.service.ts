@@ -1,5 +1,4 @@
 import { apiClient } from "@/lib/api-client";
-import { authSession } from "@/lib/auth-session";
 
 import { CreateUserResDto } from "@/types/user.type";
 import { type SignUpDto } from "@todo/shared";
@@ -32,7 +31,6 @@ export const authService = {
 
   async refreshToken() {
     const response = await apiClient.post<RefreshTokenResDto>("/auth/refresh-token");
-    authSession.setAccessToken(response.data.accessToken); // TODO: move
     return response.data;
   },
 };

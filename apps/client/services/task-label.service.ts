@@ -9,7 +9,8 @@ export const taskLabelService = {
   },
 
   getMyTaskLabels: async () => {
-    return apiClient.get<TaskLabel[]>("/task-labels/me");
+    const response = await apiClient.get<TaskLabel[]>("/task-labels/me");
+    return response.data;
   },
 
   getTaskLabelById: async (id: string) => {

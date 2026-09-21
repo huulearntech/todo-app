@@ -38,21 +38,17 @@ export default function Dialog_EditLabel({
   label,
   setLabel,
 }: {
-  label: TaskLabel | null;
+  label: TaskLabel;
   setLabel: (label: TaskLabel | null) => void;
 }) {
   const queryClient = useQueryClient();
 
   const { control, handleSubmit, formState: { errors }, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
-    defaultValues: label && {
+    defaultValues: {
       id: label.id,
       name: label.name,
       description: label.description || "",
-    } || {
-      id: "",
-      name: "",
-      description: "",
     },
   });
 
@@ -83,10 +79,6 @@ export default function Dialog_EditLabel({
     );
     setLabel(null);
   };
-
-  if (!label) {
-    return null;
-  }
 
   return (
     <Dialog open={!!label} onOpenChange={(open) => {

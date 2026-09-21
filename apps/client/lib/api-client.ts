@@ -4,7 +4,6 @@ import axios, {
   InternalAxiosRequestConfig,
   AxiosResponse,
 } from "axios";
-import { authSession } from "./auth-session";
 
 type TokenResponse = {
   accessToken: string;
@@ -32,23 +31,8 @@ async function refreshAccessToken(): Promise<string> {
     { withCredentials: true },
   );
 
-  authSession.setAccessToken(data.accessToken);
   return data.accessToken;
 }
-
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = authSession.getAccessToken();
-
-    if (token) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error),
-);
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
@@ -78,7 +62,6 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        authSession.clear();
         return Promise.reject(refreshError);
       }
     }

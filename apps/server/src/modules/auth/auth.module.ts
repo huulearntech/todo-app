@@ -9,13 +9,14 @@ import { User } from '../users/user.entity';
 import { UserModule } from '../users/user.module';
 
 import { RefreshToken } from '../jwt/entities/refresh-token.entity';
-import { JwtStrategy } from '../jwt/strategies/jwt.strategy';
-import { JwtAuthGuard } from '../jwt/guards/jwt-auth.guard';
+import { JwtAccessStrategy } from '../jwt/strategies/jwt-access.strategy';
+import { JwtAccessGuard } from '../jwt/guards/jwt-access.guard';
 import { RefreshTokenService } from '../jwt/refresh-token.service';
+import { JwtRefreshStrategy } from '../jwt/strategies/jwt-refresh.strategy';
 
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: 'jwt-access' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET, // Must match the Strategy secret
       signOptions: { expiresIn: '15m' }, // Access token expiration time // FIX: @Consistency
@@ -29,13 +30,14 @@ import { RefreshTokenService } from '../jwt/refresh-token.service';
   ],
   providers: [
     AuthService,
-    JwtStrategy,
+    JwtAccessStrategy,
+    JwtRefreshStrategy,
     {
       provide: 'APP_GUARD',
-      useClass: JwtAuthGuard, // Use the JwtAuthGuard globally, public routes must be explicitly marked
+      useClass: JwtAccessGuard, // Use the JwtAuthGuard globally, public routes must be explicitly marked
     },
-    RefreshTokenService, // Add RefreshTokenService to providers
-  ], // Add JwtStrategy to providers
+    RefreshTokenService,
+  ],
   controllers: [AuthController],
   exports: [AuthService], // Export AuthService for use in other modules
 })

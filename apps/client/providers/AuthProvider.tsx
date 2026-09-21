@@ -6,8 +6,7 @@ import { type CreateUserResDto } from "@/types/user.type"; // TODO: clean up typ
 
 import { apiClient } from "@/lib/api-client";
 
-// FIX: remove this shit, use cookies with path='/' instead. @Urgent
-import { authSession } from "@/lib/auth-session"
+// FIX: AuthProvider vs QueryProvider: which one should be the parent?
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type AuthContextType = {
@@ -34,8 +33,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         return null;
       }
     },
-    // NOTE: somehow this is the trick line, if uncomment this, it would show the user but the user is there when you log it.
-    // enabled: !!authSession.getAccessToken(),
   });
 
   const signInMutation = useMutation({
@@ -43,7 +40,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       return authService.signIn({ email, password });
     },
     onSuccess: ({ accessToken, user }) => {
-      authSession.setAccessToken(accessToken);
       queryClient.setQueryData(["current_user"], user);
     },
   });
@@ -58,15 +54,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   });
 
   const signIn = async ({ email, password }: { email: string, password: string }) => {
-    const { accessToken, user } = await signInMutation.mutateAsync({ email, password });
-    authSession.setAccessToken(accessToken);
+    const { user } = await signInMutation.mutateAsync({ email, password });
     queryClient.setQueryData(["current_user"], user);
     return user;
   };
 
   const signOut = async () => {
     await signOutMutation.mutateAsync();
-    authSession.clear();
   };
 
 

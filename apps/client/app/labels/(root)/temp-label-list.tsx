@@ -23,10 +23,7 @@ import Dialog_EditLabel from "./temp-edit-label-form";
 export default function TempTaskLabelList() {
   const { data: labels = [], isLoading } = useQuery({
     queryKey: ["labels"], // TODO: centralize query keys and mutation management.
-    queryFn: async () => {
-      const response = await taskLabelService.getMyTaskLabels(); // TODO: pagination
-      return response.data;
-    },
+    queryFn: taskLabelService.getMyTaskLabels
   });
 
   const [label, setLabel] = useState<TaskLabel | null>(null);
@@ -65,7 +62,7 @@ export default function TempTaskLabelList() {
           </li>
         ))}
       </ul>
-      <Dialog_EditLabel label={label} setLabel={setLabel} />
+      {label && <Dialog_EditLabel label={label} setLabel={setLabel} /> }
     </div>
   );
 }

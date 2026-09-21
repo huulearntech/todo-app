@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from '@nestjs/common';
 
 import { Request } from 'express';
 import { TaskLabelService } from './task-label.service';
@@ -49,9 +49,19 @@ export class TaskLabelController {
     return this.taskService.getTasksByOwnerIdAndLabelId(request.user.id, labelId);
   }
 
-  @Put(':id')
-  async updateTaskLabel() {
-    
+  @Patch(':id')
+  async updateTaskLabel(
+    @Req() request: Request & { user: { id: string } },
+    @Param('id') labelId: string,
+    @Body() body: TaskLabelDto
+  ) {
+    const updatedTaskLabel = await this.taskLabelService.updateTaskLabel(labelId, body);
+
+    if (!updatedTaskLabel) {
+      throw new Error(`Task label with ID ${labelId} not found`);
+    }
+
+    return updatedTaskLabel;
   }
 
   @Delete(':id')

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { TaskLabel } from './task-label.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { TaskLabelDto } from './task-label.dto';
 
 
 @Injectable()
@@ -28,7 +29,7 @@ export class TaskLabelService {
     return this.taskLabelRepository.findOne({ where: { id } });
   }
 
-  async updateTaskLabel(id: string, updatedTaskLabel: Partial<TaskLabel>): Promise<TaskLabel | null> {
+  async updateTaskLabel(id: string, updatedTaskLabel: TaskLabelDto): Promise<TaskLabel | null> {
     const taskLabel = await this.getTaskLabelById(id);
     if (!taskLabel) {
       return null;

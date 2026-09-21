@@ -8,7 +8,6 @@ export const createTaskSchema = z.object({
   dueDate: z.date().optional(),
   priority: z.enum(TaskPriority).optional(),
   sectionId: z.string().optional(), // NOTE: this is the id of the section that the task belongs to. If not provided, the task will be added directly to the project
-  projectId: z.string().optional(), // NOTE: this is the id of the project that the task belongs to. If not provided, the task will be added to the default project (Inbox).
 });
 
 export type CreateTaskDto = z.infer<typeof createTaskSchema>;
@@ -19,7 +18,6 @@ export const createTaskSchemaDefaultValues: CreateTaskDto = {
   dueDate: undefined,
   priority: TaskPriority.HIGH,
   sectionId: undefined,
-  projectId: undefined,
 };
 
 // TODO: fix
@@ -29,7 +27,7 @@ export const updateTaskSchema = z.object({
   dueDate: z.date().optional(),
   priority: z.enum(TaskPriority).optional(),
   sectionId: z.string().optional(), // NOTE: this is the id of the section that the task belongs to. If not provided, the task will be added directly to the project
-  projectId: z.string().optional(), // NOTE: this is the id of the project that the task belongs to. If not provided, the task will be added to the default project (Inbox).
+  labels: z.array(z.object({ id: z.string()})),
 });
 
 export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
@@ -37,8 +35,8 @@ export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
 
 export const taskFilterSchema = z.object({
   title: z.string(),
-  status: z.string(),
   projectId: z.string(),
+  dueDate: z.date(),
 }).partial();
 
 export type TaskFilterDto = z.infer<typeof taskFilterSchema>;

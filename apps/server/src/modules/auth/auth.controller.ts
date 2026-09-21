@@ -4,7 +4,7 @@ import type { Response, Request } from "express";
 import { SignInDto } from "./dto/sign-in.dto";
 import { Public } from "./decorators/public.decorator";
 import { TypedConfigService } from "../../config/typed-config.service";
-import { RefreshTokenGuard } from "../jwt/guards/refresh-token.guard";
+import { JwtRefreshGuard } from "../jwt/guards/jwt-refresh.guard";
 import { UserService } from "../users/user.service";
 import { RefreshTokenService } from "../jwt/refresh-token.service";
 import { GuestGuard } from "../jwt/guards/guest.guard";
@@ -47,7 +47,17 @@ export class AuthController {
       path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
     });
 
-    // 3. Return user profile data or a success flag back as JSON
+    // 3. Set Access Token Cookie
+    response.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
+      path: '/',
+    });
+
+
+    // 4. Return user profile data or a success flag back as JSON
     return { accessToken, user };
   }
 
@@ -62,6 +72,13 @@ export class AuthController {
       httpOnly: true,
       sameSite: "lax",
       secure: true,
+      path: "/auth/refresh-token",
+    });
+
+    res.clearCookie("access_token", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
       path: "/",
     });
 
@@ -69,7 +86,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(RefreshTokenGuard)
+  @UseGuards(JwtRefreshGuard)
   @Post("refresh-token")
   async refreshToken(
     @Req() request: Request & { user: { id: string; email: string; name: string; refreshToken: string } },

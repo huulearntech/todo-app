@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_PIPE } from '@nestjs/core';
 
+// import { BullModule } from '@nestjs/bullmq';
+
 // import { ConfigModule } from '@nestjs/config';
 import { AppConfigModule } from './config/config.module';
 
@@ -15,6 +17,9 @@ import { ImageStorageModule } from './modules/image_storage/image_storage.module
 import { TaskLabelModule } from './modules/task-labels/task-label.module';
 import { ProjectModule } from './modules/projects/project.module';
 import { SectionModule } from './modules/sections/section.module';
+// import { MailerModule } from './modules/mailer/mailer.module';
+
+
 import { ZodValidationPipe } from 'nestjs-zod';
 
 
@@ -35,6 +40,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
     ProjectModule,
     SectionModule,
     UserModule,
+    // MailerModule,
     ImageStorageModule.register(), // Register the ImageStorageModule with its dynamic configuration
 
     // ConfigModule.forRoot({

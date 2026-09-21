@@ -7,7 +7,7 @@ interface AuthenticatedUser {
 }
 
 @Injectable()
-export class GuestGuard extends AuthGuard('jwt') {
+export class GuestGuard extends AuthGuard('jwt-access') {
   override handleRequest<TUser = AuthenticatedUser>(
     err: Error | null,
     user: TUser | false,

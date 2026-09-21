@@ -31,7 +31,7 @@ export default function TaskList() {
   return (
     <ul className="list-disc list-inside">
       {tasks.map((task) => (
-        <li key={task.id} className={task.status == "done" ? "line-through" : ""}>
+        <li key={task.id}>
           {task.title}
         </li>
       ))}
