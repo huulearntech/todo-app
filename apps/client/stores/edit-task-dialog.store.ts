@@ -1,6 +1,7 @@
 import { Task } from "@/types/task.type";
 import { createStore } from "zustand/vanilla";
 
+// NOTE: or just use open === !!task
 export type EditTaskDialogState = {
   task: Task | null;
   dialogIsOpen: boolean;

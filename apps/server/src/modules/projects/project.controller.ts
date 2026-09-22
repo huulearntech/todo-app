@@ -3,6 +3,7 @@ import { ProjectService } from "./project.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { TaskService } from "../tasks/task.service";
 import { Dto_Filter_GetTasks } from "../tasks/dto/get-my-tasks.dto";
+import { SectionService } from "../sections/section.service";
 
 
 @Controller('projects')
@@ -10,6 +11,7 @@ export class ProjectController {
   constructor(
     private readonly projectService: ProjectService,
     private readonly taskService: TaskService,
+    private readonly sectionService: SectionService,
   ) {}
 
   @Post()
@@ -45,5 +47,15 @@ export class ProjectController {
     @Query() filter: Dto_Filter_GetTasks = {}
   ) {
     return this.taskService.getTasksByOwnerIdProjectIdAndFilter(req.user.id, projectId, filter);
+  }
+
+
+  @Get(":id/sections")
+  async getSectionsByProjectId(
+    @Req() req: Request & { user: { id: string } },
+    @Param("id") projectId: string
+  ) {
+    // TODO: verify user.
+    return this.sectionService.getSectionsIdAndNameByProjectId(projectId);
   }
 }

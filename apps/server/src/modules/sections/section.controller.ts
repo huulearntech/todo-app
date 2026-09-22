@@ -30,14 +30,4 @@ export class SectionController {
       prevId
     });
   }
-
-  // TODO: @Cleanup @Temporary
-  @Get("project/:projectId")
-  async getSectionsByProjectId(
-    @Req() req: Request & { user: { id: string } },
-    @Param("projectId") projectId: string
-  ) {
-    // TODO: verify user.
-    return this.sectionService.getSectionsIdAndNameByProjectId(projectId);
-  }
 }

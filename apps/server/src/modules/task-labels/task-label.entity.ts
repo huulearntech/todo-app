@@ -1,4 +1,4 @@
-import { Column, Entity, Index, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 
@@ -17,10 +17,10 @@ export class TaskLabel {
   @ManyToMany(() => Task, (task) => task.labels)
   tasks!: Task[];
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
   createdAt!: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt!: Date;
 
   @Column({ type: 'uuid', name: 'owner_id' })

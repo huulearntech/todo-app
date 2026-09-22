@@ -3,7 +3,7 @@ import { EntityNotFoundError, FindOptionsOrderValue, MoreThan, Raw, Repository }
 import { Task } from "./task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
-import { CreateTaskDto } from "./dto/add-task.dto";
+import { CreateTaskDto, UpdateTaskDto } from "./dto/add-task.dto";
 import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto";
 import { Lexorank } from "../../common/utils/lexorank.util";
 import { Section } from "../sections/section.entity";
@@ -145,7 +145,7 @@ export class TaskService {
   }
 
 
-  async updateTask(id: string, updatedTask: Partial<Task>): Promise<Task | null> {
+  async updateTask(id: string, updatedTask: UpdateTaskDto): Promise<Task | null> {
     const task = await this.getTaskById(id);
     if (!task) {
       return null;

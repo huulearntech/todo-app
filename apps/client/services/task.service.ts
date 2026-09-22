@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 import { Task } from "@/types/task.type";
 
-import type { TaskFilterDto, CreateTaskDto } from "@todo/shared";
+import type { TaskFilterDto, CreateTaskDto, UpdateTaskDto } from "@todo/shared";
 
 
 export const taskService = {
@@ -50,8 +50,9 @@ export const taskService = {
     return response.data;
   },
 
-  async deleteTask(id: string) {
-    const response = await apiClient.delete(`/tasks/${id}`);
+  async updateTask(taskId: string, updateTaskDto: UpdateTaskDto) {
+    console.log("updateTask called with taskId:", taskId, "and updateTaskDto:", updateTaskDto);
+    const response = await apiClient.patch<Task>(`/tasks/${taskId}`, updateTaskDto);
     return response.data;
   },
 
@@ -66,5 +67,10 @@ export const taskService = {
       sectionId,
       prevId,
     });
-  }
+  },
+
+  async deleteTask(id: string) {
+    const response = await apiClient.delete(`/tasks/${id}`);
+    return response.data;
+  },
 };

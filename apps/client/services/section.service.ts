@@ -24,7 +24,7 @@ export const sectionService = {
     const result = await apiClient.get<{
       id: string;
       name: string;
-    }[]>(`/sections/project/${projectId}`);
+    }[]>(`/projects/${projectId}/sections`);
     return result.data;
   },
 

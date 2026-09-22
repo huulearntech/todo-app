@@ -1,17 +1,8 @@
 import axios, {
   AxiosError,
   AxiosInstance,
-  InternalAxiosRequestConfig,
   AxiosResponse,
 } from "axios";
-
-type TokenResponse = {
-  accessToken: string;
-};
-
-type RetryConfig = InternalAxiosRequestConfig & {
-  _retry?: boolean;
-};
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -22,22 +13,20 @@ export const apiClient: AxiosInstance = axios.create({
   },
 });
 
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
-  const { data } = await axios.post<TokenResponse>(
+async function refreshAccessToken(): Promise<void> {
+  await axios.post(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh-token`,
     {},
     { withCredentials: true },
   );
-
-  return data.accessToken;
 }
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as RetryConfig | undefined;
+    const originalRequest = error.config;
 
     if (!originalRequest || !error.response) {
       return Promise.reject(error);
@@ -55,10 +44,7 @@ apiClient.interceptors.response.use(
           refreshPromise = null;
         });
 
-        const newToken = await refreshPromise;
-
-        originalRequest.headers = originalRequest.headers ?? {};
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        await refreshPromise;
 
         return apiClient(originalRequest);
       } catch (refreshError) {

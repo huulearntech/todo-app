@@ -17,25 +17,25 @@ export class RefreshToken {
 
   @Column({ type: 'varchar', length: 255 })
   @Index()
-  token!: string; // Best practice: Store a hashed version of the token or a unique JTI (JWT ID)
+  token!: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz', name: 'expires_at' })
   expiresAt!: Date;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', name: 'is_revoked', default: false })
   isRevoked!: boolean;
 
   // Optional but recommended metadata for tracking sessions
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', name: 'ip_address', nullable: true })
   ipAddress?: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', name: 'user_agent', nullable: true })
   userAgent?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt!: Date;
 
   @Column({ type: 'uuid', name: 'user_id' })

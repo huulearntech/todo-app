@@ -1,6 +1,6 @@
 // NOTE: think about the unique constraint on default project to user? How it relates to this default section to project?
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, Unique, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 import { Task } from '../tasks/task.entity';
 import { Project } from '../projects/project.entity';
@@ -21,19 +21,10 @@ export class Section {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
-  @Column({
-    name: 'created_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP'
-  })
+  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
   createdAt!: Date;
 
-  @Column({
-    name: 'updated_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP'
-  })
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt!: Date;
 
   @ManyToOne(() => Project, project => project.sections, { onDelete: 'CASCADE' })

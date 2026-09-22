@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../users/user.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
 import { Project } from '../projects/project.entity';
@@ -20,17 +20,20 @@ export class Task {
   @Column()
   title: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
-  completedAt: Date | null; // NOTE: null (DB) for incomplete tasks, timestamp for completed tasks
+  @Column({ type: 'timestamptz', precision: 3, name: 'completed_at', nullable: true })
+  completedAt: Date | null; // NOTE: null for incomplete tasks, timestamptz for completed tasks
 
-  @Column({ type: 'timestamp', nullable: true })
-  dueDate: Date | null;
+  @Column({ type: 'timestamptz', precision: 3, name: 'started_at', default: () => 'CURRENT_TIMESTAMP' })
+  startedAt: Date;
+
+  @Column({ type: 'timestamptz', precision: 3, name: 'due_at', nullable: true })
+  dueAt: Date | null;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
@@ -38,11 +41,12 @@ export class Task {
   @Column({ type: 'enum', enum: TaskPriority, default: TaskPriority.HIGH })
   priority: TaskPriority;
 
-  @Column({ type: 'text', nullable: true })
-  category: string | null;
+  // @Column({ type: 'uuid', name: 'owner_id' })
+  // ownerId: string;
 
-
-  // TODO: may have creatorId in the future
+  // @ManyToOne(() => User, user => user.id, { onDelete: 'CASCADE' })
+  // @JoinColumn({ name: 'owner_id' })
+  // owner: User;
 
   @Column({ type: 'uuid', name: 'section_id' })
   sectionId: string;

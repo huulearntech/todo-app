@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
@@ -18,19 +18,10 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({
-    name: 'created_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP'
-  })
-  createdAt!: Date;
-
-  @Column({
-    name: 'updated_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP'
-  })
+  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
+  createdAt!: Date;                       
+                                          
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt!: Date;
 
   @Column({ type: 'uuid', name: 'owner_id' }) // NOTE: This is the ID of the owner who created the project. How to name it?

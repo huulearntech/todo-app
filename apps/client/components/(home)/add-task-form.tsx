@@ -25,7 +25,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task.type";
 import { projectService } from "@/services/project.service";
 
-import { createTaskSchema, type CreateTaskDto, createTaskSchemaDefaultValues } from "@todo/shared";
+import { createTaskSchema, type CreateTaskDto, createTaskSchemaDefaultValues, CreateTaskInput } from "@todo/shared";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
@@ -112,12 +112,12 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
     },
   });
 
-  const { control, handleSubmit, reset } = useForm<CreateTaskDto>({
+  const { control, handleSubmit, reset } = useForm<CreateTaskInput, unknown, CreateTaskDto>({
     resolver: zodResolver(createTaskSchema),
     // NOTE: react-hook-form will complain if defaultValues is not provided
     defaultValues: {
       ...createTaskSchemaDefaultValues,
-      projectId: defaultProjectId,
+      // projectId: defaultProjectId,
       sectionId: sectionId,
     },
   });
@@ -200,7 +200,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
               )}
             />
 
-            <Controller
+            {/* <Controller
               name="projectId"
               control={control}
               render={({ field, fieldState }) => (
@@ -224,7 +224,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
-            />
+            /> */}
 
           </FieldGroup>
         </form>

@@ -6,14 +6,16 @@ export type Task = {
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
-  dueDate?: Date;
+  startedAt?: Date;
+  dueAt?: Date;
   description?: string;
   priority: TaskPriority;
-  ownerId: string;
+  sectionId: string; // TODO: fix
+  // ownerId: string;
   section: {
     id: string;
     name: string;
-  } | null;
+  };
   labels: {
     id: string;
     name: string;

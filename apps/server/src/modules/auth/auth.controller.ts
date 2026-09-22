@@ -4,7 +4,7 @@ import type { Response, Request } from "express";
 import { SignInDto } from "./dto/sign-in.dto";
 import { Public } from "./decorators/public.decorator";
 import { TypedConfigService } from "../../config/typed-config.service";
-import { JwtRefreshGuard } from "../jwt/guards/jwt-refresh.guard";
+import { RefreshTokenGuard } from "../jwt/guards/refresh-token.guard";
 import { UserService } from "../users/user.service";
 import { RefreshTokenService } from "../jwt/refresh-token.service";
 import { GuestGuard } from "../jwt/guards/guest.guard";
@@ -44,7 +44,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
+      // path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
     });
 
     // 3. Set Access Token Cookie
@@ -53,12 +53,12 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/',
+      // path: '/',
     });
 
 
     // 4. Return user profile data or a success flag back as JSON
-    return { accessToken, user };
+    return { user };
   }
 
   @Post("sign-out")
@@ -72,24 +72,24 @@ export class AuthController {
       httpOnly: true,
       sameSite: "lax",
       secure: true,
-      path: "/auth/refresh-token",
+      // path: "/auth/refresh-token",
     });
 
     res.clearCookie("access_token", {
       httpOnly: true,
       sameSite: "lax",
       secure: true,
-      path: "/",
+      // path: "/",
     });
 
     return { message: "Signed out" };
   }
 
   @Public()
-  @UseGuards(JwtRefreshGuard)
+  @UseGuards(RefreshTokenGuard)
   @Post("refresh-token")
   async refreshToken(
-    @Req() request: Request & { user: { id: string; email: string; name: string; refreshToken: string } },
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
     const oldRefreshToken = request.cookies['refresh_token'];
@@ -104,17 +104,24 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
+      // path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
     });
 
-    // 3. Return new Access Token back as JSON
+    // 3. Set new Access Token Cookie
+    response.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
+      // path: '/',
+    });
+    
     return { accessToken };
   }
 
   @Get("me")
   async getCurrentUser(@Req() request: UserProfileRequest) {
-    const userId = request.user.id; // Assuming the user ID is attached to the request object by a middleware
-    console.log("Fetching current user for userId:", userId);
+    const userId = request.user.id;
 
     if (!userId) {
       return { message: 'User not authenticated' };

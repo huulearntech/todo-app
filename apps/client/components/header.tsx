@@ -12,7 +12,7 @@ export default function Header() {
   const { user } = useAuth();
 
   return (
-    <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b">
+    <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b sticky top-0 z-20 bg-card">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" />

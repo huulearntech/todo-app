@@ -3,7 +3,7 @@ import { TaskService } from "./task.service";
 import type { Request } from "express";
 
 // import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto"; // TODO: move
-import { type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
+import { UpdateTaskDto, type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
 
 
 @Controller("tasks")
@@ -32,8 +32,17 @@ export class TasksController {
     return this.taskService.deleteTask(id);
   }
 
-  @Patch(":id/reorder")
+  @Patch(":id")
   async updateTask(
+    @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
+    @Param("id") id: string,
+    @Body() updateTaskDto: UpdateTaskDto
+  ) {
+    return this.taskService.updateTask(id, updateTaskDto);
+  }
+
+  @Patch(":id/reorder")
+  async updateTaskOrder(
     @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
     @Param("id") id: string,
     @Body() { sectionId, prevId }: { sectionId: string; prevId: string | null }

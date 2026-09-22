@@ -25,7 +25,7 @@ import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { updateTaskSchema, type UpdateTaskDto } from "@todo/shared"
+import { UpdateTaskInput, updateTaskSchema, type UpdateTaskDto } from "@todo/shared"
 
 import {
   Combobox,
@@ -43,6 +43,12 @@ import {
 import { taskLabelService } from "@/services/task-label.service";
 import { useQuery } from "@tanstack/react-query";
 import { TaskLabel } from "@/types/task-label.type";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+
+import { format } from "date-fns";
+import { taskService } from "@/services/task.service";
 
 export default function TempEditTaskDialog() {
   const task = useEditTaskDialogStore((state) => state.task);
@@ -81,13 +87,15 @@ function EditTaskForm({ task }: { task: Task }) {
     queryFn: taskLabelService.getMyTaskLabels,
   });
 
-  const { control, handleSubmit, reset } = useForm<UpdateTaskDto>({
+  const { control, handleSubmit, reset } = useForm<UpdateTaskInput, unknown, UpdateTaskDto>({
     resolver: zodResolver(updateTaskSchema),
     defaultValues: {
       title: task.title,
       description: task.description,
       priority: task.priority,
       // labels: task.labels.map(label => ({ id: label.id })),
+      startedAt: task.startedAt,
+      dueAt: task.dueAt,
       labels: []
     },
   });
@@ -99,12 +107,15 @@ function EditTaskForm({ task }: { task: Task }) {
 
   const anchor = useComboboxAnchor();
 
+  // TODO: need to reset the query. and may be use optimistic update also
+  const onSubmit = async (data: UpdateTaskDto) => {
+    await taskService.updateTask(task.id, data);
+  }
+
   return (
     <form
       id="edit-task-form"
-      onSubmit={handleSubmit((data) => {
-        console.log("Form submitted with data:", data);
-      })}>
+      onSubmit={handleSubmit(onSubmit)}>
       <FieldGroup>
         <Controller
           name="title"
@@ -197,6 +208,64 @@ function EditTaskForm({ task }: { task: Task }) {
           </Field>
         )}
       />
+
+        <Controller
+          name="startedAt"
+          control={control}
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel htmlFor="startedAt">Start</FieldLabel>
+              <Popover>
+                <PopoverTrigger render={
+                  <Button variant="outline"
+                    data-empty={!field.value}
+                    className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                  />
+                }>
+                  <CalendarIcon />
+                  {field.value ? format(field.value as Date, "PPP") : <span>Pick start date</span>}
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={field.value as Date ?? undefined}
+                    onSelect={field.onChange}
+                  />
+                </PopoverContent>
+              </Popover>
+              {fieldState.error && (<FieldError errors={[fieldState.error]} />)}
+            </Field>
+          )}
+        />
+
+        <Controller
+          name="dueAt"
+          control={control}
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel htmlFor="dueAt">Due</FieldLabel>
+              <Popover>
+                <PopoverTrigger render={
+                  <Button variant="outline"
+                    data-empty={!field.value}
+                    className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                  />
+                }>
+                  <CalendarIcon />
+                  {field.value ? format(field.value as Date, "PPP") : <span>Pick due date</span>}
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={field.value as Date ?? undefined}
+                    onSelect={field.onChange}
+                  />
+                </PopoverContent>
+              </Popover>
+              {fieldState.error && (<FieldError errors={[fieldState.error]} />)}
+            </Field>
+          )}
+        />
       </FieldGroup>
     </form>
   )

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 import { Task } from '../tasks/task.entity';
 import { RefreshToken } from '../jwt/entities/refresh-token.entity';
@@ -19,19 +19,10 @@ export class User {
   @Column({ name: 'password_hashed' })
   passwordHashed!: string;
 
-  @Column({
-    name: 'created_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP'
-  })
+  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
   createdAt!: Date;
 
-  @Column({
-    name: 'updated_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP'
-  })
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt!: Date;
 
 

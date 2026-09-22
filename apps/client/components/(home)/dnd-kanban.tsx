@@ -116,32 +116,17 @@ function AddSectionDialogTrigger({ sectionId }: { sectionId: string }) {
 }
 
 function DndKanban({ projectId }: { projectId: string }) {
-  const {
-    data,
-    isLoading,
-  } = useQuery<{
-    tasks: Task[]
-    sections: { id: string, name: string }[] // TODO: fix type
-  }>({
-    queryKey: ["tasks", "sections", { projectId }],
-    queryFn: async () => {
-      const [tasks, sections] = await Promise.all([
-        taskService.getTasksByProjectId(projectId),
-        sectionService.getSectionsByProjectId(projectId),
-      ]);
-
-      console.log("QUERY tasks", tasks)
-      console.log("QUERY sections", sections)
-
-      return {
-        tasks,
-        sections,
-      };
-    },
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["tasks", { projectId }],
+    queryFn: () => taskService.getTasksByProjectId(projectId),
+  });
+  
+  const { data: sections = [], isLoading: sectionsLoading } = useQuery({
+    queryKey: ["sections", { projectId }],
+    queryFn: () => sectionService.getSectionsByProjectId(projectId),
   });
 
-  const tasks = data?.tasks ?? []
-  const sections = data?.sections ?? []
+  const isLoading = tasksLoading || sectionsLoading;
 
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
 
@@ -153,11 +138,11 @@ function DndKanban({ projectId }: { projectId: string }) {
     }
 
     for (const task of tasks) {
-      (acc[task.section!.id] ??= []).push(task) // TODO: remove '!' after solidifying the type of section.
+      (acc[task.sectionId] ??= []).push(task)
     }
 
     setColumns(acc)
-  }, [data])
+  }, [sections, tasks])
 
   const moveTasksMutation = useMutation({
     mutationFn: async ({ taskId, sectionId, prevId }: {
@@ -170,10 +155,6 @@ function DndKanban({ projectId }: { projectId: string }) {
     onMutate: async ({}, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] })
       const previousTasks = context.client.getQueryData<Task[]>(["tasks", { projectId }])
-
-      console.log("moveTasksMutation", { previousTasks })
-
-
       return { previousTasks }
     },
     onError: (_error, _nextColumns, onMutateResult, context) => {
@@ -286,7 +267,7 @@ function DndKanban({ projectId }: { projectId: string }) {
               <TaskColumn
                 key={sectionId}
                 value={sectionId}
-                title={sections.find((s) => s.id === sectionId)!.name}
+                title={sections.find((s) => s.id === sectionId)?.name}
                 tasks={tasks}
               />
           ))}

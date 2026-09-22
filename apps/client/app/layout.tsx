@@ -9,7 +9,10 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar/app-sidebar";
 
 import Script from "next/script";
+
 import { MyStoreProvider } from "@/providers/MyStoreProvider";
+import TempEditTaskDialog from "@/app/inbox/temp-edit-task-dialog";
+import AddTaskForm from "@/components/(home)/add-task-form";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,6 +54,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   <AppSidebar />
                   {children}
                   <Toaster />
+                  <TempEditTaskDialog />
+                  <AddTaskForm />
+
                 </SidebarProvider>
               </TooltipProvider>
             </MyStoreProvider>

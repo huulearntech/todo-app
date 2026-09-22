@@ -28,7 +28,7 @@ export class RefreshTokenService {
     const accessToken = await this.jwtService.signAsync(
       { sub: userId },
       {
-        expiresIn: '15m',
+        expiresIn: `${this.configService.get('JWT_SECRET_EXPIRATION_SECONDS')}s`,
         secret: this.configService.get('JWT_SECRET'),
       }
     );
@@ -38,7 +38,7 @@ export class RefreshTokenService {
     return { accessToken, refreshToken };
   }
 
-  // NOTE: Damn these AI generated code has too much failure points. Need to refactor.
+  // NOTE: too much failure points. Need to refactor.
   async validateAndRotateRefreshToken(oldToken: string) {
     const oldHash = this.hashToken(oldToken);
     
