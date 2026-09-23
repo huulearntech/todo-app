@@ -1,3 +1,4 @@
+// TODO: remove
 import { TaskPriority } from "@todo/shared";
 
 export type Task = {
@@ -11,6 +12,10 @@ export type Task = {
   description?: string;
   priority: TaskPriority;
   sectionId: string; // TODO: fix
+  timeRange: {
+    start: { date: string; time: string },
+    end: { date: string; time: string },
+  } | null;
   // ownerId: string;
   section: {
     id: string;

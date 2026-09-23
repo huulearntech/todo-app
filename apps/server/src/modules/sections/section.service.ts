@@ -82,13 +82,15 @@ export class SectionService {
 
   // NOTE: how can you know if it is the owner request this or not?
   async updateSectionOrder({
-    sectionId, prevId
+    id, prevId
   }: {
-    sectionId: string;
+    id: string;
     prevId: string | null
   }): Promise<void> {
+    console.log("updateSectionOrder called with sectionId:", id, "prevId:", prevId);
+
     const sectionToMove = await this.sectionRepository.findOne({
-      where: { id: sectionId },
+      where: { id },
       select: { lexorank: true, projectId: true },
     });
 
@@ -107,7 +109,7 @@ export class SectionService {
       });
 
       await this.sectionRepository.update(
-        { id: sectionId },
+        { id },
         { lexorank: Lexorank.getMidpoint('', firstSectionInProject?.lexorank || '') }
       );
       return;
@@ -131,7 +133,7 @@ export class SectionService {
     const newLexorank = Lexorank.getMidpoint(prevSection.lexorank, nextSection?.lexorank || '');
 
     await this.sectionRepository.update(
-      { id: sectionToMove.id },
+      { id },
       { lexorank: newLexorank }
     )
   }

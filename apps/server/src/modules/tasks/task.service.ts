@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { EntityNotFoundError, FindOptionsOrderValue, MoreThan, Raw, Repository } from "typeorm";
+import { Between, EntityNotFoundError, FindOptionsOrderValue, LessThan, MoreThan, Raw, Repository } from "typeorm";
 import { Task } from "./task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
@@ -53,7 +53,6 @@ export class TaskService {
           ...filter,
           title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
         },
-        relations: { section: { project: true } },
         order: {
           title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
           lexorank: 'ASC',
@@ -66,7 +65,6 @@ export class TaskService {
         section: { project: { id: projectId, ownerId } },
         ...filter,
       },
-      relations: { section: { project: true } },
       order: {
         lexorank: 'ASC',
       }
@@ -85,7 +83,6 @@ export class TaskService {
           ...filter,
           title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
         },
-        relations: { section: { project: true } },
         order: {
           title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
           lexorank: 'ASC',
@@ -98,7 +95,6 @@ export class TaskService {
         section: { project: { ownerId } },
         ...filter,
       },
-      relations: { section: { project: true } },
       order: {
         lexorank: 'ASC',
       }
@@ -112,10 +108,6 @@ export class TaskService {
         section: { project: { ownerId } },
         labels: { id: labelId },
       },
-      relations: {
-        section: { project: true },
-        labels: true,
-      }
     });
   }
 
@@ -135,12 +127,18 @@ export class TaskService {
           name: true,
         }
       },
-      relations: {
-        section: true,
-      },
       order: {
         lexorank: 'ASC',
       }
+    });
+  }
+
+  async getTasksByOwnerIdThatDueInTimeRange(ownerId: string, startDate: Date, endDate: Date): Promise<Task[]> {
+    return this.taskRepository.find({
+      where: {
+        section: { project: { ownerId } },
+        dueAt: Between(startDate, endDate), // NOTE: inclusive.
+      },
     });
   }
 

@@ -25,9 +25,6 @@ export class SectionController {
     @Body("prevId") prevId: string | null,
   ) {
     // TODO: verify user has permission to reorder sections in this project.
-    await this.sectionService.updateSectionOrder({
-      sectionId: id,
-      prevId
-    });
+    await this.sectionService.updateSectionOrder({ id, prevId });
   }
 }

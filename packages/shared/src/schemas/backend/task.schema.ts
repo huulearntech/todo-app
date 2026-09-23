@@ -1,35 +1,34 @@
 import { z } from "zod";
-import { TaskPriority } from "../enums/task-priority.enum.js";
+import { TaskPriority } from "../../enums/task-priority.enum.js";
 
 // TODO: Fix the sectionId (required) and projectId (delete it)
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  startedAt: z.coerce.date().optional(),
-  dueAt: z.coerce.date().optional(),
-  priority: z.enum(TaskPriority).optional(),
-  sectionId: z.string().optional(), // NOTE: this is the id of the section that the task belongs to. If not provided, the task will be added directly to the project
-}).refine((data) => {
-  if (data.startedAt && data.dueAt) {
-    return data.startedAt <= data.dueAt;
-  }
-  return true;
-}, {
-  message: "Start date must be before due date",
-  path: ["dueAt"],
+  // startedAt: z.coerce.date().optional(),
+  // dueAt: z.coerce.date().optional(),
+
+  timeRange: z
+    .object({
+      start: z.iso.datetime(),
+      end: z.iso.datetime(),
+    })
+    .nullable()
+    .refine((data) => {
+      if (data) {
+        return data.start <= data.end;
+      }
+      return true;
+    }, {
+      message: "Start date must be before end date",
+    }),
+
+  priority: z.enum(TaskPriority),
+  sectionId: z.uuid(),
 });
 
 export type CreateTaskDto = z.infer<typeof createTaskSchema>;
 export type CreateTaskInput = z.input<typeof createTaskSchema>;
-
-export const createTaskSchemaDefaultValues: CreateTaskDto = {
-  title: "",
-  description: "",
-  startedAt: undefined,
-  dueAt: undefined,
-  priority: TaskPriority.HIGH,
-  sectionId: undefined,
-};
 
 // TODO: fix
 export const updateTaskSchema = z.object({

@@ -1,1 +1,8 @@
 NOTE: Somehow derive these type from the class-validator DTOs then move these to the packages/shared
+
+
+NOTE (23 Sep 2026): may put lexorank in separate table and use somekind of foreign key along with the sections/project/view
+that they belong to. That is the context of the lexorank. For example, we even have the lexorank in home page where those tasks do not belong to a single section.
+
+
+BUG (23 Sep 2026): Somehow the task in the calendar week view when resize get updated off by one hour.

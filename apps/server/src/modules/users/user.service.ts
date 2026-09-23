@@ -68,10 +68,6 @@ export class UserService {
       //   name: true,
       //   passwordHashed: true,
       // },
-
-      // relations: {
-      //   refreshTokens: true,
-      // }
     });
   }
 

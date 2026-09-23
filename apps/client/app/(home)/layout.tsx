@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full w-full flex-1 flex-col items-stretch justify-start">
+    <div className="flex flex-1 flex-col overflow-hidden">
       <Header />
-      <main className="flex flex-1 w-full flex-col items-center justify-center">
+      <main className="flex flex-1 w-full flex-col overflow-auto">
         {children}
       </main>
       <Footer />

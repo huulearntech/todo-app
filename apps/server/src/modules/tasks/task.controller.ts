@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { TaskService } from "./task.service";
 import type { Request } from "express";
 
 // import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto"; // TODO: move
 import { UpdateTaskDto, type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
+
+import { DateTime } from "luxon";
 
 
 @Controller("tasks")
@@ -18,13 +20,20 @@ export class TasksController {
     return this.taskService.createTask(req.user.id, createTaskReqDto);
   }
 
-  // @Get("me")
-  // async getMyTasks(
-  //   @Req() req: Request & { user: { id: string } },
-  //   @Query() filter: GetMyTasksFilterDto,
-  // ) {
-  //   return this.taskService.getTasksByOwnerIdAndFilter(req.user.id, filter);
-  // }
+  // TODO: @Temporary @Cleanup
+  // NOTE: What does even "today" mean? it depends on the timezone of the user, not the server.
+  // So we need to get the timezone of the user somehow.
+  @Get("me/due-today")
+  async getMyTasksDueToday(
+    @Req() req: Request & { user: { id: string } },
+    @Headers("x-timezone") timezone: string
+  ) {
+    const nowInUserTimezone = DateTime.now().setZone(timezone);
+    const startOfDay = nowInUserTimezone.startOf("day").toJSDate();
+    const endOfDay = nowInUserTimezone.endOf("day").toJSDate();
+
+    return this.taskService.getTasksByOwnerIdThatDueInTimeRange(req.user.id, startOfDay, endOfDay);
+  }
 
 
   @Delete(":id")
@@ -38,6 +47,8 @@ export class TasksController {
     @Param("id") id: string,
     @Body() updateTaskDto: UpdateTaskDto
   ) {
+    console.log("updateTaskDto", updateTaskDto);
+    console.log("updateTaskDto.dueAt", typeof updateTaskDto.dueAt, updateTaskDto.dueAt);
     return this.taskService.updateTask(id, updateTaskDto);
   }
 

@@ -49,7 +49,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 
-import { format, setHours, setMinutes } from "date-fns";
+import { format, parseISO, setHours, setMinutes } from "date-fns";
 import { taskService } from "@/services/task.service";
 
 export default function TempEditTaskDialog() {
@@ -109,6 +109,7 @@ function EditTaskForm({ task }: { task: Task }) {
 
   // TODO: need to reset the query. and may be use optimistic update also
   const onSubmit = async (data: UpdateTaskOutput) => {
+    console.log("onSubmit called with data:", data);
     await taskService.updateTask(task.id, data);
   }
 
@@ -209,135 +210,88 @@ function EditTaskForm({ task }: { task: Task }) {
           )}
         /> */}
 
-        {/** TODO: Factor this out. */}
+        {/** TODO: add a select to select due date or not */}
+        { task.timeRange &&
         <Controller
           name="timeRange.start.date"
           control={control}
           render={({ field, fieldState }) => {
-            const currentValue = field.value as Date;
-
-            const handleDateChange = (date: Date) => {
-              const [hours, minutes] = [currentValue.getHours(), currentValue.getMinutes()];
-              let updatedDate = setHours(date, hours)
-              updatedDate = setMinutes(updatedDate, minutes);
-              field.onChange(updatedDate);
-            };
-
-            const handleTimeChange = (timeString: string) => {
-              if (!timeString) return;
-
-              const [hours, minutes] = timeString.split(":").map(Number);
-
-              const updatedDate = field.value ? new Date(field.value as Date) : new Date();
-              updatedDate.setHours(hours, minutes);
-              field.onChange(updatedDate);
-            };
-
-            const formattedTime = currentValue ? format(currentValue, "HH:mm") : "";
+            const dateValue = parseISO(field.value);
 
             return (
               <Field>
                 <FieldLabel htmlFor="startedAt">Start</FieldLabel>
-                <div className="inline-flex gap-2">
-                  <Popover>
-                    <PopoverTrigger render={
-                      <Button variant="outline"
-                        data-empty={!field.value}
-                        className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
-                      />
-                    }>
-                      <CalendarIcon />
-                      {field.value ? format(field.value as Date, "PPP") : <span>Pick start date</span>}
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        required
-                        selected={field.value as Date}
-                        onSelect={handleDateChange}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {/** TODO: */}
-                  <Input
-                    type="time"
-                    id="time-picker-optional"
-                    defaultValue="00:00"
-                    value={formattedTime}
-                    className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    onChange={(event) => handleTimeChange(event.target.value)}
-                  />
-                </div>
+                <Popover>
+                  <PopoverTrigger render={
+                    <Button variant="outline"
+                      data-empty={!field.value}
+                      className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                    />
+                  }>
+                    <CalendarIcon />
+                    {field.value ? format(dateValue, "PPP") : <span>Pick start date</span>}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      required
+                      selected={dateValue}
+                      onSelect={(date) => {
+                        if (date) {
+                          field.onChange(format(date, "yyyy-MM-dd"));
+                        } else {
+                          field.onChange(""); // NOTE: empty string or undefined?
+                        }
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
                 {fieldState.error && (<FieldError errors={[fieldState.error]} />)}
               </Field>
 
             )
           }}
         />
+        }
 
-        <Controller
-          name="dueAt"
+        {/* <Controller
+          name="timeRange.end.date"
           control={control}
           render={({ field, fieldState }) => {
-            const currentValue = field.value as Date | undefined;
+            const dateValue = parseISO(field.value);
 
-            const handleDateChange = (date: Date | undefined) => {
-              if (!date) return;
-
-              const [hours, minutes] = currentValue ? [currentValue.getHours(), currentValue.getMinutes()] : [0, 0];
-              const updatedDate = setHours(date, hours).setMinutes(minutes);
-              field.onChange(updatedDate);
-            };
-
-            const handleTimeChange = (timeString: string) => {
-              if (!timeString) return;
-
-              const [hours, minutes] = timeString.split(":").map(Number);
-
-              const updatedDate = field.value ? new Date(field.value as Date) : new Date();
-              updatedDate.setHours(hours, minutes);
-              field.onChange(updatedDate);
-            };
-
-            const formattedTime = currentValue ? format(currentValue, "HH:mm") : "";
             return (
               <Field>
                 <FieldLabel htmlFor="dueAt">Due</FieldLabel>
-                <div className="inline-flex gap-2">
-
-                  <Popover>
-                    <PopoverTrigger render={
-                      <Button variant="outline"
-                        data-empty={!field.value}
-                        className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
-                      />
-                    }>
-                      <CalendarIcon />
-                      {field.value ? format(field.value as Date, "PPP") : <span>Pick due date</span>}
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={field.value as Date ?? undefined}
-                        onSelect={handleDateChange}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {/** TODO: */}
-                  <Input
-                    type="time"
-                    id="time-picker-optional"
-                    defaultValue="00:00"
-                    value={formattedTime}
-                    className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    onChange={(event) => handleTimeChange(event.target.value)}
-                  />
-                </div>
+                <Popover>
+                  <PopoverTrigger render={
+                    <Button variant="outline"
+                      data-empty={!field.value}
+                      className="justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+                    />
+                  }>
+                    <CalendarIcon />
+                    {field.value ? format(dateValue, "PPP") : <span>Pick due date</span>}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={dateValue}
+                      onSelect={(date) => {
+                        if (date) {
+                          field.onChange(format(date, "yyyy-MM-dd"));
+                        } else {
+                          field.onChange(""); // NOTE: empty string or undefined?
+                        }
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
                 {fieldState.error && (<FieldError errors={[fieldState.error]} />)}
               </Field>
             )
           }}
-        />
+        /> */}
       </FieldGroup>
     </form>
   )

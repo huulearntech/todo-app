@@ -104,7 +104,7 @@ export function TempEventCalendar() {
           id: task.id,
           title: task.title,
           start: startDate,
-          end: endDate,
+          end: endDate, // end of this is exclusive. THis causes a bit of confusion.
           allDay: !task.dueAt,
           data: {
             ...task,
@@ -180,6 +180,8 @@ export function TempEventCalendar() {
 
   const patch = (partial: Partial<DemoSettings>) =>
     setSettings((current) => ({ ...current, ...partial }))
+
+  console.log("events", events.map(e => e.end?.toISOString()));
 
   return (
       <Card className="w-full py-0">

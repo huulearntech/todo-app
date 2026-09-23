@@ -172,7 +172,7 @@ function DndKanban({ projectId }: { projectId: string }) {
       sectionId: string;
       prevId: string | null;
     }) => {
-      await sectionService.updateSectionOrder({ id: sectionId, prevId });
+      await sectionService.updateSectionOrder({ sectionId, prevId });
     },
     onMutate: async ({ sectionId, prevId }, context) => {
       await context.client.cancelQueries({ queryKey: ["sections", { projectId }] })
@@ -232,6 +232,7 @@ function DndKanban({ projectId }: { projectId: string }) {
             if (activeIndex === overIndex) return;
 
             const newIndex = overIndex;
+            console.log(activeIndex, overIndex);
 
             const payload = {
               sectionId: movedItemId,
@@ -239,6 +240,7 @@ function DndKanban({ projectId }: { projectId: string }) {
                 ? Object.keys(finalColumns)[newIndex - 1]
                 : null,
             };
+            console.log("Moving section with payload:", payload);
             moveSectionMutation.mutate(payload);
 
             return;

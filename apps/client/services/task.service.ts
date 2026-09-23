@@ -1,11 +1,12 @@
 import { apiClient } from "@/lib/api-client";
 import { Task } from "@/types/task.type";
 
-import type { TaskFilterDto, CreateTaskDto, UpdateTaskDto } from "@todo/shared";
+// TODO: may rename?
+import type { TaskFilterOutput, CreateTaskOutput, UpdateTaskOutput } from "@todo/shared/browser";
 
 
 export const taskService = {
-  async createTask(createTaskDto: CreateTaskDto) {
+  async createTask(createTaskDto: CreateTaskOutput) {
     const response = await apiClient.post<Task>("/tasks", createTaskDto);
     console.log("createTask response:", response.data);
     return response.data;
@@ -16,7 +17,7 @@ export const taskService = {
     return response.data;
   },
 
-  async getMyTasks(filter?: TaskFilterDto) {
+  async getMyTasks(filter?: TaskFilterOutput) {
     const response = await apiClient.get<Task[]>("/tasks/me", {
       params: filter,
     });
@@ -31,7 +32,7 @@ export const taskService = {
   //   return response.data;
   // },
 
-  async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterDto, "projectId">) {
+  async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterOutput, "projectId">) {
     const response = await apiClient.get<Task[]>(`/projects/${projectId}/tasks`, {
       params: filter,
     });
@@ -39,7 +40,11 @@ export const taskService = {
   },
 
   async getMyTasksDueToday() {
-    const response = await apiClient.get<Task[]>("/tasks/me/due-today");
+    const response = await apiClient.get<Task[]>("/tasks/me/due-today", {
+      headers: {
+        "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone, // Send the user's timezone to the server 
+      },
+    });
     return response.data;
   },
 
@@ -50,7 +55,7 @@ export const taskService = {
     return response.data;
   },
 
-  async updateTask(taskId: string, updateTaskDto: UpdateTaskDto) {
+  async updateTask(taskId: string, updateTaskDto: UpdateTaskOutput) {
     console.log("updateTask called with taskId:", taskId, "and updateTaskDto:", updateTaskDto);
     const response = await apiClient.patch<Task>(`/tasks/${taskId}`, updateTaskDto);
     return response.data;

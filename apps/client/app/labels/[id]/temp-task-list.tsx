@@ -23,7 +23,7 @@ export default function TempTaskList({ labelId }: { labelId: string }) {
   // }
 
   return (
-    <ul>
+    <ul className="flex flex-col gap-2.5">
       {tasks.map((task) => (
         <TaskItemListView key={task.id} task={task} />
       ))}

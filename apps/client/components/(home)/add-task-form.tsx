@@ -25,7 +25,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task.type";
 import { projectService } from "@/services/project.service";
 
-import { createTaskSchema, type CreateTaskDto, createTaskSchemaDefaultValues, CreateTaskInput } from "@todo/shared";
+import { createTaskSchema, type CreateTaskOutput, createTaskSchemaDefaultValues, CreateTaskInput } from "@todo/shared/browser";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
@@ -86,7 +86,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
 
   // NOTE: This is only the mutation for creating a task. We will need to add more mutations for updating and deleting tasks.
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (newTask: CreateTaskDto) => taskService.createTask(newTask),
+    mutationFn: (newTask: CreateTaskOutput) => taskService.createTask(newTask),
     onMutate: async (newTask, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { sectionId }] });
 
@@ -112,7 +112,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
     },
   });
 
-  const { control, handleSubmit, reset } = useForm<CreateTaskInput, unknown, CreateTaskDto>({
+  const { control, handleSubmit, reset } = useForm<CreateTaskInput, unknown, CreateTaskOutput>({
     resolver: zodResolver(createTaskSchema),
     // NOTE: react-hook-form will complain if defaultValues is not provided
     defaultValues: {
@@ -123,8 +123,8 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
   });
 
 
-  const onSubmit = async (data: CreateTaskDto) => {
-    data.sectionId = sectionId; // Ensure the sectionId is set correctly
+  const onSubmit = async (data: CreateTaskOutput) => {
+    if (sectionId) data.sectionId = sectionId; // TODO: Ensure the sectionId is set correctly
 
     await toast.promise(
       mutateAsync(data),
