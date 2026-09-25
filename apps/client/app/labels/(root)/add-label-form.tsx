@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -29,17 +29,15 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Loader2Icon, Plus } from "lucide-react";
 
 import { createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
 
 
 export default function Dialog_AddLabel() {
-  const queryClient = useQueryClient();
-
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<CreateTaskLabelDto>({
+  const { control, handleSubmit, reset, formState: { isLoading } } = useForm<CreateTaskLabelDto>({
     resolver: zodResolver(createTaskLabelSchema),
     defaultValues: {
       name: '',
@@ -49,9 +47,37 @@ export default function Dialog_AddLabel() {
 
   const createLabelMutation = useMutation({
     mutationFn: (data: CreateTaskLabelDto) => taskLabelService.createTaskLabel(data),
+
+    onMutate: async (newLabel, context) => {
+      await context.client.cancelQueries({ queryKey: ["task-labels"] });
+
+      const previousTaskLabels = context.client.getQueryData(["task-labels"]);
+
+      context.client.setQueryData(["task-labels"], (oldTaskLabels: any) => {
+        return [...(oldTaskLabels || []), newLabel];
+      });
+
+      return { previousTaskLabels };
+    },
+
+    onError: (_error, _newLabel, onMutateResult, context) => {
+      if (onMutateResult?.previousTaskLabels) {
+        context.client.setQueryData(["task-labels"], onMutateResult.previousTaskLabels);
+      }
+    },
+
+    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+      context.client.invalidateQueries({ queryKey: ["task-labels"] });
+    }
+  });
+
+  const onSubmit = (data: CreateTaskLabelDto) => createLabelMutation.mutate(data, {
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-      reset();
+      toast.add({
+        title: "Label created",
+        description: "The label was created successfully.",
+        type: "success",
+      });
     },
     onError: () => {
       toast.add({
@@ -59,21 +85,12 @@ export default function Dialog_AddLabel() {
         description: "An unexpected error occurred.",
         type: "error",
       });
+    },
+    onSettled: () => {
       reset();
+      setDialogOpen(false);
     }
   });
-
-  const onSubmit = async (data: CreateTaskLabelDto) => {
-    toast.promise(
-      createLabelMutation.mutateAsync(data),
-      {
-        loading: "Creating label...",
-        success: "Label created successfully!",
-        error: "Error creating label.",
-      }
-    );
-    setDialogOpen(false);
-  };
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -118,7 +135,10 @@ export default function Dialog_AddLabel() {
         </form>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => reset()}>Reset</Button>
-          <Button type="submit" form="add-task-label-form">Add Label</Button>
+          <Button type="submit" form="add-task-label-form" disabled={isLoading}>
+            <Loader2Icon className={`mr-2 h-4 w-4 animate-spin ${isLoading ? "inline-block" : "hidden"}`} />
+            {isLoading ?  "Creating..." : "Create Label" }
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

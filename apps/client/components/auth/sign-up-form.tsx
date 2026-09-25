@@ -7,12 +7,19 @@ import { Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FieldGroup, FieldLabel, Field } from "@/components/ui/field";
+import {
+  FieldGroup,
+  FieldLabel,
+  Field,
+  FieldError,
+} from "@/components/ui/field";
 
 
 import Link from "next/link";
 
 import { signUpSchema, type SignUpDto } from "@todo/shared";
+import { Loader2Icon } from "lucide-react";
+import { toast } from "@/components/ui/toast";
 
 
 export default function SignUpForm() {
@@ -25,54 +32,64 @@ export default function SignUpForm() {
     },
   });
 
-  const { handleSubmit, formState: { errors } } = form;
+  const { handleSubmit, formState: { isLoading } } = form;
+
+  const onSubmit = (data: SignUpDto) => toast.promise(authService.signUp(data), {
+    loading: "Signing up...",
+    success: "Sign up successful! Please check your email to verify your account.",
+    error: "Sign up failed. Please try again."
+  });
+
+    
 
   return (
-    <form onSubmit={handleSubmit(async (data) => {
-      try {
-        const response = await authService.register(data);
-        console.log("Sign up successful:", response);
-      } catch (error) {
-        console.error("Sign up failed:", error);
-      }
-    })}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <FieldGroup>
       <Controller
         name="email"
         control={form.control}
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input id="email" type="email" {...field} />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
       />
       <Controller
         name="name"
         control={form.control}
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Field>
             <FieldLabel htmlFor="name">Name</FieldLabel>
             <Input id="name" type="text" {...field} />
-            {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
       />
       <Controller
         name="password"
         control={form.control}
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Field>
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <Input id="password" type="password" {...field} />
-            {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
       />
-
       </FieldGroup>
-      <Button type="submit">Sign Up</Button>
+
+      <Button type="submit" data-disabled={isLoading}>
+        {isLoading ?
+          <>
+            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+            Signing Up...
+          </>
+          : "Sign Up"
+        }
+      </Button>
+
       <p className="mt-4 text-sm">
         Already have an account?{" "}
         <Link href="/auth/sign-in" className="text-blue-500 hover:underline">

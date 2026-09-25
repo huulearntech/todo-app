@@ -21,8 +21,7 @@ export default function AddQuickTaskForm() {
     defaultValues: { // NOTE:
       title: "",
       description: "",
-      startedAt: undefined,
-      dueAt: undefined,
+      timeRange: null,
       priority: TaskPriority.HIGH,
     },
   });

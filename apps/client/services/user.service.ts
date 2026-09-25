@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api-client';
-import { type UpdateUserProfileDto } from "@todo/shared"
+import { type UpdateUserDto } from "@todo/shared"
 
 export const userService = {
   async getUserProfile() {
@@ -12,7 +12,7 @@ export const userService = {
     }
   },
 
-  async updateUserProfile(userProfileDto: UpdateUserProfileDto) {
+  async updateUserProfile(userProfileDto: UpdateUserDto) {
     // TODO: how to handle error?
     await apiClient.patch(`/users/me`, userProfileDto);
   }

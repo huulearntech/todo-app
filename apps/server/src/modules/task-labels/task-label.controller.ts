@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 
-import { Request } from 'express';
 import { TaskLabelService } from './task-label.service';
 import { TaskLabelDto } from './task-label.dto';
 import { TaskService } from '../tasks/task.service';
+import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('task-labels')
 export class TaskLabelController {
@@ -14,26 +14,19 @@ export class TaskLabelController {
 
   @Post()
   async createTaskLabel(
-    @Req() request: Request & { user: { id: string } },
+    @CurrentUser() user: JwtUser,
     @Body() body: TaskLabelDto
   ) {
-    const userId = request.user.id;
     const { name, description } = body;
 
-    return this.taskLabelService.createTaskLabel(userId, name, description);
-  }
-
-  // TODO: @Cleanup
-  @Get()
-  async getAllTaskLabels() {
-    return this.taskLabelService.getAllTaskLabels();
+    return this.taskLabelService.createTaskLabel(user.id, name, description);
   }
 
   @Get("me")
   async getMyTaskLabels(
-    @Req() request: Request & { user: { id: string } }
+    @CurrentUser() user: JwtUser
   ) {
-    return this.taskLabelService.getTaskLabelsByOwnerId(request.user.id);
+    return this.taskLabelService.getTaskLabelsByOwnerId(user.id);
   }
 
   @Get(':id')
@@ -43,15 +36,15 @@ export class TaskLabelController {
 
   @Get(':id')
   async getTasksByTaskLabelId(
-    @Req() request: Request & { user: { id: string } },
+    @CurrentUser() user: JwtUser,
     @Param('id') labelId: string
   ) {
-    return this.taskService.getTasksByOwnerIdAndLabelId(request.user.id, labelId);
+    return this.taskService.getTasksByOwnerIdAndLabelId(user.id, labelId);
   }
 
   @Patch(':id')
   async updateTaskLabel(
-    @Req() request: Request & { user: { id: string } },
+    // @CurrentUser() user: JwtUser,
     @Param('id') labelId: string,
     @Body() body: TaskLabelDto
   ) {

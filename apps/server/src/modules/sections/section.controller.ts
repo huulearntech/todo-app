@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Req } from "@nestjs/common";
+import { Body, Controller, Param, Patch, Post } from "@nestjs/common";
 import { SectionService } from "./section.service";
 import { CreateSectionDto } from "./dto/create-section.dto";
+import { CurrentUser, type JwtUser } from "../auth/decorators/current-user.decorator";
 
 
 @Controller('sections')
@@ -9,18 +10,16 @@ export class SectionController {
 
   @Post()
   async createSection(
-    @Req() request: Request & { user: { id: string } },
+    @CurrentUser() user: JwtUser,
     @Body() body: CreateSectionDto
   ) {
-    const userId = request.user.id;
-
-    return this.sectionService.createSection(userId, body);
+    return this.sectionService.createSection(user.id, body);
   }
 
 
   @Patch(":id/reorder")
   async updateSection(
-    @Req() req: Request & { user: { id: string } }, // TODO: Factor this out
+    // @CurrentUser() user: JwtUser,
     @Param("id") id: string,
     @Body("prevId") prevId: string | null,
   ) {

@@ -63,7 +63,7 @@ export default function SignInForm() {
 
       <p className="text-sm">
         Don't have an account?{" "}
-        <Link href="/auth/register" className="text-blue-500 hover:underline">
+        <Link href="/auth/sign-up" className="text-blue-500 hover:underline">
           Register here
         </Link>
       </p>

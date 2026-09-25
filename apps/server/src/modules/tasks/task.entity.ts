@@ -30,14 +30,6 @@ export class Task {
   @Column({ type: 'timestamptz', precision: 3, name: 'completed_at', nullable: true })
   completedAt: Date | null; // NOTE: null for incomplete tasks, timestamptz for completed tasks
 
-  // ===== TODO: deprecate these ===================
-  @Column({ type: 'timestamptz', precision: 3, name: 'started_at', default: () => 'CURRENT_TIMESTAMP' })
-  startedAt: Date;
-
-  @Column({ type: 'timestamptz', precision: 3, name: 'due_at', nullable: true })
-  dueAt: Date | null;
-  // ===== END TODO ===================
-
   @Column({
     type: 'tstzrange',
     name: 'time_range',

@@ -133,11 +133,12 @@ export class TaskService {
     });
   }
 
+  // TODO:
   async getTasksByOwnerIdThatDueInTimeRange(ownerId: string, startDate: Date, endDate: Date): Promise<Task[]> {
     return this.taskRepository.find({
       where: {
         section: { project: { ownerId } },
-        dueAt: Between(startDate, endDate), // NOTE: inclusive.
+        // dueAt: Between(startDate, endDate), // NOTE: inclusive.
       },
     });
   }

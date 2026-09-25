@@ -24,14 +24,6 @@ export const taskService = {
     return response.data;
   },
 
-  // TODO: @Cleanup @Temporary
-  // async getMyTasks_New(filter?: TaskFilterDto) {
-  //   const response = await apiClient.get<Task[]>("/tasks/me/new", {
-  //     params: filter,
-  //   });
-  //   return response.data;
-  // },
-
   async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterOutput, "projectId">) {
     const response = await apiClient.get<Task[]>(`/projects/${projectId}/tasks`, {
       params: filter,

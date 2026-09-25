@@ -1,9 +1,10 @@
-import { Body, Controller, Post, Get, Req, Query, Param } from "@nestjs/common";
+import { Body, Controller, Post, Get, Query, Param } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { TaskService } from "../tasks/task.service";
 import { Dto_Filter_GetTasks } from "../tasks/dto/get-my-tasks.dto";
 import { SectionService } from "../sections/section.service";
+import { CurrentUser, type JwtUser } from "../auth/decorators/current-user.decorator";
 
 
 @Controller('projects')
@@ -16,23 +17,21 @@ export class ProjectController {
 
   @Post()
   async createProject(
-    @Req() request: Request & { user: { id: string } },
+    @CurrentUser() user: JwtUser,
     @Body() body: CreateProjectDto
   ) {
-    const userId = request.user.id;
-
-    return this.projectService.createProject(userId, body);
+    return this.projectService.createProject(user.id, body);
   }
 
   @Get("me")
   async getMyProjects(
-    @Req() req: Request & { user: { id: string } },
-    @Query() filter?: {
+    @CurrentUser() user: JwtUser,
+    @Query() filter?: { // TODO: type of filter
       name?: string;
       isDefault?: boolean;
     }
   ) {
-    return this.projectService.getProjectsByOwnerIdAndFilter(req.user.id, filter);
+    return this.projectService.getProjectsByOwnerIdAndFilter(user.id, filter);
   }
 
   @Get(":id")
@@ -42,19 +41,16 @@ export class ProjectController {
 
   @Get(":id/tasks")
   async getTasksByProjectId(
-    @Req() req: Request & { user: { id: string } },
+    @CurrentUser() user: JwtUser,
     @Param("id") projectId: string,
     @Query() filter: Dto_Filter_GetTasks = {}
   ) {
-    return this.taskService.getTasksByOwnerIdProjectIdAndFilter(req.user.id, projectId, filter);
+    return this.taskService.getTasksByOwnerIdProjectIdAndFilter(user.id, projectId, filter);
   }
 
 
   @Get(":id/sections")
-  async getSectionsByProjectId(
-    @Req() req: Request & { user: { id: string } },
-    @Param("id") projectId: string
-  ) {
+  async getSectionsByProjectId(@Param("id") projectId: string) {
     // TODO: verify user.
     return this.sectionService.getSectionsIdAndNameByProjectId(projectId);
   }

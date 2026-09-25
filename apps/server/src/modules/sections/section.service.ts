@@ -87,8 +87,6 @@ export class SectionService {
     id: string;
     prevId: string | null
   }): Promise<void> {
-    console.log("updateSectionOrder called with sectionId:", id, "prevId:", prevId);
-
     const sectionToMove = await this.sectionRepository.findOne({
       where: { id },
       select: { lexorank: true, projectId: true },

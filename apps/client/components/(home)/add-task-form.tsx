@@ -85,7 +85,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
   const queryClient = useQueryClient();
 
   // NOTE: This is only the mutation for creating a task. We will need to add more mutations for updating and deleting tasks.
-  const { mutateAsync, isPending } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: (newTask: CreateTaskOutput) => taskService.createTask(newTask),
     onMutate: async (newTask, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { sectionId }] });
@@ -123,19 +123,29 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
   });
 
 
-  const onSubmit = async (data: CreateTaskOutput) => {
+  const onSubmit = (data: CreateTaskOutput) => {
     if (sectionId) data.sectionId = sectionId; // TODO: Ensure the sectionId is set correctly
 
-    await toast.promise(
-      mutateAsync(data),
-      {
-        loading: "Adding task...",
-        success: (addedTask) => `Task "${addedTask.title}" has been added successfully.`,
-        error: (err: any) => err?.message || "An error occurred while adding the task.",
+    return mutate(data, {
+      onSuccess: () => {
+        toast.add({
+          title: "Task created",
+          description: "The task was created successfully.",
+          type: "success",
+        });
+      },
+      onError: () => {
+        toast.add({
+          title: "Error creating task",
+          description: "An unexpected error occurred.",
+          type: "error",
+        });
+      },
+      onSettled: () => {
+        reset();
+        setDialogIsOpen(false);
       }
-    );
-    reset();
-    setDialogIsOpen(false);
+    });
   };
 
   return (

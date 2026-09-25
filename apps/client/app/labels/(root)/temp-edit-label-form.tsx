@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -41,7 +41,6 @@ export default function Dialog_EditLabel({
   label: TaskLabel;
   setLabel: (label: TaskLabel | null) => void;
 }) {
-  const queryClient = useQueryClient();
 
   const { control, handleSubmit, formState: { errors }, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
@@ -53,32 +52,57 @@ export default function Dialog_EditLabel({
   });
 
   const updateLabelMutation = useMutation({
-    mutationFn: (data: UpdateTaskLabelDto) => taskLabelService.updateTaskLabel(data),
+    mutationFn: taskLabelService.updateTaskLabel,
+    onMutate: async (updatedLabel, context) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await context.client.cancelQueries({ queryKey: ["task-labels"] });
+
+      // Snapshot the previous value
+      const previousLabels = context.client.getQueryData<TaskLabel[]>(["task-labels"]);
+
+      // Optimistically update to the new value
+      context.client.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
+        if (!old) return [];
+        return old.map((label) =>
+          label.id === updatedLabel.id ? { ...label, ...updatedLabel } : label
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousLabels };
+    },
+    onError: (_err, _updatedLabel, onMutateResult, context) => {
+      // Rollback to the previous value
+      if (onMutateResult?.previousLabels) {
+        context.client.setQueryData(["task-labels"], onMutateResult.previousLabels);
+      }
+    },
+    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+      // Always refetch after error or success:
+      context.client.invalidateQueries({ queryKey: ["task-labels"] });
+    },
+  });
+
+  const onSubmit = (data: UpdateTaskLabelDto) => updateLabelMutation.mutate(data, {
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-      reset();
+      toast.add({
+        title: "Label updated",
+        description: "The label was updated successfully.",
+        type: "success",
+      });
     },
     onError: () => {
       toast.add({
-        title: "Error creating label",
+        title: "Error updating label",
         description: "An unexpected error occurred.",
         type: "error",
       });
+    },
+    onSettled: () => {
       reset();
+      setLabel(null);
     }
   });
-
-  const onSubmit = async (data: UpdateTaskLabelDto) => {
-    toast.promise(
-      updateLabelMutation.mutateAsync(data),
-      {
-        loading: "Creating label...",
-        success: "Label created successfully!",
-        error: "Error creating label.",
-      }
-    );
-    setLabel(null);
-  };
 
   return (
     <Dialog open={!!label} onOpenChange={(open) => {

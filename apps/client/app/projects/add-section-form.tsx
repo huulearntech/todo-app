@@ -26,6 +26,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { sectionService } from "@/services/section.service";
 import { createSectionSchema, type CreateSectionDto } from "@todo/shared";
+import { toast } from "@/components/ui/toast";
+
+import { useMutation } from "@tanstack/react-query";
 
 
 export default function AddSectionForm({ projectId }: { projectId: string }) {
@@ -38,9 +41,51 @@ export default function AddSectionForm({ projectId }: { projectId: string }) {
     },
   });
 
+  const addSectionMutation = useMutation({
+    mutationFn: (data: CreateSectionDto) => sectionService.createSection(data),
+    onMutate: async (newSection, context) => {
+      await context.client.cancelQueries({ queryKey: ["sections", { projectId }] });
+
+      const previousSections = context.client.getQueryData(["sections", { projectId }]);
+
+      context.client.setQueryData(["sections", { projectId }], (oldSections: any) => {
+        return [...(oldSections || []), newSection];
+      });
+
+      return { previousSections };
+    },
+    onError: (_err, _newSection, onMutateResult, context) => {
+      // Rollback to the previous sections if there was an error
+      if (onMutateResult?.previousSections) {
+        context.client.setQueryData(["sections", { projectId }], onMutateResult.previousSections);
+      }
+    },
+    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+      // Invalidate the sections query to refetch the data
+      context.client.invalidateQueries({ queryKey: ["sections", { projectId }] });
+    },
+  });
+
   const onSubmit = (data: CreateSectionDto) => {
-    // TODO: mutate the query for sections after creating a new section, so that the new section appears in the UI without a page refresh.
-    sectionService.createSection(data).then(() => reset());
+    addSectionMutation.mutate(data, {
+      onSuccess: () => {
+        toast.add({
+          title: "Section created",
+          description: "The section was created successfully.",
+          type: "success",
+        });
+      },
+      onError: () => {
+        toast.add({
+          title: "Error creating section",
+          description: "An unexpected error occurred.",
+          type: "error",
+        });
+      },
+      onSettled: () => {
+        reset();
+      }
+    });
   };
 
   return (

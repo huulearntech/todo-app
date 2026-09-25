@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
-import { updateUserProfileSchema, type UpdateUserProfileDto } from "@todo/shared";
+import { updateUserSchema, type UpdateUserDto } from "@todo/shared";
 
 import { toast } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,15 +19,15 @@ import { useQueryClient } from "@tanstack/react-query";
 export default function UserProfileForm({ user }: { user: CreateUserResDto }) {
   const queryClient = useQueryClient();
 
-  const { control, handleSubmit, reset, formState: { isDirty } } = useForm<UpdateUserProfileDto>({
-    resolver: zodResolver(updateUserProfileSchema),
+  const { control, handleSubmit, reset, formState: { isDirty } } = useForm<UpdateUserDto>({
+    resolver: zodResolver(updateUserSchema),
     defaultValues: {
       name: user.name || "",
       avatarUrl: user.avatarUrl || "",
     },
   });
 
-  const onSubmit = async (data: UpdateUserProfileDto) => {
+  const onSubmit = async (data: UpdateUserDto) => {
     toast.promise(userService.updateUserProfile(data), {
       loading: "Updating profile...",
       success: "Profile updated successfully!",

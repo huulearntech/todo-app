@@ -1,3 +1,6 @@
+// FIX: something goes wrong when sign out user amid the page contain this component.
+// it causes the component to re-render indefinitely, and the page will be stuck.
+
 // NOTE: The mello mezon app send the whole Object.keys(finalColumns) to the server,
 // and limit the number of columns as well.
 "use client"

@@ -6,3 +6,6 @@ that they belong to. That is the context of the lexorank. For example, we even h
 
 
 BUG (23 Sep 2026): Somehow the task in the calendar week view when resize get updated off by one hour.
+
+
+NOTE: Learn more about zod code and transform.
