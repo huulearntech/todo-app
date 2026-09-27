@@ -1,28 +1,27 @@
 import { apiClient } from "@/lib/api-client";
-import { Project } from "@/types/project.type";
 
-export type CreateProjectDto = {
-  name: string;
-  description?: string;
-};
+import type {
+  SectionResponseDto,
+  CreateProjectDto,
+  ProjectResponseDto,
+  ProjectFilterDto,
+} from "@todo/shared";
 
 export const projectService = {
   createProject: async (createProjectDto: CreateProjectDto) => {
-    return apiClient.post<Project>("/projects", createProjectDto);
+    return apiClient.post<ProjectResponseDto>("/projects", createProjectDto);
   },
   getAllProjects: async () => {
-    return apiClient.get<Project[]>("/projects");
+    return apiClient.get<ProjectResponseDto[]>("/projects");
   },
-  getMyProjects: async (filter?: {
-    name?: string;
-  }) => {
-    const result = await apiClient.get<Project[]>("/projects/me", {
+  getMyProjects: async (filter?: ProjectFilterDto) => {
+    const result = await apiClient.get<ProjectResponseDto[]>("/projects/me", {
       params: filter,
     });
     return result.data;
   },
   getMyNonDefaultProjects: async () => {
-    const result = await apiClient.get<Project[]>("/projects/me", {
+    const result = await apiClient.get<ProjectResponseDto[]>("/projects/me", {
       params: {
         isDefault: false,
       },
@@ -30,11 +29,17 @@ export const projectService = {
     return result.data;
   },
   getProjectById: async (id: string) => {
-    const response = await apiClient.get<Project>(`/projects/${id}`);
+    const response = await apiClient.get<ProjectResponseDto>(`/projects/${id}`);
     return response.data;
   },
+
+  getSectionsByProjectId: async (projectId: string) => {
+    const result = await apiClient.get<SectionResponseDto[]>(`/projects/${projectId}/sections`);
+    return result.data;
+  },
+
   updateProject: async (id: string, name: string, description?: string) => {
-    return apiClient.put<Project>(`/projects/${id}`, { name, description });
+    return apiClient.put<ProjectResponseDto>(`/projects/${id}`, { name, description });
   },
   deleteProject: async (id: string) => {
     return apiClient.delete(`/projects/${id}`);

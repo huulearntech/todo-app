@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from 'typeorm';
 
 import { RefreshToken } from '../jwt/entities/refresh-token.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
@@ -28,8 +28,8 @@ export class User {
   @Column({ type: 'text', name: 'avatar_url', nullable: true })
   avatarUrl?: string | null;
 
-  @Column({ type: 'uuid', name: 'default_project_id', nullable: true })
-  defaultProjectId: string | null;
+  @Column({ type: 'uuid', name: 'default_project_id', update: false })
+  defaultProjectId: string;
 
   // TODO: Verify email after registration.
   // @Column({ name: 'is_email_verified', default: false })

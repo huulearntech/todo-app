@@ -10,7 +10,7 @@ import { TstzRange, TstzRangeTransformer } from '../../common/transformers/tstzr
 
 // TODO: Lexorank: Implement Lexorank reordering cronjob
 
-// TODO: add feature streak of days that meet the goal of completing tasks. This is a good feature to motivate users to complete tasks and use the app more often. It can be implemented by adding a new column to the task table that stores the date of the last completed task. Then, we can calculate the streak by comparing the current date with the last completed task date. If the difference is 1 day, we increment the streak. If it's more than 1 day, we reset the streak to 0. We can also add a new table to store the streak history for each user.
+// TODO: add feature streak of days that meet the goal of completing tasks.
 
 @Entity('tasks')
 export class Task {

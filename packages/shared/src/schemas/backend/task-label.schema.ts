@@ -14,3 +14,11 @@ export const updateTaskLabelSchema = z.object({
 });
 
 export type UpdateTaskLabelDto = z.infer<typeof updateTaskLabelSchema>;
+
+export const taskLabelResponseSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  description: z.string().optional(),
+});
+
+export type TaskLabelResponseDto = z.infer<typeof taskLabelResponseSchema>;

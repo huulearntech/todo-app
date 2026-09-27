@@ -1,3 +1,4 @@
+// TODO: Fix flickering when move task around on the calendar.
 "use client"
 
 import { useRef, useState } from "react"
@@ -86,11 +87,9 @@ export function TempEventCalendar() {
           start,
           end, // end of this is exclusive. This causes a bit of confusion.
           allDay: !task.timeRange, // If no timeRange, consider it an all-day event.
-          data: {
-            ...task,
-          } as Task,
+          data: task,
           // resourceId: task.ownerId, // Assuming ownerId can be used as resourceId
-        };
+        } as CalendarEvent<Task>;
       });
       return calendarEvents;
     },
@@ -104,10 +103,16 @@ export function TempEventCalendar() {
         throw new Error("Event data is missing for the updated event.");
       }
 
+      // NOTE: The ReUI calendar use TZDate and it will cause serious shit here
+      // if you don't convert it back to Date object before calling ".toISOString()".
+      // So this is a workaround for now until we fix the shittiness of Javascript wrapper over wrapper libraries.
+      const startStr = new Date(start).toISOString();
+      const endStr = new Date(end).toISOString();
+
       const taskToUpdate: UpdateTaskOutput = {
         title,
         description: data.description,
-        timeRange: { start: start.toISOString(), end: end.toISOString() },
+        timeRange: { start: startStr, end: endStr },
         priority: data.priority,
         sectionId: data.sectionId,
         // labels: data.labels || [],
@@ -127,7 +132,6 @@ export function TempEventCalendar() {
             task.id === updated.event.id
               ? {
                   ...task,
-                  title: updated.event.title,
                   timeRange: { start: updated.start.toISOString(), end: updated.end.toISOString() },
                 }
               : task

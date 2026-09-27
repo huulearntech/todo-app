@@ -22,7 +22,7 @@ export class TaskLabelService {
   }
 
   async getTaskLabelsByOwnerId(ownerId: string): Promise<TaskLabel[]> {
-    return this.taskLabelRepository.find({ where: { ownerId } });
+    return this.taskLabelRepository.find({ where: { ownerId }, order: { createdAt: 'DESC' } });
   }
 
   async getTaskLabelById(id: string): Promise<TaskLabel | null> {

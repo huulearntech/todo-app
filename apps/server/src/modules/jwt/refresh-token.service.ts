@@ -24,6 +24,7 @@ export class RefreshTokenService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  // NOTE: This not save the refresh token. @Temporary @Fix
   async generatePairOfTokens(userId: string): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = await this.jwtService.signAsync(
       { sub: userId },

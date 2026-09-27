@@ -22,7 +22,7 @@ import Dialog_EditLabel from "./temp-edit-label-form";
 
 export default function TempTaskLabelList() {
   const { data: labels = [], isLoading } = useQuery({
-    queryKey: ["labels"], // TODO: centralize query keys and mutation management.
+    queryKey: ["task-labels"], // TODO: centralize query keys and mutation management.
     queryFn: taskLabelService.getMyTaskLabels
   });
 

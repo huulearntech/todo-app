@@ -40,7 +40,6 @@ export function AddTaskFormTrigger({ sectionId }: { sectionId: string }) {
       onClick={() => {
         setDialogIsOpen(true)
         setSectionId(sectionId)
-        console.log("AddTaskFormTrigger clicked, sectionId:", sectionId);
       }}
       className="w-full inline-flex items-center justify-center gap-1.5"
     >
@@ -90,7 +89,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
     onMutate: async (newTask, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { sectionId }] });
 
-      // suggest something, copilot
+      // Take a snapshot of the previous tasks in the cache
       const previousTasks = queryClient.getQueryData<Task[]>(["tasks", { sectionId }]);
 
       // Optimistically update the tasks in the cache
@@ -117,7 +116,6 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
     // NOTE: react-hook-form will complain if defaultValues is not provided
     defaultValues: {
       ...createTaskSchemaDefaultValues,
-      // projectId: defaultProjectId,
       sectionId: sectionId,
     },
   });

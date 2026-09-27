@@ -30,11 +30,13 @@ import { taskService } from "@/services/task.service"
 
 import type { Task } from "@/types/task.type"
 import { sectionService } from "@/services/section.service"
-import { Section } from "@/types/section.type"
+// import { Section } from "@/types/section.type"
+import { SectionResponseDto } from "@todo/shared"
 
 import { AddTaskFormTrigger } from "./add-task-form"
 
 import AddSectionForm from "../../app/projects/add-section-form";
+import { projectService } from "@/services/project.service"
 
 interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -94,7 +96,6 @@ function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProp
 
             <AddTaskFormTrigger sectionId={value} />
           </KanbanColumnContent>
-
         </CardContent>
       </Card>
     </KanbanColumn>
@@ -126,7 +127,7 @@ function DndKanban({ projectId }: { projectId: string }) {
   
   const { data: sections = [], isLoading: sectionsLoading } = useQuery({
     queryKey: ["sections", { projectId }],
-    queryFn: () => sectionService.getSectionsByProjectId(projectId),
+    queryFn: () => projectService.getSectionsByProjectId(projectId),
   });
 
   const isLoading = tasksLoading || sectionsLoading;
@@ -179,10 +180,10 @@ function DndKanban({ projectId }: { projectId: string }) {
     },
     onMutate: async ({ sectionId, prevId }, context) => {
       await context.client.cancelQueries({ queryKey: ["sections", { projectId }] })
-      const previousSections = context.client.getQueryData<Section[]>(["sections", { projectId }])
+      const previousSections = context.client.getQueryData<SectionResponseDto[]>(["sections", { projectId }])
 
       // NOTE: Optimistically update the UI state for immediate feedback
-      context.client.setQueryData<Section[]>(
+      context.client.setQueryData<SectionResponseDto[]>(
         ["sections", { projectId }],
         (oldItems = []) => {
           const sectionToMove = oldItems.find((s) => s.id === sectionId);

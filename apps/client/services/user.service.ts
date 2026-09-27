@@ -1,15 +1,9 @@
 import { apiClient } from '@/lib/api-client';
-import { type UpdateUserDto } from "@todo/shared"
+import type { UpdateUserDto, UserResponseDto } from "@todo/shared"
 
 export const userService = {
   async getUserProfile() {
-    try {
-      const response = await apiClient.get('/users/profile');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      throw error;
-    }
+    return apiClient.get<UserResponseDto>('/users/profile');
   },
 
   async updateUserProfile(userProfileDto: UpdateUserDto) {

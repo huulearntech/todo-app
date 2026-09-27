@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from "@nestjs/common";
 import { TaskService } from "./task.service";
 
-// import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto"; // TODO: move
 import { UpdateTaskDto, type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
+import { TaskFilterDto } from "./dto/get-my-tasks.dto";
 
 import { DateTime } from "luxon";
 import { CurrentUser, type JwtUser } from "../auth/decorators/current-user.decorator";
@@ -20,7 +20,15 @@ export class TasksController {
     return this.taskService.createTask(user.id, createTaskReqDto);
   }
 
-  // TODO: @Temporary @Cleanup
+  @Get("me")
+  async getMyTasks(
+    @CurrentUser() user: JwtUser,
+    @Query() filter: TaskFilterDto = {}
+  ) {
+    console.log("getMyTasks filter:", filter);
+    return this.taskService.getTasksByOwnerIdAndFilter(user.id, filter);
+  }
+
   // NOTE: What does even "today" mean? it depends on the timezone of the user, not the server.
   // So we need to get the timezone of the user somehow.
   @Get("me/due-today")
@@ -56,7 +64,7 @@ export class TasksController {
     @Param("id") id: string,
     @Body() { sectionId, prevId }: { sectionId: string; prevId: string | null }
   ) {
-    await this.taskService.updateTaskOrder_New({
+    await this.taskService.updateTaskOrder({
       ownerId: user.id,
       taskId: id,
       sectionId,

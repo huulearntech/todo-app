@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { Between, EntityNotFoundError, FindOptionsOrderValue, LessThan, MoreThan, Raw, Repository } from "typeorm";
+import { EntityNotFoundError, MoreThan, Repository } from "typeorm";
 import { Task } from "./task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
 import { CreateTaskDto, UpdateTaskDto } from "./dto/add-task.dto";
-import { Dto_Filter_GetTasks } from "./dto/get-my-tasks.dto";
+import { TaskFilterDto } from "./dto/get-my-tasks.dto";
 import { Lexorank } from "../../common/utils/lexorank.util";
 import { Section } from "../sections/section.entity";
 import { DataSource } from "typeorm";
@@ -41,64 +41,59 @@ export class TaskService {
     return this.taskRepository.findOne({ where: { id } });
   }
 
-  // NOTE: may distinguish between getting tasks and getting tasks with title.
-  async getTasksByOwnerIdProjectIdAndFilter(ownerId: string, projectId: string, filter?: Dto_Filter_GetTasks): Promise<Task[]> { // TODO: pagination
-    if (filter?.title) 
+  async getTasksByOwnerIdProjectIdAndFilter(ownerId: string, projectId: string, filter: TaskFilterDto = {}): Promise<Task[]> { // TODO: pagination
     return this.dataSource.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
 
-      return transactionalEntityManager.find(Task, {
-        where: {
-          section: { project: { id: projectId, ownerId } },
-          ...filter,
-          title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
-        },
-        order: {
-          title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
-          lexorank: 'ASC',
-        }
-      });
-    })
-
-    return this.taskRepository.find({
-      where: {
-        section: { project: { id: projectId, ownerId } },
-        ...filter,
-      },
-      order: {
-        lexorank: 'ASC',
+      const queryBuilder = transactionalEntityManager
+        .createQueryBuilder(Task, 'task')
+        .innerJoin('task.section', 'section')
+        .innerJoin('section.project', 'project')
+        .where('project.id = :projectId', { projectId })
+        .andWhere('project.ownerId = :ownerId', { ownerId })
+      
+      if (filter.title) {
+        queryBuilder.andWhere('task.title % :title', { title: filter.title })
+        queryBuilder.orderBy('similarity(task.title, :title)', 'DESC')
+      } else {
+        queryBuilder.orderBy('task.lexorank', 'ASC')
       }
-    });
+
+      if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
+        queryBuilder.innerJoin('task.labels', 'label')
+        queryBuilder.andWhere('label.id IN (:...taskLabelIds)', { taskLabelIds: filter.taskLabelIds })
+      }
+
+      return queryBuilder.getMany();
+    })
   }
+
   // TODO: @Cleanup @Temporary
-  // NOTE: may distinguish between getting tasks and getting tasks with title.
-  async getTasksByOwnerId(ownerId: string, filter?: Dto_Filter_GetTasks): Promise<Task[]> {
-    if (filter?.title) 
+  async getTasksByOwnerIdAndFilter(ownerId: string, filter: TaskFilterDto): Promise<Task[]> {
+    console.log("getTasksByOwnerIdAndFilter called with filter:", filter);
     return this.dataSource.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
 
-      return transactionalEntityManager.find(Task, {
-        where: {
-          section: { project: { ownerId } },
-          ...filter,
-          title: Raw((alias) => `${alias} % :title`, { title: filter.title }),
-        },
-        order: {
-          title: Raw((alias) => `similarity(${alias}, :title)`, { title: filter.title }) as FindOptionsOrderValue,
-          lexorank: 'ASC',
-        }
-      });
-    })
-
-    return this.taskRepository.find({
-      where: {
-        section: { project: { ownerId } },
-        ...filter,
-      },
-      order: {
-        lexorank: 'ASC',
+      const queryBuilder = transactionalEntityManager
+        .createQueryBuilder(Task, 'task')
+        .innerJoin('task.section', 'section')
+        .innerJoin('section.project', 'project')
+        .andWhere('project.ownerId = :ownerId', { ownerId })
+      
+      if (filter.title) {
+        queryBuilder.andWhere('task.title % :title', { title: filter.title })
+        queryBuilder.orderBy('similarity(task.title, :title)', 'DESC')
+      } else {
+        queryBuilder.orderBy('task.lexorank', 'ASC')
       }
-    });
+
+      if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
+        queryBuilder.innerJoin('task.labels', 'label')
+        queryBuilder.andWhere('label.id IN (:...taskLabelIds)', { taskLabelIds: filter.taskLabelIds })
+      }
+
+      return queryBuilder.getMany();
+    })
   }
 
   // TODO: @Temporary @Cleanup
@@ -154,7 +149,7 @@ export class TaskService {
   }
 
   // NOTE: too much failure points.
-  async updateTaskOrder_New({
+  async updateTaskOrder({
     ownerId, taskId, sectionId, prevId
   }: {
     ownerId: string;

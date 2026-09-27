@@ -87,17 +87,12 @@ export class SectionService {
     id: string;
     prevId: string | null
   }): Promise<void> {
-    const sectionToMove = await this.sectionRepository.findOne({
+    const sectionToMove = await this.sectionRepository.findOneOrFail({
       where: { id },
       select: { lexorank: true, projectId: true },
     });
 
-    if (!sectionToMove) {
-      throw new Error("Section not found or does not belong to the project.");
-      // TODO: handle error more robustly. @Robustness
-    }
     if (!prevId) {
-
       // If prevId is null, it means the task is being moved to the top of the list.
       // So we need to find the first task in the section to get its lexorank.
       const firstSectionInProject = await this.sectionRepository.findOne({
@@ -113,15 +108,11 @@ export class SectionService {
       return;
     }
 
-    const prevSection = await this.sectionRepository.findOne({
+    const prevSection = await this.sectionRepository.findOneOrFail({
       where: { id: prevId, projectId: sectionToMove.projectId },
       select: { lexorank: true },
     });
     
-    if (!prevSection) {
-      throw new Error("Previous section not found or does not belong to the project.");
-    }
-
     const nextSection = await this.sectionRepository.findOne({
       where: { projectId: sectionToMove.projectId, lexorank: MoreThan(prevSection.lexorank) },
       select: { lexorank: true },

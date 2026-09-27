@@ -5,13 +5,12 @@ import QueryProvider from "@/providers/QueryProvider";
 import AuthProvider from "@/providers/AuthProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar/app-sidebar";
 
 import Script from "next/script";
 
 import { MyStoreProvider } from "@/providers/MyStoreProvider";
-// import TempEditTaskDialog from "@/app/inbox/temp-edit-task-dialog";
 import TempEditTaskDialog from "@/app/inbox/temp-edit-task-dialog";
 import AddTaskForm from "@/components/(home)/add-task-form";
 

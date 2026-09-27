@@ -36,8 +36,13 @@ export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
 export const taskFilterSchema = z.object({
   title: z.string(),
   projectId: z.string(),
-  // startedAt: z.coerce.date(),
-  // dueAt: z.coerce.date(),
+  taskLabelIds: z.preprocess((value) => {
+    // Nếu không truyền gì, trả về undefined
+    if (value === undefined || value === null) return undefined;
+    // Nếu client chỉ truyền 1 phần tử, URL query đôi khi biến nó thành string thay vì array
+    if (typeof value === 'string') return [value]; 
+    return value;
+  }, z.uuid().array()),
 }).partial();
 
 export type TaskFilterDto = z.infer<typeof taskFilterSchema>;

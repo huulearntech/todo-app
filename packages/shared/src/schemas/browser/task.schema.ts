@@ -76,13 +76,3 @@ export const updateTaskSchema = createTaskSchema;
 
 export type UpdateTaskInput  = z.input<typeof updateTaskSchema>;
 export type UpdateTaskOutput = z.output<typeof updateTaskSchema>;
-
-
-export const taskFilterSchema = z.object({
-  title: z.string(),
-  projectId: z.string(),
-  // startedAt: z.coerce.date(),
-  // dueAt: z.coerce.date(),
-}).partial();
-
-export type TaskFilterOutput = z.infer<typeof taskFilterSchema>;

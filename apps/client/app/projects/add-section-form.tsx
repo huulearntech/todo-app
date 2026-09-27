@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { sectionService } from "@/services/section.service";
-import { createSectionSchema, type CreateSectionDto } from "@todo/shared";
+import { createSectionSchema, SectionResponseDto, type CreateSectionDto } from "@todo/shared";
 import { toast } from "@/components/ui/toast";
 
 import { useMutation } from "@tanstack/react-query";
@@ -46,9 +46,9 @@ export default function AddSectionForm({ projectId }: { projectId: string }) {
     onMutate: async (newSection, context) => {
       await context.client.cancelQueries({ queryKey: ["sections", { projectId }] });
 
-      const previousSections = context.client.getQueryData(["sections", { projectId }]);
+      const previousSections = context.client.getQueryData<SectionResponseDto[]>(["sections", { projectId }]);
 
-      context.client.setQueryData(["sections", { projectId }], (oldSections: any) => {
+      context.client.setQueryData(["sections", { projectId }], (oldSections: SectionResponseDto[] | undefined) => {
         return [...(oldSections || []), newSection];
       });
 

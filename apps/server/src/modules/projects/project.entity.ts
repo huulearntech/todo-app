@@ -1,13 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 import { Section } from '../sections/section.entity';
 
 @Entity('projects')
 @Index(['ownerId', 'id'])
-@Index(['ownerId', 'name'], { unique: true }) // Ensure that each user can only have one project with a given name
-@Index(['ownerId', 'isDefault'], { unique: true, where: '"is_default" = true' }) // Ensure that each user can only have one default project
+@Index(['ownerId', 'name'], { unique: true }) // NOTE: Should this be?
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -33,8 +31,4 @@ export class Project {
 
   @OneToMany(() => Section, section => section.project, { cascade: true })
   sections!: Section[];
-
-
-  @Column({ type: 'boolean', name: 'is_default', default: false })
-  isDefault!: boolean; // Indicates whether this project is a default project (e.g., Inbox, Today, Upcoming)
 }

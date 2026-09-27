@@ -21,7 +21,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly userService: UserService,
-    private readonly refreshTokenService: RefreshTokenService, // TODO: Should this be emmbeded in this auth service @Cleanup
+    private readonly refreshTokenService: RefreshTokenService,
     private readonly configService: TypedConfigService,
   ) {}
 
@@ -64,12 +64,7 @@ export class AuthController {
 
 
     // 4. Return user profile data or a success flag back as JSON
-    return {
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-      defaultProjectId: user.defaultProjectId,
-    };
+    return user;
   }
 
   @Post("sign-out")
@@ -131,16 +126,7 @@ export class AuthController {
   }
 
   @Get("me")
-  async getCurrentUser(
-    @CurrentUser() jwtUser: JwtUser,
-  ) {
-    const dbUser = await this.userService.findById(jwtUser.id);
-    if (!dbUser) {
-      return { message: 'User not found' };
-    }
-
-    // Exclude sensitive fields like passwordHashed before returning // May declare @Exclude() but it might be error-prone if we use custom queries.
-    const { passwordHashed, ...userWithoutPassword } = dbUser;
-    return userWithoutPassword;
+  async getCurrentUser(@CurrentUser() jwtUser: JwtUser) {
+    return this.userService.findById(jwtUser.id);
   }
 }

@@ -2,11 +2,11 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { authService } from "@/services/auth.service";
-import { type CreateUserResDto } from "@/types/user.type"; // TODO: clean up types @Cleanup
+import type { UserResponseDto, SignInDto } from "@todo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 
 type AuthContextType = {
-  user: CreateUserResDto | null;
+  user: UserResponseDto | null;
   isLoading: boolean;
   signIn: ({ email, password } : { email: string, password: string }) => Promise<void>;
   signOut: () => void;
@@ -18,7 +18,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
-  const [user, setUser] = useState<CreateUserResDto | null>(null);
+  const [user, setUser] = useState<UserResponseDto | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -37,10 +37,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, []);
   
 
-  const signIn = async (data: { email: string; password: string }) => {
+  const signIn = async (signInDto: SignInDto) => {
     try {
       setIsLoading(true);
-      const user = await authService.signIn(data);
+      const user = await authService.signIn(signInDto);
       setUser(user);
     } catch (error) {
       setUser(null);

@@ -56,8 +56,6 @@ export default function TempEditTaskDialog() {
   const task = useEditTaskDialogStore((state) => state.task);
   const setTask = useEditTaskDialogStore((state) => state.setTask);
 
-  console.log("TempEditTaskDialog task:", task);
-
   if (!task) {
     return null;
   }

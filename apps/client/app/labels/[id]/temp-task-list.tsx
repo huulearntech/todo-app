@@ -6,8 +6,8 @@ import TaskItemListView from "@/components/(home)/task-item__list-view";
 
 export default function TempTaskList({ labelId }: { labelId: string }) {
   const { data: tasks = [], isLoading, error } = useQuery({
-    queryKey: ["tasks", "label", labelId], // TODO: @Cleanup
-    queryFn: () => taskService.getMyTasksByLabelId(labelId),
+    queryKey: ["tasks", { labelId }], // TODO: @Cleanup
+    queryFn: () => taskService.getMyTasks({ taskLabelIds: [labelId] }),
   });
 
   if (isLoading) {

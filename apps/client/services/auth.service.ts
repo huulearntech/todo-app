@@ -1,17 +1,16 @@
 import { apiClient } from "@/lib/api-client";
 
-import { CreateUserResDto } from "@/types/user.type";
-import { type SignUpDto } from "@todo/shared";
+import type { SignUpDto, UserResponseDto } from "@todo/shared";
 
 
 export const authService = {
   async signUp(signUpDto: SignUpDto) {
-    const response = await apiClient.post<CreateUserResDto>("/auth/sign-up", signUpDto);
+    const response = await apiClient.post<UserResponseDto>("/auth/sign-up", signUpDto);
     return response.data;
   },
 
   async signIn(signInUserDto: { email: string; password: string }) {
-    const response = await apiClient.post<CreateUserResDto>("/auth/sign-in", signInUserDto);
+    const response = await apiClient.post<UserResponseDto>("/auth/sign-in", signInUserDto);
     return response.data;
   },
 
@@ -20,7 +19,7 @@ export const authService = {
   },
 
   async getCurrentUser() {
-    const response = await apiClient.get<CreateUserResDto>("/auth/me");
+    const response = await apiClient.get<UserResponseDto>("/auth/me");
     return response.data;
   },
 };

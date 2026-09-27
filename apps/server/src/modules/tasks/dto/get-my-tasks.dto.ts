@@ -1,15 +1,7 @@
-import { IsOptional, IsString, IsISO8601 } from "class-validator";
+import { createZodDto } from "nestjs-zod";
+import { taskFilterSchema, type TaskFilterDto as TaskFilterPayload } from "@todo/shared";
 
-export class Dto_Filter_GetTasks {
-  @IsOptional()
-  @IsString()
-  title?: string;
+export class TaskFilterDto extends createZodDto(taskFilterSchema) {}
+export interface TaskFilterDto extends TaskFilterPayload {}
 
-  @IsOptional()
-  @IsISO8601()
-  dueDate?: string;
-
-
-  // taskLabelIds?: string[];
-}
 // TODO: when search by many task labels, might count the appearance of record => bigger number = more relevance

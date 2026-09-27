@@ -2,9 +2,10 @@ import { Body, Controller, Post, Get, Query, Param } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { TaskService } from "../tasks/task.service";
-import { Dto_Filter_GetTasks } from "../tasks/dto/get-my-tasks.dto";
+import { TaskFilterDto } from "../tasks/dto/get-my-tasks.dto";
 import { SectionService } from "../sections/section.service";
 import { CurrentUser, type JwtUser } from "../auth/decorators/current-user.decorator";
+import { ProjectFilterDto } from "./dto/project-filter.dto";
 
 
 @Controller('projects')
@@ -26,10 +27,7 @@ export class ProjectController {
   @Get("me")
   async getMyProjects(
     @CurrentUser() user: JwtUser,
-    @Query() filter?: { // TODO: type of filter
-      name?: string;
-      isDefault?: boolean;
-    }
+    @Query() filter?: ProjectFilterDto
   ) {
     return this.projectService.getProjectsByOwnerIdAndFilter(user.id, filter);
   }
@@ -43,7 +41,7 @@ export class ProjectController {
   async getTasksByProjectId(
     @CurrentUser() user: JwtUser,
     @Param("id") projectId: string,
-    @Query() filter: Dto_Filter_GetTasks = {}
+    @Query() filter: TaskFilterDto = {}
   ) {
     return this.taskService.getTasksByOwnerIdProjectIdAndFilter(user.id, projectId, filter);
   }

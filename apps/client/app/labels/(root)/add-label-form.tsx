@@ -31,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon, Plus } from "lucide-react";
 
-import { createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
+import { createTaskLabelSchema, TaskLabelResponseDto, type CreateTaskLabelDto } from "@todo/shared";
 
 
 export default function Dialog_AddLabel() {
@@ -51,9 +51,9 @@ export default function Dialog_AddLabel() {
     onMutate: async (newLabel, context) => {
       await context.client.cancelQueries({ queryKey: ["task-labels"] });
 
-      const previousTaskLabels = context.client.getQueryData(["task-labels"]);
+      const previousTaskLabels = context.client.getQueryData<TaskLabelResponseDto[]>(["task-labels"]);
 
-      context.client.setQueryData(["task-labels"], (oldTaskLabels: any) => {
+      context.client.setQueryData(["task-labels"], (oldTaskLabels: TaskLabelResponseDto[] | undefined) => {
         return [...(oldTaskLabels || []), newLabel];
       });
 

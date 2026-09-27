@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Raw, Repository, type FindOptionsOrderValue } from "typeorm";
+import { Repository } from "typeorm";
 
 import { Project } from "./project.entity";
 import { CreateProjectDto } from "./dto/create-project.dto";
+import { User } from "../users/user.entity";
 
 
 
@@ -20,36 +21,35 @@ export class ProjectService {
     return this.projectRepository.save(project);
   }
 
-  async getAllProjects(): Promise<Project[]> {
-    return this.projectRepository.find();
-  }
-
-  async getProjectsByOwnerIdAndFilter(ownerId: string, filter?: {
+  async getProjectsByOwnerIdAndFilter(ownerId: string, filter: {
     name?: string;
     isDefault?: boolean; // TODO: type of filter
-  }): Promise<Project[]> { // TODO: pagination
+  } = {}): Promise<Project[]> { // TODO: pagination
 
-    if (filter?.name) 
     return this.projectRepository.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
+      await transactionalEntityManager.query('SET LOCAL pg_trgm.similarity_threshold = 0.2;');
 
-      return transactionalEntityManager.find(Project, {
-        where: {
-          ownerId,
-          ...filter,
-          name: Raw((alias) => `${alias} % :name`, { name: filter.name }),
-        },
-        order: {
-          name: Raw((alias) => `similarity(${alias}, :name)`, { name: filter.name }) as FindOptionsOrderValue,
+      const queryBuilder = transactionalEntityManager
+        .createQueryBuilder(Project, "project")
+        .where("project.ownerId = :ownerId", { ownerId })
+
+      if (filter.isDefault !== undefined) {
+        queryBuilder.innerJoin(User, "user", "user.id = project.ownerId")
+        if (filter.isDefault) {
+          queryBuilder.andWhere("project.id = user.defaultProjectId")
+        } else {
+          queryBuilder.andWhere("project.id != user.defaultProjectId")
         }
-      });
-    })
-
-    return this.projectRepository.find({
-      where: {
-        ownerId,
-        ...filter,
       }
+
+      if (filter.name) {
+        queryBuilder.andWhere("project.name % :name", { name: filter.name })
+        queryBuilder.orderBy("similarity(project.name, :name)", "DESC")
+      } else {
+        queryBuilder.orderBy("project.createdAt", "DESC")
+      }
+
+      return queryBuilder.getMany();
     });
   }
 
@@ -68,10 +68,7 @@ export class ProjectService {
   }
 
   async deleteProject(id: string): Promise<boolean> {
-    const result = await this.projectRepository.delete({
-      id,
-      isDefault: false, // Prevent deletion of default projects
-    });
-    return result.affected !== 0; // NOTE: more detail response
+    const result = await this.projectRepository.delete({ id });
+    return result.affected !== 0;
   }
 }

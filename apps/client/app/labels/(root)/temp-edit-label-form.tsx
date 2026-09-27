@@ -42,7 +42,7 @@ export default function Dialog_EditLabel({
   setLabel: (label: TaskLabel | null) => void;
 }) {
 
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<UpdateTaskLabelDto>({
+  const { control, handleSubmit, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
     defaultValues: {
       id: label.id,

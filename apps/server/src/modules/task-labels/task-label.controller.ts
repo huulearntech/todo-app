@@ -34,7 +34,7 @@ export class TaskLabelController {
   
   }
 
-  @Get(':id')
+  @Get(':id/tasks')
   async getTasksByTaskLabelId(
     @CurrentUser() user: JwtUser,
     @Param('id') labelId: string

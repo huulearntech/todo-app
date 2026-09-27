@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
-import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import argon2 from 'argon2';
+import { randomUUID } from 'crypto';
+
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { SignUpDto } from '../auth/dto/sign-up.dto';
-import argon2 from 'argon2';
+import { User } from './user.entity';
 import { Project } from '../projects/project.entity';
+
 
 @Injectable()
 export class UserService {
@@ -17,25 +20,30 @@ export class UserService {
   async createUser(signUp: SignUpDto): Promise<UserResponseDto> {
     const { password, ...userData } = signUp;
     const passwordHashed = await argon2.hash(password);
+
+    const defaultProjectId = randomUUID(); // Generate a UUID for the default project
+
     const user = this.userRepository.create({
       ...userData,
       passwordHashed,
+      defaultProjectId,
     });
 
     const userResponse = await this.dataSource.transaction(async (transactionalEntityManager) => {
       const savedUser = await transactionalEntityManager.save(User, user);
-      const defaultProject = await transactionalEntityManager.save(Project, {
+
+      await transactionalEntityManager.save(Project, {
+        id: defaultProjectId,
         name: 'Inbox',
         owner: savedUser,
       });
-      savedUser.defaultProjectId = defaultProject.id;
-      await transactionalEntityManager.save(User, savedUser);
 
       return {
+        id: savedUser.id,
         email: savedUser.email,
         name: savedUser.name,
         avatarUrl: savedUser.avatarUrl,
-        defaultProjectId: defaultProject.id,
+        defaultProjectId: savedUser.defaultProjectId,
       };
     });
 
@@ -48,7 +56,7 @@ export class UserService {
 
   async deleteUser(id: string): Promise<boolean> {
     const result = await this.userRepository.delete(id);
-    return result.affected !== 0; // NOTE: What the fk?
+    return result.affected !== 0;
   }
 
   async findByEmailIncludePassword(email: string): Promise<User | null> { // TODO: need to define stricter DTO
@@ -83,17 +91,30 @@ export class UserService {
     });
   }
 
-  async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { id } });
+  async findById(id: string): Promise<UserResponseDto | null> {
+    return this.userRepository.findOne({
+      where: { id },
+      select: {
+        email: true,
+        name: true,
+        avatarUrl: true,
+        defaultProjectId: true,
+      },
+    });
   }
 
-  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<User | null> { // TODO: replace reponse user with the DTO
-    const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) {
-      return null;
-    }
+  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOneOrFail({ where: { id } });
 
     Object.assign(user, updateUserDto);
-    return this.userRepository.save(user);
+    const updatedUser = await this.userRepository.save(user);
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      avatarUrl: updatedUser.avatarUrl,
+      defaultProjectId: updatedUser.defaultProjectId,
+    };
   }
 }

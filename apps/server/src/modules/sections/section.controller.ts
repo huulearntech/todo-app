@@ -18,7 +18,7 @@ export class SectionController {
 
 
   @Patch(":id/reorder")
-  async updateSection(
+  async updateSectionOrder(
     // @CurrentUser() user: JwtUser,
     @Param("id") id: string,
     @Body("prevId") prevId: string | null,

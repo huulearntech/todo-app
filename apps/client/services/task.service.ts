@@ -2,7 +2,8 @@ import { apiClient } from "@/lib/api-client";
 import { Task } from "@/types/task.type";
 
 // TODO: may rename?
-import type { TaskFilterOutput, CreateTaskOutput, UpdateTaskOutput } from "@todo/shared/browser";
+import type { CreateTaskOutput, UpdateTaskOutput } from "@todo/shared/browser";
+import type { TaskFilterDto } from "@todo/shared";
 
 
 export const taskService = {
@@ -17,14 +18,18 @@ export const taskService = {
     return response.data;
   },
 
-  async getMyTasks(filter?: TaskFilterOutput) {
+  async getMyTasks(filter?: TaskFilterDto) {
+    console.log(filter)
     const response = await apiClient.get<Task[]>("/tasks/me", {
       params: filter,
+      paramsSerializer: { // TODO: @Cleanup @Temporary
+        indexes: null,
+      }
     });
     return response.data;
   },
 
-  async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterOutput, "projectId">) {
+  async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterDto, "projectId">) {
     const response = await apiClient.get<Task[]>(`/projects/${projectId}/tasks`, {
       params: filter,
     });
@@ -42,13 +47,11 @@ export const taskService = {
 
   // TODO: @Cleanup @Temporary
   async getMyTasksByLabelId(labelId: string) {
-    console.log("getMyTasksByLabelId called with labelId:", labelId);
     const response = await apiClient.get<Task[]>(`/tasks/tempbylabel/${labelId}`);
     return response.data;
   },
 
   async updateTask(taskId: string, updateTaskDto: UpdateTaskOutput) {
-    console.log("updateTask called with taskId:", taskId, "and updateTaskDto:", updateTaskDto);
     const response = await apiClient.patch<Task>(`/tasks/${taskId}`, updateTaskDto);
     return response.data;
   },
