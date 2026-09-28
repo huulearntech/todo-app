@@ -1,4 +1,4 @@
-import { Task } from "@/types/task.type";
+import type { TaskResponseDto as Task } from "@todo/shared";
 import { createStore } from "zustand/vanilla";
 
 // NOTE: or just use open === !!task

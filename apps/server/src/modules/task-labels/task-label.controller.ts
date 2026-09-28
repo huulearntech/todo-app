@@ -34,12 +34,13 @@ export class TaskLabelController {
   
   }
 
+  // TODO: @Remove
   @Get(':id/tasks')
   async getTasksByTaskLabelId(
     @CurrentUser() user: JwtUser,
     @Param('id') labelId: string
   ) {
-    return this.taskService.getTasksByOwnerIdAndLabelId(user.id, labelId);
+    return this.taskService.getTasksByOwnerIdAndFilter(user.id, { taskLabelIds: [labelId] });
   }
 
   @Patch(':id')

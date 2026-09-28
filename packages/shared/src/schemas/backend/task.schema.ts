@@ -22,6 +22,9 @@ export const createTaskSchema = z.object({
 
   priority: z.enum(TaskPriority),
   sectionId: z.uuid(),
+  labels: z.object({
+    id: z.uuid()
+  }).array(),
 });
 
 export type CreateTaskDto = z.infer<typeof createTaskSchema>;
@@ -46,3 +49,29 @@ export const taskFilterSchema = z.object({
 }).partial();
 
 export type TaskFilterDto = z.infer<typeof taskFilterSchema>;
+
+export const taskResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  timeRange: z.object({
+    start: z.iso.datetime(),
+    end: z.iso.datetime(),
+  }).nullable(),
+  priority: z.enum(TaskPriority),
+  sectionId: z.uuid(),
+  section: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    project: z.object({
+      id: z.uuid(),
+      name: z.string(),
+    }),
+  }),
+  labels: z.object({
+    id: z.uuid(),
+  }).array(),
+  completedAt: z.iso.datetime().nullable(),
+});
+
+export type TaskResponseDto = z.infer<typeof taskResponseSchema>;

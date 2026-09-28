@@ -1,6 +1,6 @@
 "use client";
 
-import { Task } from "@/types/task.type";
+import { TaskResponseDto as Task } from "@todo/shared";
 
 import {
   Item,

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { EntityNotFoundError, MoreThan, Repository } from "typeorm";
+import { Between, EntityNotFoundError, MoreThan, Repository } from "typeorm";
 import { Task } from "./task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
@@ -9,7 +9,7 @@ import { Lexorank } from "../../common/utils/lexorank.util";
 import { Section } from "../sections/section.entity";
 import { DataSource } from "typeorm";
 
-// TODO: @Cleanup
+
 @Injectable()
 export class TaskService {
   constructor(
@@ -48,9 +48,12 @@ export class TaskService {
       const queryBuilder = transactionalEntityManager
         .createQueryBuilder(Task, 'task')
         .innerJoin('task.section', 'section')
-        .innerJoin('section.project', 'project')
-        .where('project.id = :projectId', { projectId })
-        .andWhere('project.ownerId = :ownerId', { ownerId })
+        .innerJoin(
+          'section.project',
+          'project',
+          'project.id = :projectId AND project.ownerId = :ownerId',
+          { projectId, ownerId }
+        )
       
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title })
@@ -60,9 +63,23 @@ export class TaskService {
       }
 
       if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
-        queryBuilder.innerJoin('task.labels', 'label')
-        queryBuilder.andWhere('label.id IN (:...taskLabelIds)', { taskLabelIds: filter.taskLabelIds })
+        queryBuilder.innerJoin(
+          'task.labels',
+          'label',
+          'label.id IN (:...taskLabelIds)',
+          { taskLabelIds: filter.taskLabelIds }
+        );
+      } else {
+        queryBuilder.leftJoin('task.labels', 'label')
       }
+
+      // NOTE: If there is some way to keep this and the zod schema in sync, that would be great. But for now, this is just manual.
+      queryBuilder.select([
+        'task',
+        'section.id',
+        'section.name',
+        'label.id',
+      ]);
 
       return queryBuilder.getMany();
     })
@@ -96,46 +113,45 @@ export class TaskService {
     })
   }
 
-  // TODO: @Temporary @Cleanup
-  async getTasksByOwnerIdAndLabelId(ownerId: string, labelId: string): Promise<Task[]> {
-    return this.taskRepository.find({
-      where: {
-        section: { project: { ownerId } },
-        labels: { id: labelId },
-      },
-    });
+
+  async getTasksByOwnerIdThatDueInTimeRange(
+    ownerId: string,
+    rangeStartISO8601: string,
+    rangeEndISO8601: string
+  ): Promise<Task[]> {
+    return this.taskRepository.createQueryBuilder('task')
+      .innerJoin('task.section', 'section')
+      .innerJoin('section.project', 'project')
+      .where('project.ownerId = :ownerId', { ownerId })
+      .andWhere('upper(task.timeRange) BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz', {
+        rangeStart: rangeStartISO8601,
+        rangeEnd: rangeEndISO8601,
+      })
+      .getMany();
   }
 
-  async getTasksByOwnerIdAndProjectIdWithSectionIdAndName({
-    ownerId, projectId,
-  }: {
-    ownerId: string;
-    projectId: string;
-  }): Promise<Task[]> {
-    return this.taskRepository.find({
-      where: { section: { project: { id: projectId, ownerId } } },
-      select: {
-        id: true,
-        title: true,
-        section: {
-          id: true,
-          name: true,
-        }
-      },
-      order: {
-        lexorank: 'ASC',
-      }
-    });
-  }
 
-  // TODO:
-  async getTasksByOwnerIdThatDueInTimeRange(ownerId: string, startDate: Date, endDate: Date): Promise<Task[]> {
-    return this.taskRepository.find({
-      where: {
-        section: { project: { ownerId } },
-        // dueAt: Between(startDate, endDate), // NOTE: inclusive.
-      },
-    });
+  async getTasksByOwnerIdThatCompletedInTimeRange(
+    ownerId: string,
+    rangeStartISO8601: string,
+    rangeEndISO8601: string
+  ): Promise<Task[]> {
+    const result = await this.taskRepository.createQueryBuilder('task')
+      .innerJoin('task.section', 'section')
+      .innerJoin('section.project', 'project', 'project.ownerId = :ownerId', { ownerId })
+      .where('task.completedAt IS NOT NULL')
+      .andWhere('task.completedAt BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz', {
+        rangeStart: rangeStartISO8601,
+        rangeEnd: rangeEndISO8601,
+      })
+      .select([
+        'task',
+        'project.id',
+        'project.name',
+      ])
+      .getMany();
+
+    return result;
   }
 
 

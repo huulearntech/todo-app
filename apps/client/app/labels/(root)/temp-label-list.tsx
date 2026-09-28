@@ -17,7 +17,7 @@ import Dialog_AddLabel from "./add-label-form";
 import Link from "next/link";
 import { Badge } from "@/components/reui/badge";
 import { useState } from "react";
-import { TaskLabel } from "@/types/task-label.type";
+import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 import Dialog_EditLabel from "./temp-edit-label-form";
 
 export default function TempTaskLabelList() {

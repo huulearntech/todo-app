@@ -3,8 +3,7 @@ import { TaskPriority } from "../../enums/task-priority.enum.js";
 import { createTaskSchema as createTaskSchema_BE } from "../backend/task.schema.js";
 
 
-// TODO: @Cleanup.
-export const dateTime_ApiToForm_Codec = z.codec(
+const dateTime_ApiToForm_Codec = z.codec(
   z.object({
     date: z.iso.date(),
     time: z.iso.time(),
@@ -40,7 +39,7 @@ export const dateTime_ApiToForm_Codec = z.codec(
   }
 )
 
-// TODO: omit labelIds then add labels being objects with id and name for better integration with react-hook-form.
+
 export const createTaskSchema = createTaskSchema_BE
   .omit({ timeRange: true }) // Not neccessary to omit here but for clarity.
   .extend({
@@ -50,7 +49,7 @@ export const createTaskSchema = createTaskSchema_BE
         end: dateTime_ApiToForm_Codec,
       })
       .nullable()
-      .refine((data) => { // TODO: refine or superRefine?
+      .refine((data) => {
         if (data) {
           return data.start <= data.end;
         }
@@ -70,6 +69,7 @@ export const createTaskSchemaDefaultValues: CreateTaskInput = {
   timeRange: null,
   priority: TaskPriority.HIGH,
   sectionId: "",
+  labels: [],
 };
 
 export const updateTaskSchema = createTaskSchema;

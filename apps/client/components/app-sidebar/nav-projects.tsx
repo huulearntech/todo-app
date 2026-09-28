@@ -28,12 +28,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import CreateProjectDialog from "./create-project-dialog"
+import Link from "next/link"
+import { useAuth } from "@/providers/AuthProvider"
 
 export function NavProjects() {
   const { isMobile } = useSidebar()
+  const { user } = useAuth();
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects", "non_default"],
+    queryKey: [{ userId: user?.id }, "non_default_projects"],
     queryFn: () => projectService.getMyNonDefaultProjects(),
   })
 
@@ -54,7 +58,7 @@ export function NavProjects() {
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.id}>
-            <SidebarMenuButton render={<a href={`/projects/${item.id}`} />}>
+            <SidebarMenuButton render={<Link href={`/projects/${item.id}`} />}>
               <HashIcon />
               <span>{item.name}</span>
             </SidebarMenuButton>
@@ -86,10 +90,11 @@ export function NavProjects() {
           </SidebarMenuItem>
         ))}
         <SidebarMenuItem>
-          <SidebarMenuButton>
+          {/* <SidebarMenuButton>
             <PlusIcon />
             <span> New project </span>
-          </SidebarMenuButton>
+          </SidebarMenuButton> */}
+          <CreateProjectDialog />
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>

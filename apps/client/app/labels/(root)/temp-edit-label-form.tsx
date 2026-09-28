@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 import { updateTaskLabelSchema, type UpdateTaskLabelDto } from "@todo/shared";
-import { TaskLabel } from "@/types/task-label.type";
+import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
 
 export default function Dialog_EditLabel({

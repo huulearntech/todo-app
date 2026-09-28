@@ -28,7 +28,7 @@ import { PlusIcon } from 'lucide-react'
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { taskService } from "@/services/task.service"
 import { useAddTaskDialogStore, useEditTaskDialogStore } from "@/providers/MyStoreProvider"
-import { Task } from "@/types/task.type"
+import { TaskResponseDto as Task } from "@todo/shared"
 import { UpdateTaskOutput } from "@todo/shared/browser"
 
 
@@ -115,7 +115,7 @@ export function TempEventCalendar() {
         timeRange: { start: startStr, end: endStr },
         priority: data.priority,
         sectionId: data.sectionId,
-        // labels: data.labels || [],
+        labels: data.labels,
       };
 
       return taskService.updateTask(updated.event.id, taskToUpdate);

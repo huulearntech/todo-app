@@ -19,10 +19,10 @@ import {
   FieldLabel
 } from "@/components/ui/field";
 
-import { Task } from "@/types/task.type";
+import { TaskResponseDto as Task } from "@todo/shared";
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 
-import { useForm, Controller, useFieldArray } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -43,7 +43,6 @@ import {
 } from "@/components/ui/combobox";
 import { taskLabelService } from "@/services/task-label.service";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { TaskLabel } from "@/types/task-label.type";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
@@ -51,6 +50,14 @@ import { toast } from "@/components/ui/toast";
 
 import { format, parseISO, setHours, setMinutes } from "date-fns";
 import { taskService } from "@/services/task.service";
+
+// TODO: remove this
+const priorityItems = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
 
 export default function TempEditTaskDialog() {
   const task = useEditTaskDialogStore((state) => state.task);
@@ -62,15 +69,14 @@ export default function TempEditTaskDialog() {
 
   return (
     <Dialog open={!!task} onOpenChange={(open) => { if (!open) setTask(null); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle> {task.title} </DialogTitle>
-          <DialogDescription> {task.description} </DialogDescription>
+      <DialogContent className="sm:w-full sm:max-w-[1080px] p-0 gap-0">
+        <DialogHeader className="border-b p-4">
+          <DialogTitle> {task.section.name} </DialogTitle>
         </DialogHeader>
 
         <EditTaskForm task={task} />
 
-        <DialogFooter>
+        <DialogFooter className="flex justify-end gap-2 border-t m-0">
           <Button
             variant="outline"
             onClick={() => setTask(null)}>
@@ -90,17 +96,13 @@ function EditTaskForm({ task }: { task: Task }) {
   const { data: labels = [] } = useQuery({
     queryKey: ["task-labels"],
     queryFn: taskLabelService.getMyTaskLabels,
+    select: (data) => data.map(label => ({ id: label.id, name: label.name })), // NOTE: may not need this, but trimming the unnecessary data is good
   });
 
   const { control, handleSubmit } = useForm<UpdateTaskInput, unknown, UpdateTaskOutput>({
     resolver: zodResolver(updateTaskSchema),
     defaultValues: updateTaskSchema.encode(task),
   });
-
-  // const { fields: labelFields, append: appendLabel, remove: removeLabel } = useFieldArray({
-  //   control,
-  //   name: "labels",
-  // });
 
   const editTaskMutation = useMutation({
     mutationFn: (data: UpdateTaskOutput) => taskService.updateTask(task.id, data),
@@ -155,8 +157,10 @@ function EditTaskForm({ task }: { task: Task }) {
   return (
     <form
       id="edit-task-form"
-      onSubmit={handleSubmit(onSubmit)}>
-      <FieldGroup>
+      onSubmit={handleSubmit(onSubmit)}
+      className="grid box-border grid-cols-1 md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] gap-4"
+    >
+      <FieldGroup className="p-4">
         <Controller
           name="title"
           control={control}
@@ -180,29 +184,37 @@ function EditTaskForm({ task }: { task: Task }) {
             </Field>
           )}
         />
+        </FieldGroup>
 
+        <aside className="p-4 border-t md:border-l md:border-t-0">
+        <FieldGroup>
         <Controller
           name="priority"
           control={control}
           render={({ field, fieldState }) => (
-            <Field>
+            <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="priority">Priority</FieldLabel>
-              <Select {...field} value={field.value} onValueChange={field.onChange} id="priority">
+              <Select items={priorityItems}
+                onValueChange={field.onChange}
+                value={field.value}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
+                  <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
+                <SelectContent alignItemWithTrigger={false}>
+                  {priorityItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {fieldState.error && (<FieldError errors={[fieldState.error]} />)}
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}
         />
 
-        {/* <Controller
+        <Controller
           name="labels"
           control={control}
           render={({ field, fieldState }) => (
@@ -212,15 +224,18 @@ function EditTaskForm({ task }: { task: Task }) {
               <Combobox
                 id="labels-combobox"
                 multiple
-                items={labelFields}
-                value={field.value}
-                onValueChange={field.onChange}
-                itemToStringValue={(item) => item.id}
+                items={labels}
+                value={field.value.map(label => label.id)}
+                // TODO: handle value change
+                onValueChange={(things) => {
+                  console.log("things", things)
+                  field.onChange(things.map(id => ({ id })));
+                }}
               >
                 <ComboboxChips ref={anchor}>
                   <ComboboxValue>
                     {field.value.map((fieldItem, index) => (
-                      <ComboboxChip key={`${fieldItem.id}`}>
+                      <ComboboxChip key={fieldItem.id}>
                         {labels.find(label => label.id === fieldItem.id)?.name || "Unknown Label"}
                       </ComboboxChip>
                     ))}
@@ -233,10 +248,7 @@ function EditTaskForm({ task }: { task: Task }) {
                 <ComboboxContent anchor={anchor}>
                   <ComboboxList>
                     {labels.map((label) => (
-                      <ComboboxItem
-                        key={`${label.id}`}
-                        value={label}
-                      >
+                      <ComboboxItem key={label.id} value={label.id} >
                         {label.name}
                       </ComboboxItem>
                     ))}
@@ -247,7 +259,7 @@ function EditTaskForm({ task }: { task: Task }) {
               {fieldState.error && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}
-        /> */}
+        />
 
         <Controller
           name="timeRange"
@@ -262,6 +274,8 @@ function EditTaskForm({ task }: { task: Task }) {
                     if (value === "none") {
                       field.onChange(null);
                     } else if (value === "custom") {
+                      if (field.value) return;
+
                       const now = new Date();
                       const start = setHours(setMinutes(now, 0), 9); // 9:00 AM today
                       const end = setHours(setMinutes(now, 0), 17); // 5:00 PM today
@@ -272,6 +286,10 @@ function EditTaskForm({ task }: { task: Task }) {
                     }
                   }}
                   id="timeRange"
+                  items={[
+                    { value: "none", label: "None" },
+                    { value: "custom", label: "Custom" },
+                  ]}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select time range" />
@@ -380,9 +398,8 @@ function EditTaskForm({ task }: { task: Task }) {
           }}
         />
       </FieldGroup>
+
+        </aside>
     </form>
   )
 }
-
-
-              

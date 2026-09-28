@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from "@nestjs/common";
 import { TaskService } from "./task.service";
 
 import { UpdateTaskDto, type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
@@ -37,10 +37,31 @@ export class TasksController {
     @Headers("x-timezone") timezone: string
   ) {
     const nowInUserTimezone = DateTime.now().setZone(timezone);
-    const startOfDay = nowInUserTimezone.startOf("day").toJSDate();
-    const endOfDay = nowInUserTimezone.endOf("day").toJSDate();
+    if (!nowInUserTimezone.isValid) {
+      throw new BadRequestException(`Invalid timezone: ${timezone}. ${nowInUserTimezone.invalidExplanation}`);
+    }
+
+    const startOfDay = nowInUserTimezone.startOf("day").toISO();
+    const endOfDay = nowInUserTimezone.endOf("day").toISO();
 
     return this.taskService.getTasksByOwnerIdThatDueInTimeRange(user.id, startOfDay, endOfDay);
+  }
+
+
+  @Get("me/completed-last-7-days")
+  async getMyCompletedTasksInTheLast7Days(
+    @CurrentUser() user: JwtUser,
+    @Headers("x-timezone") timezone: string
+  ) {
+    const nowInUserTimezone = DateTime.now().setZone(timezone);
+    if (!nowInUserTimezone.isValid) {
+      throw new BadRequestException(`Invalid timezone: ${timezone}. ${nowInUserTimezone.invalidExplanation}`);
+    }
+    
+    const startOfDay7DaysAgo = nowInUserTimezone.startOf("day").minus({ days: 7 }).toISO();
+    const startOfToday = nowInUserTimezone.startOf("day").toISO();
+    
+    return this.taskService.getTasksByOwnerIdThatCompletedInTimeRange(user.id, startOfDay7DaysAgo, startOfToday);
   }
 
 

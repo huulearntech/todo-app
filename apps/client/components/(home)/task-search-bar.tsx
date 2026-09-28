@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/avatar"
 import { LoaderCircleIcon } from 'lucide-react'
 import { useQuery } from "@tanstack/react-query"
-import { Task } from "@/types/task.type"
+import type { TaskResponseDto as Task } from "@todo/shared"
 import { taskService } from "@/services/task.service"
 
 export default function TaskSearchBar() {

@@ -30,12 +30,9 @@ export async function generateMetadata(params: Promise<{ id: string }>): Promise
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full w-full flex-1 flex-col items-stretch justify-start">
+    <div className="flex flex-col flex-1 min-h-0">
       <Header />
-      <main className="flex flex-1 w-full flex-col items-center bg-white dark:bg-black sm:items-center justify-center">
-        {children}
-      </main>
-      <Footer />
+      {children}
     </div>
   );
 }

@@ -24,7 +24,6 @@ export class RefreshTokenService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  // NOTE: This not save the refresh token. @Temporary @Fix
   async generatePairOfTokens(userId: string): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = await this.jwtService.signAsync(
       { sub: userId },
@@ -44,27 +43,28 @@ export class RefreshTokenService {
     const oldHash = this.hashToken(oldToken);
     const now = new Date();
     
+    // Find old token and revoke.
     const oldTokenEntity = await this.tokenRepository.findOne({
       where: {
         token: oldHash,
         isRevoked: false,
         expiresAt: MoreThan(now),
-      }, // NOTE: if revoked, may be someone is trying to hack
+      },
     });
 
-    // 1. Check if token exists, is expired, or already revoked
     if (!oldTokenEntity) {
+      console.log('Invalid or expired refresh token:', oldToken);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    // 2. Revoke the old token (Token Rotation)
     oldTokenEntity.isRevoked = true;
 
+    // Generate new pair of tokens
     const { accessToken, refreshToken } = await this.generatePairOfTokens(oldTokenEntity.userId);
     const hashedNewToken = this.hashToken(refreshToken);
 
     const newTokenExpiresAt = new Date();
-    newTokenExpiresAt.setSeconds(newTokenExpiresAt.getSeconds() +
+    newTokenExpiresAt.setSeconds(now.getSeconds() +
       this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS'));
 
     const newTokenEntity = this.tokenRepository.create({
@@ -74,32 +74,15 @@ export class RefreshTokenService {
       isRevoked: false,
     });
 
+    // Update old token and save new token
     await this.tokenRepository.save([
-      oldTokenEntity, // Revoke the old token
-      newTokenEntity, // Save the new token
+      oldTokenEntity,
+      newTokenEntity,
     ])
     
     return { accessToken, refreshToken };
   }
 
-  // TODO: @Temporary @Cleanup @Robustness
-  async createRefreshToken(userId: string, refreshToken: string) {
-    const hashedToken = this.hashToken(refreshToken);
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() +
-      this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS'));
-
-    const tokenEntity = this.tokenRepository.create({
-      userId,
-      token: hashedToken,
-      expiresAt,
-      isRevoked: false,
-    });
-
-    await this.tokenRepository.save(tokenEntity);
-  }
-
-  // NOTE: not handle multiple refresh tokens yet
   async revokeAllUserTokens(userId: string) {
     await this.tokenRepository.update({ userId, isRevoked: false }, { isRevoked: true });
   }

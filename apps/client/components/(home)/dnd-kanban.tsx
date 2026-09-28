@@ -1,6 +1,3 @@
-// FIX: something goes wrong when sign out user amid the page contain this component.
-// it causes the component to re-render indefinitely, and the page will be stuck.
-
 // NOTE: The mello mezon app send the whole Object.keys(finalColumns) to the server,
 // and limit the number of columns as well.
 "use client"
@@ -28,9 +25,8 @@ import TaskItemListView from "./task-item__list-view.draft"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { taskService } from "@/services/task.service"
 
-import type { Task } from "@/types/task.type"
+import type { TaskResponseDto as Task } from "@todo/shared"
 import { sectionService } from "@/services/section.service"
-// import { Section } from "@/types/section.type"
 import { SectionResponseDto } from "@todo/shared"
 
 import { AddTaskFormTrigger } from "./add-task-form"
@@ -120,12 +116,12 @@ function AddSectionDialogTrigger({ sectionId }: { sectionId: string }) {
 }
 
 function DndKanban({ projectId }: { projectId: string }) {
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["tasks", { projectId }],
     queryFn: () => taskService.getTasksByProjectId(projectId),
   });
   
-  const { data: sections = [], isLoading: sectionsLoading } = useQuery({
+  const { data: sections, isLoading: sectionsLoading } = useQuery({
     queryKey: ["sections", { projectId }],
     queryFn: () => projectService.getSectionsByProjectId(projectId),
   });
@@ -136,6 +132,7 @@ function DndKanban({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     const acc: Record<string, Task[]> = {}
+    if (!sections || !tasks) return;
 
     for (const section of sections) {
       acc[section.id] = []
@@ -220,10 +217,9 @@ function DndKanban({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section
-      className="flex flex-1 min-h-0 overflow-x-auto px-4 py-3 bg-secondary"
-    >
+    <section className="flex flex-1 overflow-x-auto px-4 py-3 bg-secondary">
       <Kanban
+        className="flex h-full min-w-max"
         value={columns}
         onValueChange={setColumns}
         onValueCommit={(finalColumns, meta) => {
@@ -273,7 +269,7 @@ function DndKanban({ projectId }: { projectId: string }) {
               <TaskColumn
                 key={sectionId}
                 value={sectionId}
-                title={sections.find((s) => s.id === sectionId)?.name}
+                title={sections?.find((s) => s.id === sectionId)?.name}
                 tasks={tasks}
               />
           ))}

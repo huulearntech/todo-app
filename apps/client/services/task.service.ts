@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import { Task } from "@/types/task.type";
+import type { TaskResponseDto as Task } from "@todo/shared";
 
 // TODO: may rename?
 import type { CreateTaskOutput, UpdateTaskOutput } from "@todo/shared/browser";
@@ -45,9 +45,12 @@ export const taskService = {
     return response.data;
   },
 
-  // TODO: @Cleanup @Temporary
-  async getMyTasksByLabelId(labelId: string) {
-    const response = await apiClient.get<Task[]>(`/tasks/tempbylabel/${labelId}`);
+  async getMyTasksCompletedInLast7Days() {
+    const response = await apiClient.get<Task[]>("/tasks/me/completed-last-7-days", {
+      headers: {
+        "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone, // Send the user's timezone to the server 
+      },
+    });
     return response.data;
   },
 

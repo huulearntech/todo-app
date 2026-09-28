@@ -22,7 +22,7 @@ import { taskService } from "@/services/task.service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Task } from "@/types/task.type";
+import type { TaskResponseDto as Task } from "@todo/shared";
 import { projectService } from "@/services/project.service";
 
 import { createTaskSchema, type CreateTaskOutput, createTaskSchemaDefaultValues, CreateTaskInput } from "@todo/shared/browser";

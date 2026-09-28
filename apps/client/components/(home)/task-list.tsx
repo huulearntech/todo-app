@@ -8,11 +8,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskService } from "@/services/task.service";
 import TaskItemListView from "@/components/(home)/task-item__list-view";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function TaskList() {
   // const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: tasks = [] } = useQuery({
-    queryKey: ["tasks-due-today"],
+    queryKey: [{ userId: user?.id }, "tasks-due-today"],
     queryFn: () => taskService.getMyTasksDueToday()
   });
 

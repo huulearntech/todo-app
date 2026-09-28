@@ -1,7 +1,9 @@
 import { apiClient } from "@/lib/api-client";
-import { TaskLabel } from "@/types/task-label.type";
-
-import { CreateTaskLabelDto, UpdateTaskLabelDto } from "@todo/shared";
+import type {
+  CreateTaskLabelDto,
+  UpdateTaskLabelDto,
+  TaskLabelResponseDto as TaskLabel
+} from "@todo/shared";
 
 export const taskLabelService = {
   createTaskLabel: async (createTaskLabelDto: CreateTaskLabelDto) => {
