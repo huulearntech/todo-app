@@ -23,6 +23,7 @@
     "noFallthroughCasesInSwitch": false,
     "strictPropertyInitialization": false,
     "paths": {
+      "@/*": ["./*"],
       "@config/*": ["./src/config/*"]
     }
   },

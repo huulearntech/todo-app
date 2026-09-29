@@ -4,3 +4,4 @@ export * from "./schemas/backend/index.js";
 
 // Enums
 export * from "./enums/task-priority.enum.js";
+export * from "./enums/task-occurence-status.enum.js";

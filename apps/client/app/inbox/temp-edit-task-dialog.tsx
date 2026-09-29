@@ -69,9 +69,9 @@ export default function TempEditTaskDialog() {
 
   return (
     <Dialog open={!!task} onOpenChange={(open) => { if (!open) setTask(null); }}>
-      <DialogContent className="sm:w-full sm:max-w-[1080px] p-0 gap-0">
+      <DialogContent className="sm:w-full sm:max-w-[1080px] sm:max-h-[calc(100vh-4rem)] p-0 gap-0">
         <DialogHeader className="border-b p-4">
-          <DialogTitle> {task.section.name} </DialogTitle>
+          <DialogTitle> {task.section.project.name} / {task.section.name} </DialogTitle>
         </DialogHeader>
 
         <EditTaskForm task={task} />
@@ -160,7 +160,7 @@ function EditTaskForm({ task }: { task: Task }) {
       onSubmit={handleSubmit(onSubmit)}
       className="grid box-border grid-cols-1 md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] gap-4"
     >
-      <FieldGroup className="p-4">
+      <FieldGroup className="p-4 overflow-y-auto">
         <Controller
           name="title"
           control={control}
@@ -186,7 +186,7 @@ function EditTaskForm({ task }: { task: Task }) {
         />
         </FieldGroup>
 
-        <aside className="p-4 border-t md:border-l md:border-t-0">
+        <aside className="p-4 border-t md:border-l md:border-t-0 overflow-y-auto">
         <FieldGroup>
         <Controller
           name="priority"
@@ -194,7 +194,9 @@ function EditTaskForm({ task }: { task: Task }) {
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="priority">Priority</FieldLabel>
-              <Select items={priorityItems}
+              <Select
+                id="priority"
+                items={priorityItems}
                 onValueChange={field.onChange}
                 value={field.value}
               >
@@ -226,11 +228,7 @@ function EditTaskForm({ task }: { task: Task }) {
                 multiple
                 items={labels}
                 value={field.value.map(label => label.id)}
-                // TODO: handle value change
-                onValueChange={(things) => {
-                  console.log("things", things)
-                  field.onChange(things.map(id => ({ id })));
-                }}
+                onValueChange={(labelIds) => { field.onChange(labelIds.map(id => ({ id }))) }}
               >
                 <ComboboxChips ref={anchor}>
                   <ComboboxValue>

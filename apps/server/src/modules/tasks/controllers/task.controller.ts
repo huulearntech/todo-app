@@ -1,11 +1,11 @@
 import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from "@nestjs/common";
-import { TaskService } from "./task.service";
+import { TaskService } from "../services/task.service";
 
-import { UpdateTaskDto, type CreateTaskDto } from "./dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
-import { TaskFilterDto } from "./dto/get-my-tasks.dto";
+import { UpdateTaskDto, type CreateTaskDto } from "../dto/add-task.dto"; // NOTE: why does it complain when import with no "type" keyword?
+import { TaskFilterDto } from "../dto/get-my-tasks.dto";
 
 import { DateTime } from "luxon";
-import { CurrentUser, type JwtUser } from "../auth/decorators/current-user.decorator";
+import { CurrentUser, type JwtUser } from "@/src/modules/auth/decorators/current-user.decorator";
 
 
 @Controller("tasks")
@@ -25,7 +25,6 @@ export class TasksController {
     @CurrentUser() user: JwtUser,
     @Query() filter: TaskFilterDto = {}
   ) {
-    console.log("getMyTasks filter:", filter);
     return this.taskService.getTasksByOwnerIdAndFilter(user.id, filter);
   }
 

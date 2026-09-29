@@ -5,9 +5,9 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { Section } from "./section.entity";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Section])], // Import the Task entity for use in this module
+  imports: [TypeOrmModule.forFeature([Section])],
   controllers: [SectionController],
   providers: [SectionService],
-  exports: [SectionService],
+  exports: [TypeOrmModule, SectionService],
 })
 export class SectionModule {}

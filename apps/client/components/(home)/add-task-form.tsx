@@ -49,19 +49,20 @@ export function AddTaskFormTrigger({ sectionId }: { sectionId: string }) {
   );
 }
 
-export default function AddTaskForm() {
+export default function AddTaskDialog() {
   const { user } = useAuth();
-  if (!user) {
+  const sectionId = useAddTaskDialogStore((state) => state.sectionId);
+
+  if (!user || !sectionId) {
     return null;
   }
 
   return (
-    <AddTaskFormInner defaultProjectId={user.defaultProjectId} />
+    <AddTaskForm sectionId={sectionId} />
   );
 }
 
-function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
-  const sectionId = useAddTaskDialogStore((state) => state.sectionId);
+function AddTaskForm({ sectionId }: { sectionId: string }) {
   const dialogIsOpen = useAddTaskDialogStore((state) => state.dialogIsOpen);
   const setDialogIsOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
 
@@ -84,7 +85,7 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
   const queryClient = useQueryClient();
 
   // NOTE: This is only the mutation for creating a task. We will need to add more mutations for updating and deleting tasks.
-  const { mutate, isPending } = useMutation({
+  const createTaskMutation = useMutation({
     mutationFn: (newTask: CreateTaskOutput) => taskService.createTask(newTask),
     onMutate: async (newTask, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { sectionId }] });
@@ -120,11 +121,10 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
     },
   });
 
-
   const onSubmit = (data: CreateTaskOutput) => {
     if (sectionId) data.sectionId = sectionId; // TODO: Ensure the sectionId is set correctly
 
-    return mutate(data, {
+    return createTaskMutation.mutate(data, {
       onSuccess: () => {
         toast.add({
           title: "Task created",
@@ -147,7 +147,10 @@ function AddTaskFormInner({ defaultProjectId }: { defaultProjectId: string }) {
   };
 
   return (
-    <Dialog open={dialogIsOpen} onOpenChange={setDialogIsOpen}>
+    <Dialog open={dialogIsOpen} onOpenChange={(open) => {
+      setDialogIsOpen(open);
+      if (!open) { reset(); }
+    }}>
 
       <DialogContent>
         <DialogHeader>

@@ -1,7 +1,7 @@
 import { Body, Controller, Post, Get, Query, Param } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
-import { TaskService } from "../tasks/task.service";
+import { TaskService } from "../tasks/services/task.service";
 import { TaskFilterDto } from "../tasks/dto/get-my-tasks.dto";
 import { SectionService } from "../sections/section.service";
 import { CurrentUser, type JwtUser } from "../auth/decorators/current-user.decorator";
@@ -48,8 +48,13 @@ export class ProjectController {
 
 
   @Get(":id/sections")
-  async getSectionsByProjectId(@Param("id") projectId: string) {
-    // TODO: verify user.
-    return this.sectionService.getSectionsIdAndNameByProjectId(projectId);
+  async getSectionsByProjectId(
+    @CurrentUser() user: JwtUser,
+    @Param("id") projectId: string
+  ) {
+    return this.sectionService.getSectionsByProjectId({
+      ownerId: user.id,
+      projectId
+    });
   }
 }

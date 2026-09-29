@@ -9,7 +9,6 @@ import type { TaskFilterDto } from "@todo/shared";
 export const taskService = {
   async createTask(createTaskDto: CreateTaskOutput) {
     const response = await apiClient.post<Task>("/tasks", createTaskDto);
-    console.log("createTask response:", response.data);
     return response.data;
   },
 
@@ -19,12 +18,9 @@ export const taskService = {
   },
 
   async getMyTasks(filter?: TaskFilterDto) {
-    console.log(filter)
     const response = await apiClient.get<Task[]>("/tasks/me", {
       params: filter,
-      paramsSerializer: { // TODO: @Cleanup @Temporary
-        indexes: null,
-      }
+      paramsSerializer: { indexes: null } // NOTE: This is to prevent axios from serializing array params with brackets, e.g., taskLabelIds[]=1&taskLabelIds[]=2. Instead, we want taskLabelIds=1&taskLabelIds=2
     });
     return response.data;
   },

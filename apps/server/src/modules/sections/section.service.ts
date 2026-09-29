@@ -41,13 +41,15 @@ export class SectionService {
     return this.sectionRepository.find();
   }
 
-  async getSectionsByProjectId(projectId: string): Promise<Section[]> { // TODO: pagination
-    return this.sectionRepository.find({ where: { projectId } });
-  }
-
-  async getSectionsIdAndNameByProjectId(projectId: string): Promise<Section[]> { // TODO: pagination
+  async getSectionsByProjectId({
+    ownerId,
+    projectId
+  }: {
+    ownerId: string;
+    projectId: string;
+  }): Promise<Section[]> { // TODO: pagination
     return this.sectionRepository.find({
-      where: { projectId },
+      where: { projectId, project: { ownerId } },
       select: { id: true, name: true },
       order: { lexorank: 'ASC' },
     });

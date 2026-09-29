@@ -15,7 +15,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.9.1",
-    "@syncfusion/ej2-react-kanban": "^34.2.6",
     "@tanstack/react-hotkeys": "^0.10.0",
     "@tanstack/react-pacer": "^0.23.0",
     "@tanstack/react-query": "^5.102.8",

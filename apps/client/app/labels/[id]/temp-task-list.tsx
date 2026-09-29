@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { taskService } from "@/services/task.service";
-import TaskItemListView from "@/components/(home)/task-item__list-view";
+import TaskItemListView from "@/components/(home)/task-card";
 
 export default function TempTaskList({ labelId }: { labelId: string }) {
   const { data: tasks = [], isLoading, error } = useQuery({

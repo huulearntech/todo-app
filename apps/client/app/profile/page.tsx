@@ -5,14 +5,14 @@ import UserProfileForm from "@/components/profile/user-profile-form";
 import { useAuth } from "@/providers/AuthProvider";
 
 
-export default function ProfilePage() { // NOTE: Async page is not so good @Perf
+export default function ProfilePage() { // TODO: Not on client side.
   const { user } = useAuth();
 
   return (
-    <div className="flex flex-col items-center justify-center w-full min-h-screen py-2">
+    <div className="flex flex-col items-center justify-center w-full h-full gap-y-2 py-4">
       {user ? (
         <>
-          <Avatar avatarUrl={user.avatarUrl} />
+          <Avatar avatarUrl={user.avatarUrl ?? undefined} />
           <UserProfileForm user={user} />
         </>
       ) : (

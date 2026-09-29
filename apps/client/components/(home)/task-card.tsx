@@ -23,21 +23,30 @@ import {
 } from "lucide-react";
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import { taskLabelService } from "@/services/task-label.service";
+import { useQuery } from "@tanstack/react-query";
 
 export default function TaskItemListView({ task }: { task: Task }) {
   const mockTask = {
-    id: "1",
-    title: "Task Title",
-    description: "Task description goes here. It can be a brief summary of the task.",
-    dueDate: "Today",
     recurrence: "Daily",
     reminder: "1 hour before",
-    labels: ["Label 1", "Label 2"],
-    project: "Work",
   };
+
+  const { data: labels = [] } = useQuery({
+    queryKey: ["task-labels", task.id],
+    queryFn: taskLabelService.getMyTaskLabels,
+    select: (labels) => labels.filter(label => task.labels.some(taskLabel => taskLabel.id === label.id)),
+  });
 
   const setTask = useEditTaskDialogStore((state) => state.setTask);
   const setDialogIsOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
+
+
+  const taskDueLocalTime = task.timeRange?.end ? new Date(task.timeRange.end).toLocaleString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }) : undefined;
 
   return (
     <Item
@@ -56,10 +65,15 @@ export default function TaskItemListView({ task }: { task: Task }) {
 
         <ItemFooter className="[&_svg]:size-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <CalendarRangeIcon />
-              <span className="text-xs text-muted-foreground">{mockTask.dueDate}</span>
-            </div>
+            {taskDueLocalTime && (
+              <div className="flex items-center gap-1">
+                <CalendarRangeIcon />
+                <span
+                  title={taskDueLocalTime}
+                  className="text-xs text-muted-foreground"
+                >{taskDueLocalTime}</span>
+              </div>
+            )}
 
             {mockTask.recurrence && (
               <div className="flex items-center gap-1">
@@ -73,14 +87,14 @@ export default function TaskItemListView({ task }: { task: Task }) {
               </div>
             )}
 
-            {mockTask.labels.length > 0 && (
+            {labels.length > 0 && (
               <Tooltip>
                 <TooltipTrigger render={<TagIcon />} />
                 <TooltipContent>
                   <ul className="flex flex-col gap-1">
-                    {mockTask.labels.map((label, index) => (
-                      <li key={index} className="text-xs">
-                        {label}
+                    {labels.map((label) => (
+                      <li key={label.id} className="text-xs">
+                        {label.name}
                       </li>
                     ))}
                   </ul>
@@ -90,7 +104,7 @@ export default function TaskItemListView({ task }: { task: Task }) {
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground">{mockTask.project}</span>
+            <span className="text-xs text-muted-foreground">{task.section.project.name}</span>
             <HashIcon />
           </div>
         </ItemFooter>

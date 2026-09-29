@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { Between, EntityNotFoundError, MoreThan, Repository } from "typeorm";
-import { Task } from "./task.entity";
+import { Task } from "../entities/task.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 
-import { CreateTaskDto, UpdateTaskDto } from "./dto/add-task.dto";
-import { TaskFilterDto } from "./dto/get-my-tasks.dto";
-import { Lexorank } from "../../common/utils/lexorank.util";
-import { Section } from "../sections/section.entity";
+import { CreateTaskDto, UpdateTaskDto } from "../dto/add-task.dto";
+import { TaskFilterDto } from "../dto/get-my-tasks.dto";
+import { Lexorank } from "@/src/common/utils/lexorank.util";
+import { Section } from "@/src/modules/sections/section.entity";
 import { DataSource } from "typeorm";
 
 
@@ -78,6 +78,7 @@ export class TaskService {
         'task',
         'section.id',
         'section.name',
+        'project.name',
         'label.id',
       ]);
 
@@ -87,7 +88,6 @@ export class TaskService {
 
   // TODO: @Cleanup @Temporary
   async getTasksByOwnerIdAndFilter(ownerId: string, filter: TaskFilterDto): Promise<Task[]> {
-    console.log("getTasksByOwnerIdAndFilter called with filter:", filter);
     return this.dataSource.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
 
@@ -105,9 +105,19 @@ export class TaskService {
       }
 
       if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
-        queryBuilder.innerJoin('task.labels', 'label')
-        queryBuilder.andWhere('label.id IN (:...taskLabelIds)', { taskLabelIds: filter.taskLabelIds })
+        queryBuilder.innerJoin('task.labels', 'label', 'label.id IN (:...taskLabelIds)', { taskLabelIds: filter.taskLabelIds });
+      } else {
+        queryBuilder.leftJoin('task.labels', 'label');
       }
+
+      queryBuilder.select([
+        'task',
+        'section.id',
+        'section.name',
+        'project.name',
+        'label.id',
+        'label.name',
+      ]);
 
       return queryBuilder.getMany();
     })
@@ -121,12 +131,21 @@ export class TaskService {
   ): Promise<Task[]> {
     return this.taskRepository.createQueryBuilder('task')
       .innerJoin('task.section', 'section')
-      .innerJoin('section.project', 'project')
-      .where('project.ownerId = :ownerId', { ownerId })
+      .innerJoin('section.project', 'project', 'project.ownerId = :ownerId', { ownerId })
+      .leftJoin('task.labels', 'label')
       .andWhere('upper(task.timeRange) BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz', {
         rangeStart: rangeStartISO8601,
         rangeEnd: rangeEndISO8601,
       })
+      .select([
+        'task',
+        'section.id',
+        'section.name',
+        'project.name',
+        'label.id',
+        'label.name',
+      ])
+      .orderBy('task.lexorank', 'ASC')
       .getMany();
   }
 
@@ -146,6 +165,7 @@ export class TaskService {
       })
       .select([
         'task',
+        'section.id',
         'project.id',
         'project.name',
       ])

@@ -1,11 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { TaskLabel } from '../task-labels/task-label.entity';
-import { Section } from '../sections/section.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn, OneToMany, OneToOne } from 'typeorm';
+import { TaskLabel } from '../../task-labels/task-label.entity';
+import { Section } from '../../sections/section.entity';
 
 import { TaskPriority } from "@todo/shared";
 
-// NOTE: import path too much ../
-import { TstzRange, TstzRangeTransformer } from '../../common/transformers/tstzrange.transformer';
+import { TaskOccurence } from '../entities/task-occurence.entity';
+import { TaskRecurrence } from '../entities/task-recurrence.entity';
+import { TstzRange, TstzRangeTransformer } from '../../../common/transformers/tstzrange.transformer';
 
 
 // TODO: Lexorank: Implement Lexorank reordering cronjob
@@ -71,4 +72,11 @@ export class Task {
   @Index()
   @Column({ type: 'varchar', length: 255, nullable: false })
   lexorank: string;
+
+  @OneToMany(() => TaskOccurence, (occurence) => occurence.task)
+  occurences: TaskOccurence[];
+
+  @OneToOne(() => TaskRecurrence, (recurrence) => recurrence.task, { cascade: true, onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: 'recurrence_id' })
+  recurrence: TaskRecurrence | null;
 }

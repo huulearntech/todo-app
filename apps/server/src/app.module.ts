@@ -4,7 +4,6 @@ import { APP_PIPE } from '@nestjs/core';
 
 // import { BullModule } from '@nestjs/bullmq';
 
-// import { ConfigModule } from '@nestjs/config';
 import { AppConfigModule } from './config/config.module';
 
 import { AppController } from './app.controller';

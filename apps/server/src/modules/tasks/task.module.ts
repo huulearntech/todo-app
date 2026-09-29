@@ -1,14 +1,28 @@
 import { Module } from "@nestjs/common";
-import { TasksController } from "./task.controller";
-import { TaskService } from "./task.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Task } from "./task.entity";
-import { Section } from "../sections/section.entity";
+import { SectionModule } from "../sections/section.module";
+
+import { Task } from "./entities/task.entity";
+import { TaskRecurrence } from "./entities/task-recurrence.entity";
+import { TaskOccurence } from "./entities/task-occurence.entity";
+
+import { TaskService } from "./services/task.service";
+import { TaskRecurrenceService } from "./services/task-recurrence.service";
+import { TaskOccurenceService } from "./services/task-occurence.service";
+
+import { TasksController } from "./controllers/task.controller";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Task, Section])],
+  imports: [
+    TypeOrmModule.forFeature([Task, TaskRecurrence, TaskOccurence]),
+    SectionModule,
+  ],
   controllers: [TasksController],
-  providers: [TaskService],
+  providers: [
+    TaskService,
+    TaskRecurrenceService,
+    TaskOccurenceService,
+  ],
   exports: [TaskService],
 })
 export class TaskModule {}

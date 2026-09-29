@@ -11,7 +11,7 @@ import {
   ItemMedia,
   ItemTitle
 } from "@/components/ui/item";
-import { TagIcon } from "lucide-react";
+import { EllipsisIcon, TagIcon } from "lucide-react";
 
 import Dialog_AddLabel from "./add-label-form";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import { Badge } from "@/components/reui/badge";
 import { useState } from "react";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 import Dialog_EditLabel from "./temp-edit-label-form";
+import { Button } from "@/components/ui/button";
 
 export default function TempTaskLabelList() {
   const { data: labels = [], isLoading } = useQuery({
@@ -47,9 +48,7 @@ export default function TempTaskLabelList() {
             <Item
               variant="outline"
               data-label-id={label.id}
-              render={<button />}
-              onClick={() => setLabel(label)}
-              className="cursor-pointer"
+              render={<Link href={`/labels/${label.id}`}/>}
             >
               <ItemMedia>
                 <TagIcon />
@@ -58,6 +57,14 @@ export default function TempTaskLabelList() {
                 <ItemTitle>{label.name}</ItemTitle>
                 <ItemDescription>{label.description}</ItemDescription>
               </ItemContent>
+              <ItemActions>
+                <Button
+                  variant="ghost"
+                  onClick={() => setLabel(label)}
+                >
+                  <EllipsisIcon />
+                </Button>
+              </ItemActions>
             </Item>
           </li>
         ))}

@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { Task } from '../tasks/task.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { User } from '../users/user.entity';
 
 @Entity('task_labels')

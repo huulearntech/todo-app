@@ -204,7 +204,7 @@ export function TempEventCalendar() {
               <EventCalendarToolbar>
                 <Button size="sm" onClick={() => setAddTaskDialogOpen(true)}>
                   <PlusIcon  className="size-4" aria-hidden="true" />
-                  New event
+                  New task
                 </Button>
               </EventCalendarToolbar>
             </div>

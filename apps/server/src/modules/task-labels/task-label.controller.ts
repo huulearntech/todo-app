@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/commo
 
 import { TaskLabelService } from './task-label.service';
 import { TaskLabelDto } from './task-label.dto';
-import { TaskService } from '../tasks/task.service';
+import { TaskService } from '../tasks/services/task.service';
 import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('task-labels')

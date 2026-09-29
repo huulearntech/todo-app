@@ -3,3 +3,6 @@ that they belong to. That is the context of the lexorank. For example, we even h
 
 
 NOTE: Learn more about zod code and transform.
+
+NOTE (29 Sep 2026): Read the recurrence of event-calendar-recurrence.tsx, implement zod schema according to it
+The DTOs sent over the wire should follow that interface.

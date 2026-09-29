@@ -14,15 +14,11 @@ import {
   AutocompleteStatus,
 } from "@/components/reui/autocomplete"
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { LoaderCircleIcon } from 'lucide-react'
 import { useQuery } from "@tanstack/react-query"
 import { ProjectResponseDto } from "@todo/shared"
 import { projectService } from "@/services/project.service"
+import Link from "next/link"
 
 export default function ProjectSearchBar() {
   const [searchValue, setSearchValue] = useState("")
@@ -79,29 +75,9 @@ export default function ProjectSearchBar() {
                   key={project.id}
                   value={project}
                   className="rounded-lg"
+                  render={<Link href={`/projects/${project.id}`} className="w-full" />}
                 >
-                  <div className="flex items-center gap-2.5 truncate">
-                    {/* <Avatar className="size-9">
-                      <AvatarImage
-                        src={developer.avatar}
-                        alt={developer.name}
-                      />
-                      <AvatarFallback>
-                        {developer.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar> */}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">
-                        {project.name}
-                      </div>
-                      {/* <div className="text-muted-foreground truncate text-sm">
-                        {developer.role} • {developer.location}
-                      </div> */}
-                    </div>
-                  </div>
+                  {project.name}
                 </AutocompleteItem>
               )}
             </AutocompleteList>

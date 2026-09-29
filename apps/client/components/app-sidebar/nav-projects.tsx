@@ -37,7 +37,7 @@ export function NavProjects() {
   const { user } = useAuth();
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: [{ userId: user?.id }, "non_default_projects"],
+    queryKey: ["projects", "non_default" ],
     queryFn: () => projectService.getMyNonDefaultProjects(),
   })
 
@@ -81,7 +81,7 @@ export function NavProjects() {
                   <span>Share Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem variant="destructive">
                   <Trash2Icon className="text-muted-foreground" />
                   <span>Delete Project</span>
                 </DropdownMenuItem>

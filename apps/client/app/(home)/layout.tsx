@@ -16,7 +16,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
       <main className="flex flex-1 w-full flex-col overflow-auto">
         {children}
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

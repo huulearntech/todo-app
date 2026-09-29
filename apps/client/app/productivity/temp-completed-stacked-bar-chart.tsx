@@ -15,40 +15,109 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-const chartConfig: ChartConfig = {
-  completed: {
-    label: "cat1",
-    color: "var(--chart-1)",
-  },
-  remaining: {
-    label: "cat2",
-    color: "var(--chart-2)",
-  },
-};
+import { useQuery } from "@tanstack/react-query";
+import { taskService } from "@/services/task.service";
 
-
-const mockData = [
-  { name: "Task 1", cat1: 4, cat2: 16 },
-  { name: "Task 2", cat1: 7, cat2: 3  },
-  { name: "Task 3", cat1: 5, cat2: 5  },
-  { name: "Task 4", cat1: 8, cat2: 2  },
+const CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--muted-foreground)", // Color for "Other" / "No Project"
 ];
 
 export default function TempCompletedStackedBarChart() {
-  const data = mockData.map((item) => ({
-    ...item,
-    total: item.cat1 + item.cat2,
-    // NOTE: should this be calculated in the backend? or is it okay to calculate it here?
-  }));
+  const { data, isLoading } = useQuery({
+    queryKey: ["completed-tasks-last-7-days"],
+    queryFn: taskService.getMyTasksCompletedInLast7Days,
+    select: (tasks) => {
+      console.log("Fetched tasks for chart:", tasks);
+
+      // 1. Initialize the last 7 days (YYYY-MM-DD)
+      const today = new Date();
+      const dateMap: Record<string, Record<string, number>> = {};
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateString = date.toISOString().split("T")[0];
+        dateMap[dateString] = {};
+      }
+
+      // 2. Compute global frequencies by Project Name to find the Top 5
+      const projectCounts: Record<string, number> = {};
+      tasks.forEach((task) => {
+        console.log("Processing task for chart:", task);
+        const projectName = task.section.project.name;
+        projectCounts[projectName] = (projectCounts[projectName] || 0) + 1;
+      });
+
+      const top5Projects = Object.entries(projectCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name]) => name);
+
+      const categories = [...top5Projects, "Other"];
+
+      // Ensure every date has an entry for all categories (defaulting to 0)
+      Object.keys(dateMap).forEach((dateStr) => {
+        categories.forEach((cat) => {
+          dateMap[dateStr][cat] = 0;
+        });
+      });
+
+      // 3. Map tasks into their correct date and project category bucket
+      tasks.forEach((task) => {
+        if (!task.completedAt) return;
+        const completedDate = task.completedAt.split("T")[0];
+
+        if (dateMap[completedDate]) {
+          const projectName = task.section.project.name;
+          // If it's in the top 5, use its name; otherwise, bucket into "Other"
+          const category = top5Projects.includes(projectName) ? projectName : "Other";
+          dateMap[completedDate][category] += 1;
+        }
+      });
+
+      // 4. Format into an array ready for Recharts
+      const chartData = Object.entries(dateMap).map(([date, counts]) => {
+        const total = Object.values(counts).reduce((sum, val) => sum + val, 0);
+        return {
+          name: date,
+          ...counts,
+          total,
+        };
+      });
+
+      return { chartData, categories };
+    },
+  });
+
+  if (!data) console.log("No data available for the chart.");
+
+  if (isLoading || !data) {
+    return <div>Loading chart...</div>;
+  }
+
+  const { chartData, categories } = data;
+
+  const dynamicConfig: ChartConfig = categories.reduce((acc, cat, idx) => {
+    acc[cat] = {
+      label: cat,
+      color: CHART_COLORS[idx % CHART_COLORS.length],
+    };
+    return acc;
+  }, {} as ChartConfig);
 
   return (
-    <ChartContainer config={chartConfig} className="w-full max-w-2xl">
+    <ChartContainer config={dynamicConfig} className="w-full max-w-2xl">
       <BarChart
         accessibilityLayer
         width={500}
         height={300}
         layout="vertical"
-        data={data}
+        data={chartData}
         margin={{
           top: 20,
           right: 30,
@@ -61,114 +130,20 @@ export default function TempCompletedStackedBarChart() {
         <YAxis type="category" dataKey="name" />
         <Tooltip />
         <Legend />
-        <Bar dataKey="cat1" stackId="a" fill="#8884d8" />
-        <Bar dataKey="cat2" stackId="a" fill="#82ca9d">
-          <LabelList dataKey="total" position="right" offset={10}/>
-        </Bar>
+        
+        {categories.map((cat, index) => (
+          <Bar
+            key={cat}
+            dataKey={cat}
+            stackId="a"
+            fill={CHART_COLORS[index % CHART_COLORS.length]}
+          >
+            {index === categories.length - 1 && (
+              <LabelList dataKey="total" position="right" offset={10} />
+            )}
+          </Bar>
+        ))}
       </BarChart>
     </ChartContainer>
   );
 }
-
-// import { useMemo, useState, useEffect } from 'react';
-// import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-// import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-
-// export default function DynamicServerChart() {
-//   const [serverData, setServerData] = useState<
-//   { date: string; topItems: { name: string; count: number }[] }[]
-//   >([]);
-//   const [colorPalette, setColorPalette] = useState<Record<string, string>>({}); // e.g., { 'Apples': '#FF4D4D', 'Bananas': '#FFD700' }
-//   const [loading, setLoading] = useState(true);
-
-//   // Simulate fetching both the chart data and the item color configurations from your API
-//   useEffect(() => {
-//     async function fetchData() {
-//       // Replace with your real API endpoints:
-//       // const dataRes = await fetch('/api/weekly-data');
-//       // const configRes = await fetch('/api/item-colors');
-      
-//       const mockWeeklyData = [
-//         { date: 'Mon', topItems: [{ name: 'Apples', count: 12 }, { name: 'Bananas', count: 10 }] },
-//         { date: 'Tue', topItems: [{ name: 'Bananas', count: 15 }, { name: 'Oranges', count: 8 }] },
-//         { date: 'Wed', topItems: [{ name: 'Apples', count: 18 }, { name: 'Cherries', count: 5 }] },
-//       ];
-
-//       const mockColorPalette: Record<string, string> = {
-//         'Apples': '#ef4444',   // Tailwind red-500
-//         'Bananas': '#eab308',  // Tailwind yellow-500
-//         'Oranges': '#f97316',  // Tailwind orange-500
-//         'Cherries': '#ec4899', // Tailwind pink-500
-//       };
-
-//       setServerData(mockWeeklyData);
-//       setColorPalette(mockColorPalette);
-//       setLoading(false);
-//     }
-//     fetchData();
-//   }, []);
-
-//   // 1. Process data and dynamically generate shadcn's chartConfig
-//   const { chartData, uniqueItems, chartConfig } = useMemo(() => {
-//     if (serverData.length === 0) return { chartData: [], uniqueItems: [], chartConfig: {} };
-
-//     const itemKeys = new Set<string>();
-    
-//     // Flatten your weekly data structures for Recharts row requirements
-//     const formattedData = serverData.map(day => {
-//       const row: {date: string; [key: string]: string | number} = { date: day.date };
-//       day.topItems.forEach(item => {
-//         row[item.name] = item.count;
-//         itemKeys.add(item.name);
-//       });
-//       return row;
-//     });
-
-//     const itemsArray = Array.from(itemKeys);
-
-//     // Build the dynamic shadcn configuration object
-//     const dynamicConfig: Record<string, {label: string; color: string}> = {};
-//     itemsArray.forEach(itemName => {
-//       dynamicConfig[itemName] = {
-//         label: itemName,
-//         // Fallback to a gray shade if the server misses a color mapping rule
-//         color: colorPalette[itemName] || '#94a3b8', 
-//       };
-//     });
-
-//     return { 
-//       chartData: formattedData, 
-//       uniqueItems: itemsArray, 
-//       chartConfig: dynamicConfig 
-//     };
-//   }, [serverData, colorPalette]);
-
-//   if (loading) return <div>Loading dynamic chart...</div>;
-
-//   return (
-//     // 2. Pass your dynamic runtime config right into the shadcn ChartContainer
-//     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-//       <BarChart accessibilityLayer data={chartData}>
-//         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-//         <XAxis dataKey="date" tickLine={false} tickMargin={10} axisLine={false} />
-//         <YAxis tickLine={false} axisLine={false} />
-        
-//         {/* Shadcn's theme-aware automated Tooltip and Legend configs */}
-//         <ChartTooltip content={<ChartTooltipContent />} />
-//         {/* <ChartLegend content={<ChartLegendContent />} /> */}
-
-//         {/* 3. Dynamically map bars using the colors directly from your built config */}
-//         {uniqueItems.map((itemName) => (
-//           <Bar
-//             key={itemName}
-//             dataKey={itemName}
-//             stackId="a"
-//             // Use your runtime computed color value directly
-//             fill={chartConfig[itemName]?.color} 
-//             radius={[0, 0, 0, 0]} // Customizing bar edges if needed
-//           />
-//         ))}
-//       </BarChart>
-//     </ChartContainer>
-//   );
-// }

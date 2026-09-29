@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { GripVerticalIcon, Plus } from 'lucide-react'
 
-import TaskItemListView from "./task-item__list-view.draft"
+import TaskItemListView from "./task-card"
 
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { taskService } from "@/services/task.service"
@@ -98,22 +98,6 @@ function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProp
   )
 }
 
-function AddSectionDialogTrigger({ sectionId }: { sectionId: string }) {
-  return (
-    <button
-      data-slot="button"
-      type="button"
-      onClick={() => {
-        console.log("AddSectionDialogTrigger clicked", { sectionId })
-      }}
-      className="relative opacity-0 hover:opacity-100 transition-opacity duration-200 w-4 flex justify-center cursor-pointer">
-      <span className="z-1000 whitespace-nowrap border border-muted-foreground bg-secondary rounded-full p-1 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <Plus className="text-muted-foreground"/>
-      </span>
-      <div className="w-px h-full bg-muted-foreground" />
-    </button>
-  )
-}
 
 function DndKanban({ projectId }: { projectId: string }) {
   const { data: tasks, isLoading: tasksLoading } = useQuery({
@@ -274,7 +258,7 @@ function DndKanban({ projectId }: { projectId: string }) {
               />
           ))}
 
-          <div data-slot="kanban-column" className="ml-4">
+          <div data-slot="kanban-column">
             <AddSectionForm projectId={projectId} />
           </div>
         </KanbanBoard>

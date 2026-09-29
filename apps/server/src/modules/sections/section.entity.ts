@@ -2,7 +2,7 @@
 
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, Unique, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-import { Task } from '../tasks/task.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/project.entity';
 
 @Entity('sections')

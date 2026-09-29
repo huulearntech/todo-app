@@ -53,7 +53,6 @@ export class RefreshTokenService {
     });
 
     if (!oldTokenEntity) {
-      console.log('Invalid or expired refresh token:', oldToken);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 

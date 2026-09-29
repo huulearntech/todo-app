@@ -64,12 +64,12 @@ export default function Avatar({ avatarUrl }: { avatarUrl?: string | undefined }
           height={48}
           src={currentAvatarUrl || '/default-avatar.svg'}
           alt="User Avatar"
-          className="size-60 rounded-full"
+          className="size-60 rounded-full mx-auto"
         />
        
 
         <DialogFooter>
-          <input type="file" accept="image/*" onChange={handleFileChange} className="hidden"/>
+          <input type="file" accept="image/*" onChange={handleFileChange} />
         </DialogFooter>
       </DialogContent>
     </Dialog>

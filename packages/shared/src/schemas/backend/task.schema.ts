@@ -70,6 +70,7 @@ export const taskResponseSchema = z.object({
   }),
   labels: z.object({
     id: z.uuid(),
+    // name: z.string(),
   }).array(),
   completedAt: z.iso.datetime().nullable(),
 });
