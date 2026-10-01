@@ -1,5 +1,7 @@
 "use client"
 
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { projectService } from "@/services/project.service"
 
@@ -8,7 +10,6 @@ import {
   ForwardIcon,
   HashIcon,
   MoreHorizontalIcon,
-  PlusIcon,
   Trash2Icon,
 } from "lucide-react"
 
@@ -26,74 +27,107 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar"
 import CreateProjectDialog from "./create-project-dialog"
-import Link from "next/link"
-import { useAuth } from "@/providers/AuthProvider"
 
 export function NavProjects() {
   const { isMobile } = useSidebar()
-  const { user } = useAuth();
+  const pathname = usePathname()
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects", "non_default" ],
+    queryKey: ["projects", "non_default"],
     queryFn: () => projectService.getMyNonDefaultProjects(),
   })
 
   if (isLoading) {
     return (
-      <SidebarGroup>
-        <SidebarGroupLabel>Projects</SidebarGroupLabel>
-        <div className="flex items-center justify-center p-4">
-          <span className="text-sm text-muted-foreground">Loading...</span>
-        </div>
+      <SidebarGroup className="p-0">
+        <SidebarGroupLabel className="px-2 text-xs font-medium text-muted-foreground">
+          Projects
+        </SidebarGroupLabel>
+        <SidebarMenu className="gap-1 mt-1">
+          <SidebarMenuSkeleton showIcon />
+          <SidebarMenuSkeleton showIcon />
+          <SidebarMenuSkeleton showIcon />
+        </SidebarMenu>
       </SidebarGroup>
     )
   }
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
-      <SidebarMenu>
-        {projects.map((item) => (
-          <SidebarMenuItem key={item.id}>
-            <SidebarMenuButton render={<Link href={`/projects/${item.id}`} />}>
-              <HashIcon />
-              <span>{item.name}</span>
-            </SidebarMenuButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<SidebarMenuAction showOnHover />}>
-                <MoreHorizontalIcon />
-                <span className="sr-only">More</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-48 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}
+    <SidebarGroup className="p-0">
+      <div className="flex items-center justify-between px-2 py-1">
+        <SidebarGroupLabel className="p-0 text-xs font-medium text-muted-foreground">
+          Projects
+        </SidebarGroupLabel>
+        {projects.length > 0 && (
+          <span className="text-[11px] font-medium text-muted-foreground px-1.5 group-data-[collapsible=icon]:hidden">
+            {projects.length}
+          </span>
+        )}
+      </div>
+
+      <SidebarMenu className="gap-0.5 mt-0.5">
+        {projects.map((item) => {
+          const projectUrl = `/projects/${item.id}`
+          const isActive = pathname === projectUrl
+
+          return (
+            <SidebarMenuItem key={item.id}>
+              <SidebarMenuButton
+                isActive={isActive}
+                tooltip={item.name}
+                render={<Link href={projectUrl} />}
               >
-                <DropdownMenuItem>
-                  <FolderIcon className="text-muted-foreground" />
-                  <span>View Project</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <ForwardIcon className="text-muted-foreground" />
-                  <span>Share Project</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
-                  <Trash2Icon className="text-muted-foreground" />
-                  <span>Delete Project</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        ))}
+                <HashIcon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{item.name}</span>
+              </SidebarMenuButton>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuAction
+                      showOnHover
+                      className="hover:bg-sidebar-accent rounded-md"
+                    />
+                  }
+                >
+                  <MoreHorizontalIcon className="size-4" />
+                  <span className="sr-only">Project options</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-48 rounded-xl p-1 shadow-md border-border/60"
+                  side={isMobile ? "bottom" : "right"}
+                  align={isMobile ? "end" : "start"}
+                >
+                  <DropdownMenuItem
+                    render={<Link href={projectUrl} />}
+                    className="rounded-lg gap-2 cursor-pointer"
+                  >
+                    <FolderIcon className="size-4 text-muted-foreground" />
+                    <span>View Project</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer">
+                    <ForwardIcon className="size-4 text-muted-foreground" />
+                    <span>Share Project</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1 bg-border/50" />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="rounded-lg gap-2 cursor-pointer"
+                  >
+                    <Trash2Icon className="size-4" />
+                    <span>Delete Project</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          )
+        })}
+
         <SidebarMenuItem>
-          {/* <SidebarMenuButton>
-            <PlusIcon />
-            <span> New project </span>
-          </SidebarMenuButton> */}
           <CreateProjectDialog />
         </SidebarMenuItem>
       </SidebarMenu>

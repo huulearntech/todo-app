@@ -4,7 +4,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id: projectId } = await params;
 
   return (
-    <main className="overflow-x-hidden min-h-0 h-full min-w-0 flex flex-col">
+    <main className="flex-1 min-h-0 min-w-0 h-full flex flex-col overflow-hidden">
       <DndKanban projectId={projectId}/>
     </main>
   )

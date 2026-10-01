@@ -1,23 +1,21 @@
-// import { ValueTransformer } from 'typeorm';
-// import { RRule, RRuleSet, rrulestr } from 'rrule';
-
-// import { RecurrenceRule } from '@todo/shared';
+import { ValueTransformer } from 'typeorm';
+import { type RRule, parseRRuleString, formatRRuleString } from '@todo/shared';
 
 
-// export class recurrenceTransformer implements ValueTransformer {
-//   to(value: RecurrenceRule | null): string | null {
-//     if (!value) {
-//       return null;
-//     }
+export class RecurrenceTransformer implements ValueTransformer {
+  to(value: RRule | null): string | null {
+    if (!value) {
+      return null;
+    }
 
-//     return recurrenceToString(value);
-//   }
+    return formatRRuleString(value);
+  }
 
-//   from(value: string | null): RecurrenceRule | null {
-//     if (!value) {
-//       return null;
-//     }
+  from(value: string | null): RRule | null {
+    if (!value) {
+      return null;
+    }
 
-//     return recurrenceFromString(value);
-//   }
-// };
+    return parseRRuleString(value);
+  }
+};

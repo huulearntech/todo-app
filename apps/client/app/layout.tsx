@@ -38,13 +38,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body>
+      <body className="h-full overflow-hidden">
         <QueryProvider>
           <AuthProvider>
             <MyStoreProvider>
               <TooltipProvider>
                 <SidebarProvider
                   defaultOpen={false}
+                  className="h-svh max-h-svh overflow-hidden"
                   style={
                     {
                       "--sidebar-width": "350px",

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WEEKDAYS } from "../../utils/recurrence.util.js"
 
 export enum Weekday {
   MO = "MO",
@@ -64,8 +65,7 @@ export const rruleSchema = z.object({
     ctx.addIssue({
       code: 'custom',
       path: ['byWeekday'],
-      message:
-        'Ordinal weekdays are only supported for monthly or yearly recurrence.',
+      message: 'Ordinal weekdays are only supported for monthly or yearly recurrence.',
     });
   }
 
@@ -82,5 +82,5 @@ export const rruleSchema = z.object({
   }
 });
 
-export type RRuleDto = z.infer<typeof rruleSchema>;
-export interface RecurrenceRule extends RRuleDto {}
+export type RRule = z.infer<typeof rruleSchema>;
+// export interface RecurrenceRule extends RRuleDto {}

@@ -1,19 +1,19 @@
 import { z } from "zod";
 
-export const createSectionSchema = z.object({
+const createSectionSchema = z.object({
   projectId: z.uuid("Project ID must be a valid UUID"),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
 });
 
 // TODO: may call this payload, in order to call the response data as "response"
-export type CreateSectionDto = z.infer<typeof createSectionSchema>;
+type CreateSectionDto = z.infer<typeof createSectionSchema>;
 
-export const updateSectionSchema = createSectionSchema.omit({ projectId: true }).partial();
-export type UpdateSectionDto = z.infer<typeof updateSectionSchema>;
+const updateSectionSchema = createSectionSchema.omit({ projectId: true }).partial();
+type UpdateSectionDto = z.infer<typeof updateSectionSchema>;
 
 
-export const sectionResponseSchema = z.object({
+const sectionResponseSchema = z.object({
   id: z.uuid("Section ID must be a valid UUID"),
   projectId: z.uuid("Project ID must be a valid UUID"),
   name: z.string(),
@@ -22,4 +22,25 @@ export const sectionResponseSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
-export type SectionResponseDto = z.infer<typeof sectionResponseSchema>;
+type SectionResponseDto = z.infer<typeof sectionResponseSchema>;
+
+const sectionFilterSchema = z.object({
+  projectId: z.string().optional(),
+  name: z.string().optional(),
+});
+
+type SectionFilterDto = z.infer<typeof sectionFilterSchema>;
+
+export {
+  createSectionSchema,
+  updateSectionSchema,
+  sectionResponseSchema,
+  sectionFilterSchema,
+}
+
+export type {
+  CreateSectionDto,
+  UpdateSectionDto,
+  SectionResponseDto,
+  SectionFilterDto,
+}

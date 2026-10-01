@@ -1,26 +1,33 @@
-import { TempCircularProgress } from "./temp-circular-progress-indicator";
-import TempCompletedStackedBarChart from "./temp-completed-stacked-bar-chart";
+"use client";
 
-import { Medal } from "lucide-react"
+import TempCompletedStackedBarChart from "./temp-completed-stacked-bar-chart";
+import { useAuth } from "@/providers/AuthProvider";
+import { TrendingUpIcon } from "lucide-react";
 
 export default function DailyProductivityPage() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-4xl font-bold">Your Productivity</h1>
-      {/* <p className="mt-4 text-lg text-gray-600">
-        Daily goal completed: <b>5/10 tasks</b>
-      </p>
-      <TempCircularProgress
-        size={100}
-        progress={0.5}
-        strokeWidth={8}
-        className="mt-4 fill-chart-1"
-        icon={<Medal className="w-12 h-12" />}
-      /> */}
+  const { user } = useAuth();
+  const userName = user?.name || user?.email?.split("@")[0] || "there";
 
-      <p className="mt-2 text-lg text-gray-600">
-        Nice work, (User Name)
-      </p>
+  return (
+    <div className="w-full flex flex-col gap-6 py-2">
+      {/* Hero Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <TrendingUpIcon className="size-5" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Productivity Overview
+            </h1>
+          </div>
+          <p className="mt-1 text-sm sm:text-base text-muted-foreground">
+            Nice work, <span className="font-semibold text-foreground">{userName}</span>! Here is your task activity over the last 7 days.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Chart Section */}
       <TempCompletedStackedBarChart />
     </div>
   );

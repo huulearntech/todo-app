@@ -4,7 +4,7 @@ import { MoreThan, Repository } from "typeorm";
 
 import { Section } from "./section.entity";
 import { Project } from "../projects/project.entity";
-import { type CreateSectionDto } from "./dto/create-section.dto";
+import { SectionFilterDto, type CreateSectionDto } from "./dto/create-section.dto";
 import { Lexorank } from "../../common/utils/lexorank.util";
 
 
@@ -26,9 +26,10 @@ export class SectionService {
 
     const sectionWithHighestLexorank = await this.sectionRepository.findOne({
       where: { projectId },
-      select: { lexorank: true },
+      select: { id: true, lexorank: true },
       order: { lexorank: 'DESC' },
     });
+
 
     const highestLexorank = sectionWithHighestLexorank?.lexorank || '';
     const newRank = Lexorank.getMidpoint(highestLexorank, ''); // passing '' means no upper limit
@@ -37,35 +38,25 @@ export class SectionService {
     return this.sectionRepository.save(section);
   }
 
-  async getAllSections(): Promise<Section[]> {
-    return this.sectionRepository.find();
-  }
+  // TODO: Returning the whole entity should be prohibited. use a DTO instead. @Cleanup @Robustness
+  async getMySections(ownerId: string, filter: SectionFilterDto): Promise<Section[]> {
+    const queryBuilder = this.sectionRepository.createQueryBuilder("section")
+      .innerJoin("section.project", "project", "project.ownerId = :ownerId", { ownerId })
 
-  async getSectionsByProjectId({
-    ownerId,
-    projectId
-  }: {
-    ownerId: string;
-    projectId: string;
-  }): Promise<Section[]> { // TODO: pagination
-    return this.sectionRepository.find({
-      where: { projectId, project: { ownerId } },
-      select: { id: true, name: true },
-      order: { lexorank: 'ASC' },
-    });
-  }
+    if (filter.projectId) {
+      queryBuilder.andWhere("section.projectId = :projectId", { projectId: filter.projectId });
+    }
 
-  async getSectionsByProjectIdAndName(projectId: string, name: string): Promise<Section[]> { // TODO: pagination
-    return this.sectionRepository.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`); // Set a lower threshold for similarity
-      return transactionalEntityManager
-        .createQueryBuilder(Section, "section")
-        .where("section.projectId = :projectId", { projectId })
-        .andWhere("section.name % :name", { name }) // Using the % operator for full-text search
-        .orderBy("similarity(section.name, :name)", "DESC")
-        .setParameters({ projectId, name })
-        .getMany();
-    });
+    if (filter.name) {
+      queryBuilder
+        .andWhere("section.name % :name", { name: filter.name })
+        .orderBy("similarity(section.name, :name)", "DESC");
+    }
+
+    return queryBuilder
+      .select(["section.id", "section.name", "section.description", "section.projectId"])
+      .orderBy("section.lexorank", "ASC")
+      .getMany();
   }
 
   async getSectionById(id: string): Promise<Section | null> {
@@ -82,16 +73,15 @@ export class SectionService {
     return this.sectionRepository.save(section);
   }
 
-  // NOTE: how can you know if it is the owner request this or not?
-  async updateSectionOrder({
-    id, prevId
-  }: {
+  // NOTE: this function might be optimizable.
+  async updateSectionOrder({ ownerId, id, prevId }: {
+    ownerId: string;
     id: string;
     prevId: string | null
   }): Promise<void> {
     const sectionToMove = await this.sectionRepository.findOneOrFail({
-      where: { id },
-      select: { lexorank: true, projectId: true },
+      where: { id, project: { ownerId } },
+      select: { id: true, lexorank: true, projectId: true },
     });
 
     if (!prevId) {
@@ -99,7 +89,7 @@ export class SectionService {
       // So we need to find the first task in the section to get its lexorank.
       const firstSectionInProject = await this.sectionRepository.findOne({
         where: { projectId: sectionToMove.projectId },
-        select: { lexorank: true },
+        select: { id: true, lexorank: true },
         order: { lexorank: 'ASC' },
       });
 
@@ -112,14 +102,15 @@ export class SectionService {
 
     const prevSection = await this.sectionRepository.findOneOrFail({
       where: { id: prevId, projectId: sectionToMove.projectId },
-      select: { lexorank: true },
+      select: { id: true, lexorank: true },
     });
     
     const nextSection = await this.sectionRepository.findOne({
       where: { projectId: sectionToMove.projectId, lexorank: MoreThan(prevSection.lexorank) },
-      select: { lexorank: true },
+      select: { id: true, lexorank: true },
       order: { lexorank: 'ASC' },
     });
+
 
     const newLexorank = Lexorank.getMidpoint(prevSection.lexorank, nextSection?.lexorank || '');
 

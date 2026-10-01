@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+import Link from "next/link"
 import {
   User2Icon,
   ChevronsUpDownIcon,
@@ -27,77 +29,99 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import Link from "next/link"
-
 import { useAuth } from "@/providers/AuthProvider"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuth()
 
   if (!user) {
     return null
   }
 
+  const getInitials = (name?: string | null, email?: string | null) => {
+    if (name && name.trim().length > 0) {
+      const parts = name.trim().split(" ")
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+      }
+      return name.slice(0, 2).toUpperCase()
+    }
+    if (email && email.length > 0) {
+      return email.slice(0, 2).toUpperCase()
+    }
+    return "U"
+  }
+
+  const initials = getInitials(user.name, user.email)
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger render={(props) =>
-            <SidebarMenuButton
-              {...props}
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
-            />
-          }>
-            <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
-              <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+          <DropdownMenuTrigger
+            render={(props) => (
+              <SidebarMenuButton
+                {...props}
+                size="lg"
+                tooltip={user.name || user.email}
+                className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2"
+              />
+            )}
+          >
+            <Avatar className="size-8 rounded-lg shrink-0">
+              <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name || "User avatar"} />
+              <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                {initials}
+              </AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs">{user.email}</span>
+            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="truncate font-medium text-sidebar-foreground">{user.name}</span>
+              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
-            <ChevronsUpDownIcon className="ml-auto size-4" />
+            <ChevronsUpDownIcon className="ml-auto size-4 text-muted-foreground shrink-0 group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl p-1 shadow-md border-border/60"
             side={isMobile ? "bottom" : "right"}
             align="end"
-            sideOffset={4}
+            sideOffset={6}
           >
             <DropdownMenuGroup>
               <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <div className="flex items-center gap-2.5 px-2.5 py-2 text-left text-sm rounded-lg bg-sidebar-accent/50">
+                  <Avatar className="size-8 rounded-lg shrink-0">
+                    <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name || "User avatar"} />
+                    <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs">{user.email}</span>
+                    <span className="truncate font-medium text-foreground">{user.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem render={<Link href="/profile" />}>
-                <User2Icon />
-                Account
+            <DropdownMenuSeparator className="my-1 bg-border/50" />
+            <DropdownMenuGroup className="space-y-0.5">
+              <DropdownMenuItem render={<Link href="/profile" />} className="rounded-lg gap-2 cursor-pointer">
+                <User2Icon className="size-4 text-muted-foreground" />
+                <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href="/productivity" />}>
-                <TargetIcon />
-                Productivity
+              <DropdownMenuItem render={<Link href="/productivity" />} className="rounded-lg gap-2 cursor-pointer">
+                <TargetIcon className="size-4 text-muted-foreground" />
+                <span>Productivity</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="my-1 bg-border/50" />
             <DropdownMenuItem
               variant="destructive"
-              onClick={() => signOut()}>
-              {/** TODO: alert dialog */}
-              <LogOutIcon />
-              Sign out
+              onClick={() => signOut()}
+              className="rounded-lg gap-2 cursor-pointer"
+            >
+              <LogOutIcon className="size-4" />
+              <span>Sign Out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

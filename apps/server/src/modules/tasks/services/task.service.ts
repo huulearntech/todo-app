@@ -22,9 +22,10 @@ export class TaskService {
     // NOTE: This may introduce a race condition.
     const taskHasHighestLexorank = await this.taskRepository.findOne({
       where: { sectionId: createTaskDto.sectionId },
-      select: { lexorank: true },
+      select: { id: true, lexorank: true },
       order: { lexorank: 'DESC' },
     });
+
 
     const highestLexorank = taskHasHighestLexorank?.lexorank || '';
     const newRank = Lexorank.getMidpoint(highestLexorank, ''); // passing '' means no upper limit
@@ -41,7 +42,7 @@ export class TaskService {
     return this.taskRepository.findOne({ where: { id } });
   }
 
-  async getTasksByOwnerIdProjectIdAndFilter(ownerId: string, projectId: string, filter: TaskFilterDto = {}): Promise<Task[]> { // TODO: pagination
+  async getTasksByOwnerIdProjectIdAndFilter(ownerId: string, projectId: string, filter: TaskFilterDto): Promise<Task[]> { // TODO: pagination
     return this.dataSource.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query(`SET LOCAL pg_trgm.similarity_threshold = 0.2;`);
 
@@ -54,6 +55,7 @@ export class TaskService {
           'project.id = :projectId AND project.ownerId = :ownerId',
           { projectId, ownerId }
         )
+        .leftJoin('task.recurrence', 'recurrence')
       
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title })
@@ -80,6 +82,8 @@ export class TaskService {
         'section.name',
         'project.name',
         'label.id',
+        'recurrence.id',
+        'recurrence.rrule',
       ]);
 
       return queryBuilder.getMany();
@@ -133,6 +137,7 @@ export class TaskService {
       .innerJoin('task.section', 'section')
       .innerJoin('section.project', 'project', 'project.ownerId = :ownerId', { ownerId })
       .leftJoin('task.labels', 'label')
+      .leftJoin('task.recurrence', 'recurrence')
       .andWhere('upper(task.timeRange) BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz', {
         rangeStart: rangeStartISO8601,
         rangeEnd: rangeEndISO8601,
@@ -144,6 +149,8 @@ export class TaskService {
         'project.name',
         'label.id',
         'label.name',
+        'recurrence.id',
+        'recurrence.rrule',
       ])
       .orderBy('task.lexorank', 'ASC')
       .getMany();
@@ -213,7 +220,7 @@ export class TaskService {
       // So we need to find the first task in the section to get its lexorank.
       const firstTaskInSection = await this.taskRepository.findOne({
         where: { sectionId },
-        select: { lexorank: true },
+        select: { id: true, lexorank: true },
         order: { lexorank: 'ASC' },
       });
 
@@ -231,14 +238,15 @@ export class TaskService {
     // If prevId is provided, it must be a valid task.
     const prevTask = await this.taskRepository.findOneOrFail({
       where: { id: prevId, sectionId },
-      select: { lexorank: true },
+      select: { id: true, lexorank: true },
     });
 
     const nextTask = await this.taskRepository.findOne({
       where: { sectionId, lexorank: MoreThan(prevTask.lexorank) },
-      select: { lexorank: true },
+      select: { id: true, lexorank: true },
       order: { lexorank: 'ASC' },
     });
+
 
 
     const newLexorank = Lexorank.getMidpoint(prevTask.lexorank, nextTask?.lexorank || '');

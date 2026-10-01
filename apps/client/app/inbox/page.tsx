@@ -1,10 +1,27 @@
-import DndKanban from "@/components/(home)/dnd-kanban";
+"use client";
 
-// TODO: fetch the projectId from the user
+import * as React from "react";
+import DndKanban from "@/components/(home)/dnd-kanban";
+import { useAuth } from "@/providers/AuthProvider";
+
 export default function InboxPage() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <main className="flex-1 min-h-0 min-w-0 h-full flex flex-col overflow-hidden">
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground text-sm">
+            You must be logged in to view this page.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="overflow-x-hidden min-h-0 h-full min-w-0 flex flex-col">
-      <DndKanban projectId="9da6157d-8d63-4470-bcdd-f2b5c9064b10" />
+    <main className="flex-1 min-h-0 min-w-0 h-full flex flex-col overflow-hidden">
+      <DndKanban projectId={user.defaultProjectId} />
     </main>
   );
 }

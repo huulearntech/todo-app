@@ -7,7 +7,6 @@ export const userService = {
   },
 
   async updateUserProfile(userProfileDto: UpdateUserDto) {
-    // TODO: how to handle error?
-    await apiClient.patch(`/users/me`, userProfileDto);
+    return apiClient.patch<UserResponseDto>(`/users/me`, userProfileDto);
   }
 };

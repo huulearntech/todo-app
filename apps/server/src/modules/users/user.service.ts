@@ -59,38 +59,6 @@ export class UserService {
     return result.affected !== 0;
   }
 
-  async findByEmailIncludePassword(email: string): Promise<User | null> { // TODO: need to define stricter DTO
-    return this.userRepository.findOne({ where: { email } });
-  }
-
-  async findUserByIdWhoHasRefreshToken(userId: string, refreshToken: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: {
-        id: userId,
-        refreshTokens: {
-          token: refreshToken,
-        },
-      },
-      // select: {
-      //   id: true,
-      //   email: true,
-      //   name: true,
-      //   passwordHashed: true,
-      // },
-    });
-  }
-
-  async findByRefreshToken(refreshToken: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: {
-        refreshTokens: {
-          token: refreshToken,
-          isRevoked: false,
-        },
-      },
-    });
-  }
-
   async findById(id: string): Promise<UserResponseDto | null> {
     return this.userRepository.findOne({
       where: { id },

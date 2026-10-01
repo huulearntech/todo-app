@@ -122,3 +122,38 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom styled scrollbars for kanban board and scroll containers */
+@layer utilities {
+  .custom-kanban-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  .custom-kanban-scroll::-webkit-scrollbar {
+    height: 8px;
+    width: 6px;
+  }
+
+  .custom-kanban-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 9999px;
+  }
+
+  .custom-kanban-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 9999px;
+  }
+
+  .custom-kanban-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

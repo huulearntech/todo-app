@@ -1,67 +1,93 @@
 "use client";
 
+import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { PlusIcon, Loader2Icon } from "lucide-react";
 
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
 import { sectionService } from "@/services/section.service";
-import { createSectionSchema, SectionResponseDto, type CreateSectionDto } from "@todo/shared";
-import { toast } from "@/components/ui/toast";
+import {
+  createSectionSchema,
+  type SectionResponseDto,
+  type CreateSectionDto,
+} from "@todo/shared";
 
-import { useMutation } from "@tanstack/react-query";
+export interface AddSectionFormProps {
+  projectId: string;
+  className?: string;
+}
 
-
-export default function AddSectionForm({ projectId }: { projectId: string }) {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<CreateSectionDto>({
+export default function AddSectionForm({
+  projectId,
+  className,
+}: AddSectionFormProps) {
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+  } = useForm<CreateSectionDto>({
     resolver: zodResolver(createSectionSchema),
     defaultValues: {
       projectId,
-      name: '',
-      description: '',
+      name: "",
+      description: "",
     },
   });
+
+  const sectionName = watch("name");
 
   const addSectionMutation = useMutation({
     mutationFn: (data: CreateSectionDto) => sectionService.createSection(data),
     onMutate: async (newSection, context) => {
       await context.client.cancelQueries({ queryKey: ["sections", { projectId }] });
 
-      const previousSections = context.client.getQueryData<SectionResponseDto[]>(["sections", { projectId }]);
+      const previousSections = context.client.getQueryData<SectionResponseDto[]>([
+        "sections",
+        { projectId },
+      ]);
 
-      context.client.setQueryData(["sections", { projectId }], (oldSections: SectionResponseDto[] | undefined) => {
-        return [...(oldSections || []), newSection];
-      });
+      context.client.setQueryData(
+        ["sections", { projectId }],
+        (oldSections: SectionResponseDto[] | undefined) => [
+          ...(oldSections || []),
+          {
+            ...newSection,
+            id: `temp-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ]
+      );
 
       return { previousSections };
     },
     onError: (_err, _newSection, onMutateResult, context) => {
-      // Rollback to the previous sections if there was an error
       if (onMutateResult?.previousSections) {
-        context.client.setQueryData(["sections", { projectId }], onMutateResult.previousSections);
+        context.client.setQueryData(
+          ["sections", { projectId }],
+          onMutateResult.previousSections
+        );
       }
     },
     onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      // Invalidate the sections query to refetch the data
       context.client.invalidateQueries({ queryKey: ["sections", { projectId }] });
     },
   });
@@ -71,52 +97,98 @@ export default function AddSectionForm({ projectId }: { projectId: string }) {
       onSuccess: () => {
         toast.add({
           title: "Section created",
-          description: "The section was created successfully.",
+          description: `"${data.name}" section has been created.`,
           type: "success",
         });
+        reset({ projectId, name: "", description: "" });
       },
-      onError: () => {
+      onError: (err) => {
         toast.add({
           title: "Error creating section",
-          description: "An unexpected error occurred.",
+          description:
+            err instanceof Error ? err.message : "An unexpected error occurred.",
           type: "error",
         });
       },
-      onSettled: () => {
-        reset();
-      }
     });
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add Section</CardTitle>
-        <CardDescription>Fill in the details for the new section.</CardDescription>
+    <Card className={cn("mb-2.5 w-full bg-card shadow-xs", className)}>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <PlusIcon className="size-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">
+            Add Section
+          </span>
+        </div>
       </CardHeader>
+
       <CardContent>
         <form
           id="add-section-form"
           onSubmit={handleSubmit(onSubmit)}
+          className="space-y-3"
         >
           <FieldGroup>
             <Controller
               name="name"
               control={control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Name</FieldLabel>
-                  <Input {...field} />
-                  {errors.name && <FieldError>{errors.name.message}</FieldError>}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="space-y-1.5">
+                  <FieldLabel
+                    htmlFor="section-name"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Section Name
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="section-name"
+                    placeholder="e.g. In Review, QA..."
+                    disabled={addSectionMutation.isPending}
+                    className="h-9 rounded-lg border-border/70 text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/30"
+                  />
+                  {fieldState.error && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
                 </Field>
               )}
             />
           </FieldGroup>
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={addSectionMutation.isPending || !sectionName?.trim()}
+              className="flex-1 h-8 rounded-lg text-xs font-semibold shadow-xs"
+            >
+              {addSectionMutation.isPending ? (
+                <>
+                  <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
+                  Adding Section...
+                </>
+              ) : (
+                "Add Section"
+              )}
+            </Button>
+
+            {sectionName && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={addSectionMutation.isPending}
+                onClick={() => reset({ projectId, name: "", description: "" })}
+                className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
-      <CardFooter>
-        <Button type="submit" form="add-section-form">Add Section</Button>
-      </CardFooter>
     </Card>
   );
 }

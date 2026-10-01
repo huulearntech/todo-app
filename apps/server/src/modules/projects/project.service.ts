@@ -5,6 +5,7 @@ import { Repository } from "typeorm";
 import { Project } from "./project.entity";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { User } from "../users/user.entity";
+import { ProjectFilterDto } from "./dto/project-filter.dto";
 
 
 
@@ -21,11 +22,7 @@ export class ProjectService {
     return this.projectRepository.save(project);
   }
 
-  async getProjectsByOwnerIdAndFilter(ownerId: string, filter: {
-    name?: string;
-    isDefault?: boolean; // TODO: type of filter
-  } = {}): Promise<Project[]> { // TODO: pagination
-
+  async getProjectsByOwnerIdAndFilter(ownerId: string, filter: ProjectFilterDto): Promise<Project[]> { // TODO: pagination
     return this.projectRepository.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.query('SET LOCAL pg_trgm.similarity_threshold = 0.2;');
 

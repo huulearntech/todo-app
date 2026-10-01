@@ -5,7 +5,6 @@ import { useRef, useState } from "react"
 import {
   EventCalendar,
   type EventCalendarApi,
-  type EventCalendarRenderEventProps,
 } from "@/components/reui/event-calendar/event-calendar"
 import { EventCalendarContent } from "@/components/reui/event-calendar/event-calendar-content"
 import {
@@ -14,10 +13,8 @@ import {
 } from "@/components/reui/event-calendar/event-calendar-nav"
 import type {
   CalendarEvent,
-  CalendarView,
   EventCalendarInteractions,
   EventCalendarProposedUpdate,
-  EventCalendarResource,
   EventCalendarViewSettings,
 } from "@/components/reui/event-calendar/event-calendar-types"
 import { addDays } from "date-fns"
@@ -66,9 +63,7 @@ const DEFAULT_SETTINGS: DemoSettings = {
   timeZoneId: "local",
 }
 
-export function TempEventCalendar() {
-  const projectId = "9da6157d-8d63-4470-bcdd-f2b5c9064b10";
-
+export function TempEventCalendar({ projectId }: { projectId: string }) {
   const setAddTaskDialogOpen  = useAddTaskDialogStore((state) => state.setDialogIsOpen);
   const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
   const setTaskBeingEdited    = useEditTaskDialogStore((state) => state.setTask);
@@ -89,6 +84,7 @@ export function TempEventCalendar() {
           allDay: !task.timeRange, // If no timeRange, consider it an all-day event.
           data: task,
           // resourceId: task.ownerId, // Assuming ownerId can be used as resourceId
+          recurrence: task.recurrence
         } as CalendarEvent<Task>;
       });
       return calendarEvents;

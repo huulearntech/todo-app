@@ -76,7 +76,11 @@ export class Task {
   @OneToMany(() => TaskOccurence, (occurence) => occurence.task)
   occurences: TaskOccurence[];
 
-  @OneToOne(() => TaskRecurrence, (recurrence) => recurrence.task, { cascade: true, onDelete: "CASCADE", nullable: true })
+  @OneToOne(() => TaskRecurrence, {
+    cascade: ['insert', 'update'],
+    onDelete: "SET NULL",
+    nullable: true
+  })
   @JoinColumn({ name: 'recurrence_id' })
   recurrence: TaskRecurrence | null;
 }

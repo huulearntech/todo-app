@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { taskService } from "@/services/task.service";
-import TaskItemListView from "@/components/(home)/task-card";
+import TaskCard from "@/components/(home)/task-card";
 
 export default function TempTaskList({ labelId }: { labelId: string }) {
   const { data: tasks = [], isLoading, error } = useQuery({
@@ -25,7 +25,7 @@ export default function TempTaskList({ labelId }: { labelId: string }) {
   return (
     <ul className="flex flex-col gap-2.5">
       {tasks.map((task) => (
-        <TaskItemListView key={task.id} task={task} />
+        <TaskCard key={task.id} task={task} />
       ))}
     </ul>
   );

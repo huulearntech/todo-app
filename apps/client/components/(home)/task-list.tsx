@@ -7,7 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskService } from "@/services/task.service";
-import TaskItemListView from "@/components/(home)/task-card";
+import TaskCard from "@/components/(home)/task-card";
 import { useAuth } from "@/providers/AuthProvider";
 
 export default function TaskList() {
@@ -32,7 +32,7 @@ export default function TaskList() {
   return (
     <ul className="flex flex-col gap-2.5">
       {tasks.map((task) => (
-        <TaskItemListView key={task.id} task={task} />
+        <TaskCard key={task.id} task={task} />
       ))}
     </ul>
   );

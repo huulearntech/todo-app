@@ -19,11 +19,14 @@ export class SectionController {
 
   @Patch(":id/reorder")
   async updateSectionOrder(
-    // @CurrentUser() user: JwtUser,
+    @CurrentUser() user: JwtUser,
     @Param("id") id: string,
     @Body("prevId") prevId: string | null,
   ) {
-    // TODO: verify user has permission to reorder sections in this project.
-    await this.sectionService.updateSectionOrder({ id, prevId });
+    await this.sectionService.updateSectionOrder({
+      ownerId: user.id,
+      id,
+      prevId
+    });
   }
 }

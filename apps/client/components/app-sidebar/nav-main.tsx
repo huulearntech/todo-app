@@ -1,20 +1,20 @@
 "use client"
 
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import {
   InboxIcon,
   TagsIcon,
   CalendarDaysIcon,
-  HomeIcon
+  HomeIcon,
 } from "lucide-react"
 
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import Link from "next/link"
 
 const items = [
   {
@@ -37,21 +37,32 @@ const items = [
     url: "/labels",
     icon: TagsIcon,
   },
-];
+]
 
 export function NavMain() {
+  const pathname = usePathname()
+
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-      <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton render={<Link href={item.url} />}>
-              <item.icon />
-              <span>{item.name}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+    <SidebarGroup className="p-0">
+      <SidebarMenu className="gap-0.5">
+        {items.map((item) => {
+          const isActive =
+            pathname === item.url ||
+            (item.url !== "/" && pathname.startsWith(item.url))
+
+          return (
+            <SidebarMenuItem key={item.name}>
+              <SidebarMenuButton
+                isActive={isActive}
+                tooltip={item.name}
+                render={<Link href={item.url} />}
+              >
+                <item.icon className="size-4 shrink-0" />
+                <span>{item.name}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

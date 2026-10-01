@@ -18,7 +18,8 @@ export const sectionService = {
   },
 
   getSectionById: async (id: string) => {
-    return apiClient.get<SectionResponseDto>(`/sections/${id}`);
+    const result = await apiClient.get<SectionResponseDto>(`/sections/${id}`);
+    return result.data;
   },
 
   updateSection: async (id: string, updateSectionDto: UpdateSectionDto) => {

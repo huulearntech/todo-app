@@ -27,7 +27,7 @@ export class ProjectController {
   @Get("me")
   async getMyProjects(
     @CurrentUser() user: JwtUser,
-    @Query() filter?: ProjectFilterDto
+    @Query() filter: ProjectFilterDto = {}
   ) {
     return this.projectService.getProjectsByOwnerIdAndFilter(user.id, filter);
   }
@@ -52,9 +52,10 @@ export class ProjectController {
     @CurrentUser() user: JwtUser,
     @Param("id") projectId: string
   ) {
-    return this.sectionService.getSectionsByProjectId({
-      ownerId: user.id,
-      projectId
-    });
+    // return this.sectionService.getSectionsByProjectId({
+    //   ownerId: user.id,
+    //   projectId
+    // });
+    return this.sectionService.getMySections(user.id, { projectId });
   }
 }

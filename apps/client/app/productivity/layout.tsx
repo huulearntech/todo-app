@@ -1,21 +1,18 @@
 import Header from "@/components/header";
-import Footer from "@/components/footer";
-
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Productivity",
-  description: "Boost your productivity with our tools and resources.",
+  description: "Boost your productivity with your task completion insights.",
 };
 
 export default function ProductivityLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex w-full min-h-screen flex-1 flex-col items-stretch justify-start">
+    <div className="flex w-full min-h-screen flex-1 flex-col items-stretch justify-start bg-background text-foreground">
       <Header />
-      <main className="flex flex-1 w-full flex-col items-center bg-white dark:bg-black sm:items-center justify-center">
+      <main className="flex-1 w-full flex flex-col items-center justify-start p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
         {children}
       </main>
-      {/* <Footer /> */}
     </div>
   );
 }

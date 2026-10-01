@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { TaskPriority } from "../../enums/task-priority.enum.js";
+import { cursorPaginationSchema } from "./cursor-pagination.schema.js";
+import { rruleSchema } from "./rrule.schema.js";
 
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -43,10 +45,14 @@ export const taskFilterSchema = z.object({
     // Nếu không truyền gì, trả về undefined
     if (value === undefined || value === null) return undefined;
     // Nếu client chỉ truyền 1 phần tử, URL query đôi khi biến nó thành string thay vì array
-    if (typeof value === 'string') return [value]; 
+    if (typeof value === 'string') return [value];
     return value;
   }, z.uuid().array()),
-}).partial();
+})
+  .extend({
+    pagination: cursorPaginationSchema
+  })
+  .partial();
 
 export type TaskFilterDto = z.infer<typeof taskFilterSchema>;
 
@@ -73,6 +79,7 @@ export const taskResponseSchema = z.object({
     // name: z.string(),
   }).array(),
   completedAt: z.iso.datetime().nullable(),
+  recurrence: rruleSchema.nullable(),
 });
 
 export type TaskResponseDto = z.infer<typeof taskResponseSchema>;

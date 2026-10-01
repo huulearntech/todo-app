@@ -1,16 +1,24 @@
+import * as React from "react";
 import Header from "@/components/header";
-import Footer from "@/components/footer";
 
-// TODO: metadata
+export const metadata = {
+  title: "Profile Settings - Todo",
+  description: "Manage your personal profile, avatar, and account preferences.",
+};
 
-export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+export default function ProfileLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex h-full w-full flex-1 flex-col items-stretch justify-start">
+    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
       <Header />
-      <main className="flex flex-1 w-full flex-col items-center bg-white dark:bg-black sm:items-center justify-center">
-        {children}
+      <main className="flex-1 w-full overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+          {children}
+        </div>
       </main>
-      {/* <Footer /> */}
     </div>
   );
 }
