@@ -106,17 +106,17 @@ export default function Dialog_EditLabel({
 
   return (
     <Dialog open={!!label} onOpenChange={(open) => {
-      if(!open) setLabel(null);
+      if (!open) setLabel(null);
     }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{label.name}</DialogTitle>
+          <DialogTitle>Edit Label</DialogTitle>
           <DialogDescription>
-            {label.description}
+            Update the name and description of this label.
           </DialogDescription>
         </DialogHeader>
         <form
-          id="add-task-label-form"
+          id="edit-task-label-form"
           onSubmit={handleSubmit(onSubmit)}
         >
           <FieldGroup>
@@ -125,8 +125,8 @@ export default function Dialog_EditLabel({
               control={control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="name">Name</FieldLabel>
-                  <Input id="name" {...field} />
+                  <FieldLabel htmlFor="edit-name">Name</FieldLabel>
+                  <Input id="edit-name" {...field} />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
@@ -136,19 +136,19 @@ export default function Dialog_EditLabel({
               control={control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="description">Description</FieldLabel>
-                  <Input id="description" {...field} />
+                  <FieldLabel htmlFor="edit-description">Description</FieldLabel>
+                  <Input id="edit-description" {...field} />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
             />
           </FieldGroup>
         </form>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setLabel(null)}>
+        <DialogFooter className="gap-2">
+          <Button type="button" variant="outline" onClick={() => setLabel(null)} className="rounded-lg">
             Cancel
-            </Button>
-          <Button type="submit" form="add-task-label-form">Save</Button>
+          </Button>
+          <Button type="submit" form="edit-task-label-form" className="rounded-lg">Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

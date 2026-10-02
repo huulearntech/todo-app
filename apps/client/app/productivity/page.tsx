@@ -9,7 +9,7 @@ export default function DailyProductivityPage() {
   const userName = user?.name || user?.email?.split("@")[0] || "there";
 
   return (
-    <div className="w-full flex flex-col gap-6 py-2">
+    <div className="w-full flex flex-col gap-6 py-2 pb-12">
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
         <div>

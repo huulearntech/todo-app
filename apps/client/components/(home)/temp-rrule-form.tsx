@@ -1,8 +1,8 @@
+// TODO: This code is too shitty. Need to rewrite it anyway
 "use client";
 
-import * as React from "react";
-import { useState, useEffect, useId, useMemo, useCallback, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useEffect, useId, useRef } from "react";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   RecurrenceFrequency,
@@ -193,182 +193,38 @@ export default function TempRRuleForm({
 }: RRuleFormProps) {
   const formId = useId();
 
-  // Termination mode: never | count | until
-  const initialEndType = useMemo<"never" | "count" | "until">(() => {
-    if (value?.count !== undefined && value.count > 0) return "count";
-    if (value?.until !== undefined && value.until.length > 0) return "until";
-    return "never";
-  }, [value]);
-
-  // Pattern mode for Monthly/Yearly: monthday | weekday
-  const initialDayPattern = useMemo<"monthday" | "weekday">(() => {
-    if (
-      value?.byWeekday &&
-      value.byWeekday.length > 0 &&
-      value.byWeekday[0].ordinal !== undefined
-    ) {
-      return "weekday";
-    }
-    return "monthday";
-  }, [value]);
-
-  const [endType, setEndType] = useState<"never" | "count" | "until">(initialEndType);
-  const [dayPattern, setDayPattern] = useState<"monthday" | "weekday">(initialDayPattern);
-
-  const [selectedMonthDay, setSelectedMonthDay] = useState<number>(
-    value?.byMonthDay?.[0] ?? 1
-  );
-  const [selectedOrdinal, setSelectedOrdinal] = useState<number>(
-    value?.byWeekday?.[0]?.ordinal ?? 1
-  );
-  const [selectedOrdinalDay, setSelectedOrdinalDay] = useState<Weekday>(
-    value?.byWeekday?.[0]?.day ?? Weekday.MO
-  );
-
   const {
     control,
     handleSubmit,
-    watch,
     setValue,
-    reset,
+    watch,
     formState: { errors },
   } = useForm<RRule>({
     resolver: zodResolver(rruleSchema),
-    defaultValues: createDefaultRRule(value),
+    values: createDefaultRRule(value),
   });
 
-  // Keep form synchronized when external value prop changes
-  const lastValuePropRef = useRef(value);
-  useEffect(() => {
-    if (JSON.stringify(lastValuePropRef.current) !== JSON.stringify(value)) {
-      lastValuePropRef.current = value;
-      reset(createDefaultRRule(value));
-      setEndType(initialEndType);
-      setDayPattern(initialDayPattern);
-    }
-  }, [value, reset, initialEndType, initialDayPattern]);
+  // Keep latest onChange callback in a ref to avoid effect re-subscriptions
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
-  // Subscribe to form changes without triggering effect loops
   useEffect(() => {
     const subscription = watch((formValues) => {
-      if (onChange) {
-        onChange(formValues as RRule);
-      }
+      onChangeRef.current?.(formValues as RRule);
     });
     return () => subscription.unsubscribe();
-  }, [watch, onChange]);
+  }, [watch]);
 
-  const watchedValues = watch();
-  const freq = watchedValues.freq;
-  const currentInterval = watchedValues.interval ?? 1;
+  // Single subscription to form state for reactive rendering
+  const formValues = useWatch({ control });
+  const { freq = RecurrenceFrequency.DAILY, interval = 1, byWeekday, byMonthDay, count, until } = formValues;
 
-  const applyMonthPattern = useCallback(
-    (
-      pattern: "monthday" | "weekday",
-      monthDay: number,
-      ordinal: number,
-      weekday: Weekday
-    ) => {
-      if (pattern === "monthday") {
-        setValue("byMonthDay", [monthDay], { shouldValidate: true, shouldDirty: true });
-        setValue("byWeekday", undefined, { shouldValidate: true, shouldDirty: true });
-      } else {
-        setValue("byMonthDay", undefined, { shouldValidate: true, shouldDirty: true });
-        setValue("byWeekday", [{ day: weekday, ordinal }], {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-      }
-    },
-    [setValue]
-  );
+  const endType: "never" | "count" | "until" = count ? "count" : until ? "until" : "never";
+  const isWeekdayPattern = Boolean(byWeekday?.[0]?.ordinal !== undefined);
 
-  const handleFrequencyChange = useCallback(
-    (newFreq: RecurrenceFrequency) => {
-      setValue("freq", newFreq, { shouldValidate: true, shouldDirty: true });
-
-      if (newFreq === RecurrenceFrequency.DAILY) {
-        setValue("byWeekday", undefined, { shouldValidate: true });
-        setValue("byMonthDay", undefined, { shouldValidate: true });
-        setValue("byMonth", undefined, { shouldValidate: true });
-      } else if (newFreq === RecurrenceFrequency.WEEKLY) {
-        setValue("byMonthDay", undefined, { shouldValidate: true });
-        setValue("byMonth", undefined, { shouldValidate: true });
-        if (!watchedValues.byWeekday || watchedValues.byWeekday.length === 0) {
-          setValue("byWeekday", [{ day: Weekday.MO }], { shouldValidate: true });
-        } else {
-          setValue(
-            "byWeekday",
-            watchedValues.byWeekday.map((w) => ({ day: w.day })),
-            { shouldValidate: true }
-          );
-        }
-      } else if (newFreq === RecurrenceFrequency.MONTHLY) {
-        setValue("byMonth", undefined, { shouldValidate: true });
-        applyMonthPattern(dayPattern, selectedMonthDay, selectedOrdinal, selectedOrdinalDay);
-      } else if (newFreq === RecurrenceFrequency.YEARLY) {
-        if (!watchedValues.byMonth || watchedValues.byMonth.length === 0) {
-          setValue("byMonth", [1], { shouldValidate: true });
-        }
-        applyMonthPattern(dayPattern, selectedMonthDay, selectedOrdinal, selectedOrdinalDay);
-      }
-    },
-    [
-      setValue,
-      watchedValues.byWeekday,
-      watchedValues.byMonth,
-      dayPattern,
-      selectedMonthDay,
-      selectedOrdinal,
-      selectedOrdinalDay,
-      applyMonthPattern,
-    ]
-  );
-
-  const handleEndTypeChange = useCallback(
-    (type: "never" | "count" | "until") => {
-      setEndType(type);
-      if (type === "never") {
-        setValue("count", undefined, { shouldValidate: true, shouldDirty: true });
-        setValue("until", undefined, { shouldValidate: true, shouldDirty: true });
-      } else if (type === "count") {
-        setValue("until", undefined, { shouldValidate: true, shouldDirty: true });
-        setValue("count", 10, { shouldValidate: true, shouldDirty: true });
-      } else if (type === "until") {
-        setValue("count", undefined, { shouldValidate: true, shouldDirty: true });
-        const oneMonthLater = endOfDay(addMonths(new Date(), 1));
-        setValue("until", oneMonthLater.toISOString(), {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-      }
-    },
-    [setValue]
-  );
-
-  const humanSummary = useMemo(() => describeRRule(watchedValues), [watchedValues]);
-
-  const onFormSubmit = (data: RRule) => {
-    if (externalOnSubmit) {
-      externalOnSubmit(data);
-    }
-  };
-
-  const intervalUnit = useMemo(() => {
-    const isPlural = currentInterval > 1;
-    switch (freq) {
-      case RecurrenceFrequency.DAILY:
-        return isPlural ? "days" : "day";
-      case RecurrenceFrequency.WEEKLY:
-        return isPlural ? "weeks" : "week";
-      case RecurrenceFrequency.MONTHLY:
-        return isPlural ? "months" : "month";
-      case RecurrenceFrequency.YEARLY:
-        return isPlural ? "years" : "year";
-      default:
-        return "intervals";
-    }
-  }, [freq, currentInterval]);
+  const monthDay = byMonthDay?.[0] ?? 1;
+  const ordinal = byWeekday?.[0]?.ordinal ?? 1;
+  const ordinalDay = byWeekday?.[0]?.day ?? Weekday.MO;
 
   return (
     <div
@@ -388,88 +244,68 @@ export default function TempRRuleForm({
           </h3>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed pt-1">
-          {humanSummary}
+          {describeRRule(formValues as Partial<RRule>)}
         </p>
       </div>
 
-      <form id={formId} onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+      <form id={formId} onSubmit={handleSubmit((data) => externalOnSubmit?.(data))} className="space-y-5">
         <FieldGroup className="space-y-5">
-          {/* Frequency & Interval Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">
-            <Controller
-              name="freq"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="space-y-1.5">
-                  <FieldLabel
-                    htmlFor={`${formId}-frequency`}
-                    className="text-xs font-semibold text-muted-foreground"
-                  >
-                    Frequency
-                  </FieldLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(val) => {
-                      if (!val) return;
-                      handleFrequencyChange(val as RecurrenceFrequency);
-                    }}
-                  >
-                    <SelectTrigger
-                      id={`${formId}-frequency`}
-                      className="h-9 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
-                    >
-                      <SelectValue placeholder="Select frequency" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value={RecurrenceFrequency.DAILY} className="text-xs">
-                        Daily
-                      </SelectItem>
-                      <SelectItem value={RecurrenceFrequency.WEEKLY} className="text-xs">
-                        Weekly
-                      </SelectItem>
-                      <SelectItem value={RecurrenceFrequency.MONTHLY} className="text-xs">
-                        Monthly
-                      </SelectItem>
-                      <SelectItem value={RecurrenceFrequency.YEARLY} className="text-xs">
-                        Yearly
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-
+          {/* Interval & Frequency Row: "Every [ 1 ] [ Day(s) / Week(s) ... ]" */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Every</span>
             <Controller
               name="interval"
               control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="space-y-1.5">
-                  <FieldLabel
-                    htmlFor={`${formId}-interval`}
-                    className="text-xs font-semibold text-muted-foreground"
+              render={({ field }) => (
+                <Input
+                  id={`${formId}-interval`}
+                  type="number"
+                  min={1}
+                  max={53}
+                  value={field.value ?? 1}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10);
+                    field.onChange(isNaN(parsed) || parsed < 1 ? 1 : parsed);
+                  }}
+                  className="h-9 w-20 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
+                />
+              )}
+            />
+            <Controller
+              name="freq"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(val) => {
+                    const newFreq = val as RecurrenceFrequency;
+                    field.onChange(newFreq);
+                    if (newFreq === RecurrenceFrequency.WEEKLY && !byWeekday?.length) {
+                      setValue("byWeekday", [{ day: Weekday.MO }]);
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    id={`${formId}-frequency`}
+                    className="h-9 w-32 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
                   >
-                    Every
-                  </FieldLabel>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id={`${formId}-interval`}
-                      type="number"
-                      min={1}
-                      max={999}
-                      value={field.value ?? 1}
-                      onChange={(e) => {
-                        const parsed = parseInt(e.target.value, 10);
-                        field.onChange(isNaN(parsed) || parsed < 1 ? 1 : parsed);
-                      }}
-                      className="h-9 w-20 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
-                    />
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {intervalUnit}
-                    </span>
-                  </div>
-                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                </Field>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value={RecurrenceFrequency.DAILY} className="text-xs">
+                      {interval > 1 ? "days" : "day"}
+                    </SelectItem>
+                    <SelectItem value={RecurrenceFrequency.WEEKLY} className="text-xs">
+                      {interval > 1 ? "weeks" : "week"}
+                    </SelectItem>
+                    <SelectItem value={RecurrenceFrequency.MONTHLY} className="text-xs">
+                      {interval > 1 ? "months" : "month"}
+                    </SelectItem>
+                    <SelectItem value={RecurrenceFrequency.YEARLY} className="text-xs">
+                      {interval > 1 ? "years" : "year"}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               )}
             />
           </div>
@@ -483,14 +319,12 @@ export default function TempRRuleForm({
                 const selectedDays = (field.value || []).map((w) => w.day);
 
                 const toggleDay = (day: Weekday) => {
-                  let newDays: { day: Weekday }[];
                   if (selectedDays.includes(day)) {
                     if (selectedDays.length === 1) return;
-                    newDays = field.value!.filter((item) => item.day !== day);
+                    field.onChange(field.value!.filter((item) => item.day !== day));
                   } else {
-                    newDays = [...(field.value || []), { day }];
+                    field.onChange([...(field.value || []), { day }]);
                   }
-                  field.onChange(newDays);
                 };
 
                 return (
@@ -549,10 +383,7 @@ export default function TempRRuleForm({
                   </FieldLabel>
                   <Select
                     value={String(field.value?.[0] ?? 1)}
-                    onValueChange={(val) => {
-                      if (!val) return;
-                      field.onChange([parseInt(val, 10)]);
-                    }}
+                    onValueChange={(val) => val && field.onChange([parseInt(val, 10)])}
                   >
                     <SelectTrigger
                       id={`${formId}-month`}
@@ -583,16 +414,15 @@ export default function TempRRuleForm({
                 </span>
 
                 <RadioGroup
-                  value={dayPattern}
-                  onValueChange={(val) => {
-                    const pattern = val as "monthday" | "weekday";
-                    setDayPattern(pattern);
-                    applyMonthPattern(
-                      pattern,
-                      selectedMonthDay,
-                      selectedOrdinal,
-                      selectedOrdinalDay
-                    );
+                  value={isWeekdayPattern ? "weekday" : "monthday"}
+                  onValueChange={(pattern) => {
+                    if (pattern === "monthday") {
+                      setValue("byMonthDay", [monthDay]);
+                      setValue("byWeekday", undefined);
+                    } else {
+                      setValue("byWeekday", [{ day: ordinalDay, ordinal }]);
+                      setValue("byMonthDay", undefined);
+                    }
                   }}
                   className="gap-3"
                   aria-label="Recurrence monthly pattern"
@@ -607,19 +437,9 @@ export default function TempRRuleForm({
                       On day
                     </Label>
                     <Select
-                      value={String(selectedMonthDay)}
-                      disabled={dayPattern !== "monthday"}
-                      onValueChange={(val) => {
-                        if (!val) return;
-                        const parsed = parseInt(val, 10);
-                        setSelectedMonthDay(parsed);
-                        applyMonthPattern(
-                          "monthday",
-                          parsed,
-                          selectedOrdinal,
-                          selectedOrdinalDay
-                        );
-                      }}
+                      value={String(monthDay)}
+                      disabled={isWeekdayPattern}
+                      onValueChange={(val) => val && setValue("byMonthDay", [parseInt(val, 10)])}
                     >
                       <SelectTrigger className="h-8 w-20 rounded-lg border-border/60 bg-background/80 text-xs font-medium">
                         <SelectValue />
@@ -644,19 +464,11 @@ export default function TempRRuleForm({
                       On the
                     </Label>
                     <Select
-                      value={String(selectedOrdinal)}
-                      disabled={dayPattern !== "weekday"}
-                      onValueChange={(val) => {
-                        if (!val) return;
-                        const parsed = parseInt(val, 10);
-                        setSelectedOrdinal(parsed);
-                        applyMonthPattern(
-                          "weekday",
-                          selectedMonthDay,
-                          parsed,
-                          selectedOrdinalDay
-                        );
-                      }}
+                      value={String(ordinal)}
+                      disabled={!isWeekdayPattern}
+                      onValueChange={(val) =>
+                        val && setValue("byWeekday", [{ day: ordinalDay, ordinal: parseInt(val, 10) }])
+                      }
                     >
                       <SelectTrigger className="h-8 w-24 rounded-lg border-border/60 bg-background/80 text-xs font-medium">
                         <SelectValue />
@@ -671,19 +483,11 @@ export default function TempRRuleForm({
                     </Select>
 
                     <Select
-                      value={selectedOrdinalDay}
-                      disabled={dayPattern !== "weekday"}
-                      onValueChange={(val) => {
-                        if (!val) return;
-                        const day = val as Weekday;
-                        setSelectedOrdinalDay(day);
-                        applyMonthPattern(
-                          "weekday",
-                          selectedMonthDay,
-                          selectedOrdinal,
-                          day
-                        );
-                      }}
+                      value={ordinalDay}
+                      disabled={!isWeekdayPattern}
+                      onValueChange={(val) =>
+                        setValue("byWeekday", [{ day: val as Weekday, ordinal }])
+                      }
                     >
                       <SelectTrigger className="h-8 w-28 rounded-lg border-border/60 bg-background/80 text-xs font-medium">
                         <SelectValue />
@@ -709,9 +513,20 @@ export default function TempRRuleForm({
 
             <RadioGroup
               value={endType}
-              onValueChange={(val) =>
-                handleEndTypeChange(val as "never" | "count" | "until")
-              }
+              onValueChange={(val) => {
+                if (val === "never") {
+                  setValue("count", undefined);
+                  setValue("until", undefined);
+                } else if (val === "count") {
+                  setValue("until", undefined);
+                  setValue("count", count ?? 10);
+                } else if (val === "until") {
+                  setValue("count", undefined);
+                  if (!until) {
+                    setValue("until", endOfDay(addMonths(new Date(), 1)).toISOString());
+                  }
+                }
+              }}
               className="gap-3"
               aria-label="Recurrence ends condition"
             >
@@ -746,7 +561,10 @@ export default function TempRRuleForm({
                       disabled={endType !== "count"}
                       value={field.value ?? 10}
                       onFocus={() => {
-                        if (endType !== "count") handleEndTypeChange("count");
+                        if (endType !== "count") {
+                          setValue("until", undefined);
+                          field.onChange(field.value ?? 10);
+                        }
                       }}
                       onChange={(e) => {
                         const parsed = parseInt(e.target.value, 10);
@@ -784,7 +602,12 @@ export default function TempRRuleForm({
                               variant="outline"
                               disabled={endType !== "until"}
                               onClick={() => {
-                                if (endType !== "until") handleEndTypeChange("until");
+                                if (endType !== "until") {
+                                  setValue("count", undefined);
+                                  if (!field.value) {
+                                    field.onChange(endOfDay(addMonths(new Date(), 1)).toISOString());
+                                  }
+                                }
                               }}
                               className={cn(
                                 "h-8 justify-start text-left font-normal text-xs rounded-lg px-2.5",

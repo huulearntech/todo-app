@@ -64,9 +64,9 @@ const DEFAULT_SETTINGS: DemoSettings = {
 }
 
 export function TempEventCalendar({ projectId }: { projectId: string }) {
-  const setAddTaskDialogOpen  = useAddTaskDialogStore((state) => state.setDialogIsOpen);
+  const setAddTaskDialogOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
   const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
-  const setTaskBeingEdited    = useEditTaskDialogStore((state) => state.setTask);
+  const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
 
   const { data: events = [] } = useQuery({
     queryKey: ["tasks", { projectId }],
@@ -94,12 +94,12 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
   // Optimistic update mutation for updating an event
   const updateEventMutation = useMutation({
     mutationFn: (updated: EventCalendarProposedUpdate<Task>) => {
-      const { start, end, event: { title, data }} = updated;
+      const { start, end, event: { title, data } } = updated;
       if (!data) {
         throw new Error("Event data is missing for the updated event.");
       }
 
-      // NOTE: The ReUI calendar use TZDate and it will cause serious shit here
+      // NOTE: The ReUI calendar uses TZDate and it will cause serious shit here
       // if you don't convert it back to Date object before calling ".toISOString()".
       // So this is a workaround for now until we fix the shittiness of Javascript wrapper over wrapper libraries.
       const startStr = new Date(start).toISOString();
@@ -127,9 +127,9 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
           oldTasks?.map((task) =>
             task.id === updated.event.id
               ? {
-                  ...task,
-                  timeRange: { start: updated.start.toISOString(), end: updated.end.toISOString() },
-                }
+                ...task,
+                timeRange: { start: updated.start.toISOString(), end: updated.end.toISOString() },
+              }
               : task
           ) || []
         );
@@ -148,7 +148,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
       context.client.invalidateQueries({ queryKey: ["tasks", { projectId }] });
     },
   });
-    
+
 
   // TODO: might want to display event with no due date as all-day event.
   const apiRef = useRef<EventCalendarApi<Task> | null>(null)
@@ -158,55 +158,55 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
     setSettings((current) => ({ ...current, ...partial }))
 
   return (
-      <Card className="w-full py-0">
-        <CardContent className="p-0">
-          <EventCalendar
-            events={events}
-            defaultView="week"
-            views={["month", "week", "day"]}
-            apiRef={apiRef}
-            viewSettings={settings.viewSettings}
-            onViewSettingsChange={(viewSettings) => patch({ viewSettings })}
-            interactions={settings.interactions}
-            onInteractionsChange={(interactions) => patch({ interactions })}
-            weekStartsOn={1}
-            interval={settings.interval}
-            snapDuration={settings.snapDuration}
-            eventTooltip={settings.eventTooltip}
-            showDayAddButton={settings.showDayAddButton}
-            offDays
-            className="h-[640px] w-full"
-            onSlotClick={(slot) => {
-              if (apiRef.current) {
-                apiRef.current.setView("day");
-                apiRef.current.goTo(slot.date);
-              }
-            }}
-            onEventClick={(occurence) => {
-              if (!occurence.event.data) {
-                console.error("Event data is missing for the clicked event:", occurence.event);
-                return;
-              }
+    <Card className="w-full py-0">
+      <CardContent className="p-0">
+        <EventCalendar
+          events={events}
+          defaultView="week"
+          views={["month", "week", "day"]}
+          apiRef={apiRef}
+          viewSettings={settings.viewSettings}
+          onViewSettingsChange={(viewSettings) => patch({ viewSettings })}
+          interactions={settings.interactions}
+          onInteractionsChange={(interactions) => patch({ interactions })}
+          weekStartsOn={1}
+          interval={settings.interval}
+          snapDuration={settings.snapDuration}
+          eventTooltip={settings.eventTooltip}
+          showDayAddButton={settings.showDayAddButton}
+          offDays
+          className="h-[640px] w-full"
+          onSlotClick={(slot) => {
+            if (apiRef.current) {
+              apiRef.current.setView("day");
+              apiRef.current.goTo(slot.date);
+            }
+          }}
+          onEventClick={(occurence) => {
+            if (!occurence.event.data) {
+              console.error("Event data is missing for the clicked event:", occurence.event);
+              return;
+            }
 
-              setEditTaskDialogOpen(true);
-              setTaskBeingEdited(occurence.event.data);
-            }}
-            onEventUpdate={(update) => {
-              updateEventMutation.mutate(update);
-            }}
-          >
-            <div className="flex flex-wrap items-center gap-2 pe-2">
-              <EventCalendarNav className="min-w-0 flex-1" />
-              <EventCalendarToolbar>
-                <Button size="sm" onClick={() => setAddTaskDialogOpen(true)}>
-                  <PlusIcon  className="size-4" aria-hidden="true" />
-                  New task
-                </Button>
-              </EventCalendarToolbar>
-            </div>
-            <EventCalendarContent />
-          </EventCalendar>
-        </CardContent>
-      </Card>
+            setEditTaskDialogOpen(true);
+            setTaskBeingEdited(occurence.event.data);
+          }}
+          onEventUpdate={(update) => {
+            updateEventMutation.mutate(update);
+          }}
+        >
+          <div className="flex flex-wrap items-center gap-2 pe-2">
+            <EventCalendarNav className="min-w-0 flex-1" />
+            <EventCalendarToolbar>
+              <Button size="sm" onClick={() => setAddTaskDialogOpen(true)}>
+                <PlusIcon className="size-4" aria-hidden="true" />
+                New task
+              </Button>
+            </EventCalendarToolbar>
+          </div>
+          <EventCalendarContent />
+        </EventCalendar>
+      </CardContent>
+    </Card>
   )
 }

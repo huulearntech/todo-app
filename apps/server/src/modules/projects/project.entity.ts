@@ -17,12 +17,12 @@ export class Project {
   description?: string;
 
   @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt!: Date;                       
-                                          
+  createdAt!: Date;
+
   @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt!: Date;
 
-  @Column({ type: 'uuid', name: 'owner_id' }) // NOTE: This is the ID of the owner who created the project. How to name it?
+  @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;
 
   @ManyToOne(() => User, user => user.projects, { onDelete: 'CASCADE' })

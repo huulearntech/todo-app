@@ -1,20 +1,20 @@
 import Header from "@/components/header";
-import Footer from "@/components/footer";
 import type { Metadata } from "next";
-
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex w-full min-h-screen flex-1 flex-col items-stretch justify-start">
-      <Header />
-      <main className="flex flex-1 w-full flex-col items-center bg-white dark:bg-black sm:items-center justify-center">
-        {children}
-      </main>
-      {/* <Footer /> */}
-    </div>
-  );
-}
 
 export const metadata: Metadata = {
   title: "Labels",
   description: "Manage your task labels.",
 };
+
+export default function LabelsLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden bg-background text-foreground">
+      <Header />
+      <main className="flex-1 w-full overflow-y-auto min-h-0">
+        <div className="mx-auto flex flex-col items-center justify-start w-full max-w-4xl p-4 sm:p-6 md:p-8">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}

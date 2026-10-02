@@ -18,11 +18,11 @@ export class TaskService {
     @InjectRepository(Section) private readonly sectionRepository: Repository<Section>
   ) { }
 
-  async createTask(ownerId: string, createTaskDto: CreateTaskDto): Promise<Task> {
+  async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
     // NOTE: This may introduce a race condition.
     const taskHasHighestLexorank = await this.taskRepository.findOne({
       where: { sectionId: createTaskDto.sectionId },
-      select: { id: true, lexorank: true },
+      select: { lexorank: true },
       order: { lexorank: 'DESC' },
     });
 
@@ -56,7 +56,7 @@ export class TaskService {
           { projectId, ownerId }
         )
         .leftJoin('task.recurrence', 'recurrence')
-      
+
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title })
         queryBuilder.orderBy('similarity(task.title, :title)', 'DESC')
@@ -100,7 +100,7 @@ export class TaskService {
         .innerJoin('task.section', 'section')
         .innerJoin('section.project', 'project')
         .andWhere('project.ownerId = :ownerId', { ownerId })
-      
+
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title })
         queryBuilder.orderBy('similarity(task.title, :title)', 'DESC')

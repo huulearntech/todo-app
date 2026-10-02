@@ -10,29 +10,29 @@ import { Project } from '../projects/project.entity';
 @Index(['projectId', 'name'], { unique: true }) // Ensure that each project can only have one section with a given name
 export class Section {
   @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  id: string;
 
-  @Column({ type: 'uuid', name: 'project_id' }) // NOTE: This is the ID of the project to which this section belongs
-  projectId!: string;
+  @Column({ type: 'uuid', name: 'project_id' })
+  projectId: string;
 
   @Column()
-  name!: string;
+  name: string;
 
   @Column({ type: 'text', nullable: true })
-  description!: string | null;
+  description: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt!: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt!: Date;
+  updatedAt: Date;
 
   @ManyToOne(() => Project, project => project.sections, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
-  project!: Project;
+  project: Project;
 
   @OneToMany(() => Task, task => task.section, { cascade: true })
-  tasks!: Task[];
+  tasks: Task[];
 
   // TODO: need to factor this out
   @Index()

@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { useState } from "react"
 import Link from "next/link"
 import {
   User2Icon,
@@ -24,6 +24,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -34,6 +44,7 @@ import { useAuth } from "@/providers/AuthProvider"
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, signOut } = useAuth()
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
 
   if (!user) {
     return null
@@ -56,76 +67,99 @@ export function NavUser() {
   const initials = getInitials(user.name, user.email)
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={(props) => (
-              <SidebarMenuButton
-                {...props}
-                size="lg"
-                tooltip={user.name || user.email}
-                className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2"
-              />
-            )}
-          >
-            <Avatar className="size-8 rounded-lg shrink-0">
-              <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name || "User avatar"} />
-              <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-medium text-sidebar-foreground">{user.name}</span>
-              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-            </div>
-            <ChevronsUpDownIcon className="ml-auto size-4 text-muted-foreground shrink-0 group-data-[collapsible=icon]:hidden" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl p-1 shadow-md border-border/60"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={6}
-          >
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2.5 px-2.5 py-2 text-left text-sm rounded-lg bg-sidebar-accent/50">
-                  <Avatar className="size-8 rounded-lg shrink-0">
-                    <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name || "User avatar"} />
-                    <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs font-medium">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium text-foreground">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+    <>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={(props) => (
+                <SidebarMenuButton
+                  {...props}
+                  size="lg"
+                  tooltip={user.name || user.email}
+                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2"
+                />
+              )}
+            >
+              <Avatar className="size-8 rounded-lg shrink-0">
+                <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name || "User avatar"} />
+                <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-medium text-sidebar-foreground">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              </div>
+              <ChevronsUpDownIcon className="ml-auto size-4 text-muted-foreground shrink-0 group-data-[collapsible=icon]:hidden" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl p-1 shadow-md border-border/60"
+              side={isMobile ? "bottom" : "right"}
+              align="end"
+              sideOffset={6}
+            >
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2.5 px-2.5 py-2 text-left text-sm rounded-lg bg-sidebar-accent/50">
+                    <Avatar className="size-8 rounded-lg shrink-0">
+                      <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name || "User avatar"} />
+                      <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium text-foreground">{user.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                    </div>
                   </div>
-                </div>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="my-1 bg-border/50" />
-            <DropdownMenuGroup className="space-y-0.5">
-              <DropdownMenuItem render={<Link href="/profile" />} className="rounded-lg gap-2 cursor-pointer">
-                <User2Icon className="size-4 text-muted-foreground" />
-                <span>Profile</span>
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator className="my-1 bg-border/50" />
+              <DropdownMenuGroup className="space-y-0.5">
+                <DropdownMenuItem render={<Link href="/profile" />} className="rounded-lg gap-2 cursor-pointer">
+                  <User2Icon className="size-4 text-muted-foreground" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem render={<Link href="/productivity" />} className="rounded-lg gap-2 cursor-pointer">
+                  <TargetIcon className="size-4 text-muted-foreground" />
+                  <span>Productivity</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator className="my-1 bg-border/50" />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setShowSignOutDialog(true)}
+                className="rounded-lg gap-2 cursor-pointer"
+              >
+                <LogOutIcon className="size-4" />
+                <span>Sign Out</span>
               </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href="/productivity" />} className="rounded-lg gap-2 cursor-pointer">
-                <TargetIcon className="size-4 text-muted-foreground" />
-                <span>Productivity</span>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="my-1 bg-border/50" />
-            <DropdownMenuItem
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your account? You will need to sign in again to access your tasks and projects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
+            <AlertDialogAction
               variant="destructive"
               onClick={() => signOut()}
-              className="rounded-lg gap-2 cursor-pointer"
+              className="rounded-lg"
             >
-              <LogOutIcon className="size-4" />
-              <span>Sign Out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

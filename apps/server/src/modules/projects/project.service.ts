@@ -14,10 +14,10 @@ export class ProjectService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>
-  ) {}
+  ) { }
 
   async createProject(ownerId: string, createProjectDto: CreateProjectDto): Promise<Project> {
-    const { name, description } = createProjectDto; // NOTE: avoid any changes afterwards from breaking this
+    const { name, description } = createProjectDto;
     const project = this.projectRepository.create({ ownerId, name, description });
     return this.projectRepository.save(project);
   }

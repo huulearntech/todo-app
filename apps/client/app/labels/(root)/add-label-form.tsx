@@ -94,14 +94,19 @@ export default function Dialog_AddLabel() {
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
-        <Plus />
-      </DialogTrigger>
+      <DialogTrigger
+        render={(props) => (
+          <Button {...props} className="gap-2 rounded-lg font-medium shrink-0">
+            <Plus className="size-4" />
+            <span>Add Label</span>
+          </Button>
+        )}
+      />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Label</DialogTitle>
           <DialogDescription>
-            Fill in the details below to create a new label.
+            Fill in the details below to create a new task label.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -115,7 +120,7 @@ export default function Dialog_AddLabel() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="name">Name</FieldLabel>
-                  <Input id="name" {...field} />
+                  <Input id="name" placeholder="e.g. Bug, Feature, Urgent" {...field} />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
@@ -125,19 +130,19 @@ export default function Dialog_AddLabel() {
               control={control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="description">Description</FieldLabel>
-                  <Input id="description" {...field} />
+                  <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
+                  <Input id="description" placeholder="Brief description of this label" {...field} />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
             />
           </FieldGroup>
         </form>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => reset()}>Reset</Button>
-          <Button type="submit" form="add-task-label-form" disabled={isLoading}>
+        <DialogFooter className="gap-2">
+          <Button type="button" variant="outline" onClick={() => reset()} className="rounded-lg">Reset</Button>
+          <Button type="submit" form="add-task-label-form" disabled={isLoading} className="rounded-lg">
             <Loader2Icon className={`mr-2 h-4 w-4 animate-spin ${isLoading ? "inline-block" : "hidden"}`} />
-            {isLoading ?  "Creating..." : "Create Label" }
+            {isLoading ? "Creating..." : "Create Label"}
           </Button>
         </DialogFooter>
       </DialogContent>

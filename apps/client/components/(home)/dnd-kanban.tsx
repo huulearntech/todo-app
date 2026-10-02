@@ -33,6 +33,7 @@ import { AddTaskFormTrigger } from "./add-task-form"
 
 import AddSectionForm from "../../app/projects/add-section-form";
 import { projectService } from "@/services/project.service"
+import { Skeleton } from "../ui/skeleton"
 
 interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -104,7 +105,7 @@ function DndKanban({ projectId }: { projectId: string }) {
     queryKey: ["tasks", { projectId }],
     queryFn: () => taskService.getTasksByProjectId(projectId),
   });
-  
+
   const { data: sections, isLoading: sectionsLoading } = useQuery({
     queryKey: ["sections", { projectId }],
     queryFn: () => projectService.getSectionsByProjectId(projectId),
@@ -137,7 +138,7 @@ function DndKanban({ projectId }: { projectId: string }) {
     }) => {
       await taskService.updateTaskOrder({ taskId, prevId, sectionId });
     },
-    onMutate: async ({}, context) => {
+    onMutate: async ({ }, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] })
       const previousTasks = context.client.getQueryData<Task[]>(["tasks", { projectId }])
       return { previousTasks }
@@ -197,7 +198,7 @@ function DndKanban({ projectId }: { projectId: string }) {
   })
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return <KanbanBoardSkeleton />
   }
 
   return (
@@ -248,14 +249,14 @@ function DndKanban({ projectId }: { projectId: string }) {
         }}
         getItemValue={(item) => item.id}
       >
-        <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4 items-start pb-6">
+        <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4 pb-6">
           {Object.entries(columns).map(([sectionId, tasks]) => (
-              <TaskColumn
-                key={sectionId}
-                value={sectionId}
-                title={sections?.find((s) => s.id === sectionId)?.name}
-                tasks={tasks}
-              />
+            <TaskColumn
+              key={sectionId}
+              value={sectionId}
+              title={sections?.find((s) => s.id === sectionId)?.name}
+              tasks={tasks}
+            />
           ))}
 
           <div data-slot="kanban-column">
@@ -265,6 +266,26 @@ function DndKanban({ projectId }: { projectId: string }) {
         <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
       </Kanban>
     </section>
+  )
+}
+
+function KanbanBoardSkeleton() {
+  return (
+    <div className="flex gap-4">
+      {[1, 2, 3].map((index) => (
+        <Card key={index} className="w-80 shrink-0 border border-border/60 bg-card/70 rounded-2xl p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-5 w-32 rounded-lg" />
+            <Skeleton className="h-5 w-8 rounded-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+          </div>
+        </Card>
+      ))}
+    </div>
   )
 }
 
