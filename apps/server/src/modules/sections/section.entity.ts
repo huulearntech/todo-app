@@ -1,5 +1,3 @@
-// NOTE: think about the unique constraint on default project to user? How it relates to this default section to project?
-
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, Unique, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 import { Task } from '../tasks/entities/task.entity';

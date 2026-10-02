@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import DndKanban from "@/components/(home)/dnd-kanban";
 import { useAuth } from "@/providers/AuthProvider";
 

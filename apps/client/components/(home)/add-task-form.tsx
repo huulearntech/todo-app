@@ -11,12 +11,22 @@ import { toast } from "@/components/ui/toast";
 import { taskService } from "@/services/task.service";
 import { sectionService } from "@/services/section.service";
 import { projectService } from "@/services/project.service";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { TaskResponseDto as Task } from "@todo/shared";
 import {
   createTaskSchemaDefaultValues,
   type CreateTaskOutput,
 } from "@todo/shared/browser";
+
+
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+
 import { FolderIcon, LayersIcon, Plus } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
@@ -28,13 +38,12 @@ export function AddTaskFormTrigger({ sectionId }: { sectionId: string }) {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       onClick={() => {
         setDialogIsOpen(true);
         setSectionId(sectionId);
       }}
-      className="w-full h-8 text-xs font-medium border-dashed border-border/70 bg-transparent hover:bg-background/80 text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1.5 rounded-lg transition-colors"
-    >
+      className="text-xs font-medium text-muted-foreground hover:text-foreground">
       <Plus className="size-3.5" />
       Add Task
     </Button>
@@ -46,8 +55,6 @@ export default function AddTaskDialog() {
   const sectionId = useAddTaskDialogStore((state) => state.sectionId);
   const dialogIsOpen = useAddTaskDialogStore((state) => state.dialogIsOpen);
   const setDialogIsOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
-
-  const queryClient = useQueryClient();
 
   // Fetch section and project details to show Todoist breadcrumbs in header
   const { data: section } = useQuery({
@@ -67,10 +74,12 @@ export default function AddTaskDialog() {
     onMutate: async (newTask, context) => {
       await context.client.cancelQueries({ queryKey: ["tasks"] });
 
-      const previousTasks = queryClient.getQueryData<Task[]>(["tasks"]);
+      const previousTasks = context.client.getQueryData<Task[]>(["tasks"]);
 
       context.client.setQueryData<Task[]>(["tasks"], (oldTasks) => {
         if (!oldTasks) return [newTask as Task];
+        // FIX: Fuck it, the AI again patches code with some bullshit
+        // and I'll find myself dumb as fuck in the future with these kind of subtle bugs
         return [...oldTasks, { ...newTask, id: `temp-${Date.now()}` } as Task];
       });
 
@@ -111,9 +120,11 @@ export default function AddTaskDialog() {
     <Dialog open={dialogIsOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[840px] max-h-[90vh] sm:max-h-[calc(100vh-3rem)] p-0 gap-0 overflow-hidden rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-2xl flex flex-col">
         {/* Header Breadcrumb Banner */}
+        {/* Why does these AI like to decorate using some redundant bullshit that does not mean
+          * any damn thing to the user?
+          */}
         <DialogHeader className="flex flex-row items-center justify-between border-b border-border/40 px-5 py-3 space-y-0 bg-muted/20 shrink-0">
-          <div className="flex items-center gap-2 text-xs font-medium min-w-0">
-            <span className="size-2 rounded-full bg-primary shrink-0" />
+          {/* <div className="flex items-center gap-2 text-xs font-medium min-w-0">
             <div className="flex items-center gap-1.5 truncate">
               {project ? (
                 <>
@@ -135,7 +146,24 @@ export default function AddTaskDialog() {
                 <span className="text-foreground font-semibold">New Task</span>
               )}
             </div>
-          </div>
+          </div> */}
+
+          <Breadcrumb>
+            <BreadcrumbList className="text-xs">
+              <BreadcrumbItem>
+                <span className="font-semibold text-foreground truncate max-w-[150px]">
+                  {project?.name || "TODO: Fix AI bullshit"}
+                </span>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="truncate max-w-[150px]">
+                  {section?.name || "TODO: Fix AI bullshit"}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <DialogTitle className="sr-only">Add Task</DialogTitle>
         </DialogHeader>
 

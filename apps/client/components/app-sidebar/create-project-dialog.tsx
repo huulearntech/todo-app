@@ -53,8 +53,6 @@ export default function CreateProjectDialog() {
         description: "Your project has been created successfully.",
         type: "success",
       });
-      reset();
-      setDialogOpen(false);
     },
     onError: (error) => {
       toast.add({
@@ -63,6 +61,10 @@ export default function CreateProjectDialog() {
         type: "error",
       });
     },
+    onSettled: () => {
+      reset();
+      setDialogOpen(false);
+    }
   });
 
   const onSubmit = (data: CreateProjectDto) => createProjectMutation.mutate(data);

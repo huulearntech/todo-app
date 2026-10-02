@@ -242,10 +242,10 @@ export default function TempCompletedStackedBarChart() {
           <div>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <CalendarIcon className="size-4 text-muted-foreground" />
-              7-Day Task Completion Breakdown
+              7-Day Task Completion
             </CardTitle>
             <CardDescription>
-              Tasks completed over the past 7 days (excluding today), grouped by top projects.
+              Tasks completed over the past 7 days
             </CardDescription>
           </div>
         </CardHeader>

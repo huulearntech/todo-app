@@ -1,7 +1,7 @@
 import {
-  RRule,
+  type RRule,
   Weekday,
-} from "@todo/shared"
+} from "../schemas/backend/rrule.schema.js"
 import { TZDate } from "@date-fns/tz"
 
 export const WEEKDAYS: Weekday[] = [

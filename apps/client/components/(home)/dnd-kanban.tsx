@@ -89,8 +89,6 @@ function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProp
                 isOverlay={isOverlay}
               />
             ))}
-            {/* <AddTaskDialog sectionId={value} /> */}
-
             <AddTaskFormTrigger sectionId={value} />
           </KanbanColumnContent>
         </CardContent>

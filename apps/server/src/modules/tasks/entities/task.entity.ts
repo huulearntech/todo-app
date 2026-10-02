@@ -1,19 +1,37 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn, OneToMany, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Index,
+  ManyToMany,
+  JoinTable,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 import { TaskLabel } from '../../task-labels/task-label.entity';
 import { Section } from '../../sections/section.entity';
 
-import { TaskPriority } from "@todo/shared";
+import { TaskPriority } from '@todo/shared';
 
 import { TaskOccurence } from '../entities/task-occurence.entity';
 import { TaskRecurrence } from '../entities/task-recurrence.entity';
-import { TstzRange, TstzRangeTransformer } from '../../../common/transformers/tstzrange.transformer';
-
+import {
+  TstzRange,
+  TstzRangeTransformer,
+} from '../../../common/transformers/tstzrange.transformer';
 
 // TODO: Lexorank: Implement Lexorank reordering cronjob
 
 // TODO: add feature streak of days that meet the goal of completing tasks.
 
 @Entity('tasks')
+@Index('tasks_section_lexorank_uq', ['sectionId', 'lexorank'], {
+  unique: true,
+})
 export class Task {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -28,7 +46,12 @@ export class Task {
   @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt: Date;
 
-  @Column({ type: 'timestamptz', precision: 3, name: 'completed_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    precision: 3,
+    name: 'completed_at',
+    nullable: true,
+  })
   completedAt: Date | null; // NOTE: null for incomplete tasks, timestamptz for completed tasks
 
   @Column({
@@ -55,21 +78,19 @@ export class Task {
   @Column({ type: 'uuid', name: 'section_id' })
   sectionId: string;
 
-  @ManyToOne(() => Section, section => section.tasks, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Section, (section) => section.tasks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'section_id' })
   section: Section;
-
 
   @ManyToMany(() => TaskLabel, (taskLabel) => taskLabel.id)
   @JoinTable({
     name: 'task_to_task_labels',
     joinColumn: { name: 'task_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'task_label_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'task_label_id', referencedColumnName: 'id' },
   })
   labels: TaskLabel[];
 
   // TODO: may factor this out to reuse in sections or other entities.
-  @Index()
   @Column({ type: 'varchar', length: 255, nullable: false })
   lexorank: string;
 
@@ -78,8 +99,8 @@ export class Task {
 
   @OneToOne(() => TaskRecurrence, {
     cascade: ['insert', 'update'],
-    onDelete: "SET NULL",
-    nullable: true
+    onDelete: 'SET NULL',
+    nullable: true,
   })
   @JoinColumn({ name: 'recurrence_id' })
   recurrence: TaskRecurrence | null;

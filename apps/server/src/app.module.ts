@@ -18,9 +18,9 @@ import { ProjectModule } from './modules/projects/project.module';
 import { SectionModule } from './modules/sections/section.module';
 // import { MailerModule } from './modules/mailer/mailer.module';
 
-
 import { ZodValidationPipe } from 'nestjs-zod';
 
+import { migrations } from './migrations';
 
 @Module({
   imports: [
@@ -30,6 +30,8 @@ import { ZodValidationPipe } from 'nestjs-zod';
         url: process.env.DATABASE_URL,
         autoLoadEntities: true,
         synchronize: true, // set to false in production to avoid data loss!
+        migrations,
+        migrationsRun: true,
       }),
     }),
 
@@ -54,7 +56,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
     {
       provide: APP_PIPE,
       useClass: ZodValidationPipe, // Global validation pipe for DTOs
-    }
+    },
   ],
 })
 export class AppModule {}

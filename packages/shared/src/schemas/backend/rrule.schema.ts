@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { WEEKDAYS } from "../../utils/recurrence.util.js"
 
 export enum Weekday {
   MO = "MO",
@@ -33,14 +32,14 @@ const monthDaySchema = z.int()
 // NOTE: look at file apps/client/components/reui/event-calendar/event-calendar-types.tsx for the original typescript interface for this schema
 // TODO: need more work on this
 export const rruleSchema = z.object({
-  freq:       z.enum(RecurrenceFrequency),
-  interval:   z.int().positive().optional(),
-  count:      z.int().positive().optional(),
-  until:      z.iso.datetime({ offset: true }).optional(),
-  byWeekday:  weekdaySchema.array().optional(),
+  freq: z.enum(RecurrenceFrequency),
+  interval: z.int().positive().optional(),
+  count: z.int().positive().optional(),
+  until: z.iso.datetime({ offset: true }).optional(),
+  byWeekday: weekdaySchema.array().optional(),
   byMonthDay: monthDaySchema.array().optional(),
-  byMonth:    z.int().min(1).max(12).array().optional(),
-  weekStart:  z.enum(Weekday).optional(),
+  byMonth: z.int().min(1).max(12).array().optional(),
+  weekStart: z.enum(Weekday).optional(),
   // exDates:    z.array(z.date()).optional(),
   // rDates:     z.array(z.date()).optional()
 }).superRefine((value, ctx) => {
@@ -52,7 +51,7 @@ export const rruleSchema = z.object({
       message: 'COUNT and UNTIL cannot be used together.',
     });
   }
-  
+
   // Numeric BYDAY is meaningful for MONTHLY/YEARLY in the subset
   // we're exposing through the application.
   const hasOrdinalByWeekday = value.byWeekday?.some((weekday) => 'ordinal' in weekday && weekday.ordinal !== undefined);

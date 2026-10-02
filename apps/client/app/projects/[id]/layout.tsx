@@ -1,5 +1,6 @@
-import Header from "@/components/header";
-import Footer from "@/components/footer";
+import { Suspense } from "react";
+import ProjectHeader from "./project-header";
+import { ProjectViewProvider } from "./project-view-context";
 
 import type { Metadata, ResolvingMetadata } from 'next'
 import { projectService } from "@/services/project.service";
@@ -28,13 +29,17 @@ export async function generateMetadata(params: Promise<{ id: string }>): Promise
   }
 }
 
-export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+export default function ProjectLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden">
-      <Header />
-      <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
-        {children}
-      </div>
-    </div>
+    <Suspense>
+      <ProjectViewProvider>
+        <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden">
+          <ProjectHeader />
+          <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
+            {children}
+          </div>
+        </div>
+      </ProjectViewProvider>
+    </Suspense>
   );
 }

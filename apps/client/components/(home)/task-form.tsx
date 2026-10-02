@@ -102,40 +102,21 @@ export function TaskForm({
   const {
     control,
     handleSubmit,
-    watch,
-    reset,
     formState: { isSubmitting },
   } = useForm<CreateTaskInput, unknown, CreateTaskOutput>({
     resolver: zodResolver(createTaskSchema),
     defaultValues,
   });
 
-  // Keep form in sync when defaultValues change (e.g. switching selected task/section)
-  useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
-
-  const currentPriority = watch("priority");
-  const currentLabels = watch("labels") || [];
-  const currentTimeRange = watch("timeRange");
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault();
-      handleSubmit(onSubmit)();
-    }
-  };
-
   return (
     <form
       id="task-form"
       onSubmit={handleSubmit(onSubmit)}
-      onKeyDown={handleKeyDown}
       className="flex flex-col flex-1 min-h-0 overflow-hidden"
     >
       {/* Main Body Grid */}
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] flex-1 min-h-0 divide-y md:divide-y-0 md:divide-x divide-border/40 overflow-hidden">
-        {/* Left Column: Title, Description & Quick Chips */}
+        {/* Left Column: Title, Description */}
         <div className="p-5 md:p-6 flex flex-col space-y-4 overflow-y-auto custom-kanban-scroll flex-1">
           <Controller
             name="title"
@@ -170,57 +151,11 @@ export function TaskForm({
             )}
           />
 
-          {/* Quick Info Badges Preview Bar */}
-          <div className="pt-3 border-t border-border/30 flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-            {currentPriority && (
-              <div
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border font-medium text-xs transition-colors",
-                  priorityConfig[currentPriority as keyof typeof priorityConfig]?.badge ||
-                    "bg-muted text-muted-foreground"
-                )}
-              >
-                <FlagIcon
-                  className={cn(
-                    "size-3.5",
-                    priorityConfig[currentPriority as keyof typeof priorityConfig]?.color
-                  )}
-                />
-                <span>
-                  {priorityConfig[currentPriority as keyof typeof priorityConfig]?.label ||
-                    currentPriority}{" "}
-                  Priority
-                </span>
-              </div>
-            )}
-
-            {currentTimeRange && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary font-medium text-xs">
-                <CalendarRangeIcon className="size-3.5" />
-                <span>
-                  {currentTimeRange.start.date} {currentTimeRange.start.time}
-                </span>
-              </div>
-            )}
-
-            {currentLabels.length > 0 && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium text-xs">
-                <TagIcon className="size-3.5" />
-                <span>
-                  {currentLabels.length} {currentLabels.length === 1 ? "label" : "labels"}
-                </span>
-              </div>
-            )}
-          </div>
+          {/* TODO: add comment?? */}
         </div>
 
         {/* Right Sidebar: Attributes Controls */}
         <aside className="p-5 bg-muted/20 dark:bg-muted/10 overflow-y-auto custom-kanban-scroll space-y-5">
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 pb-1 border-b border-border/30">
-            <SparklesIcon className="size-3.5 text-primary/70" />
-            <span>Attributes</span>
-          </div>
-
           <FieldGroup className="space-y-4">
             {/* Priority Selector */}
             <Controller
@@ -436,15 +371,7 @@ export function TaskForm({
       </div>
 
       {/* Footer Actions Bar */}
-      <div className="border-t border-border/40 px-5 py-3 bg-muted/20 flex items-center justify-between gap-3 shrink-0">
-        <p className="text-xs text-muted-foreground hidden sm:block">
-          Press{" "}
-          <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border border-border/50">
-            ⌘ Enter
-          </kbd>{" "}
-          to save quickly
-        </p>
-
+      <div className="border-t border-border/40 px-5 py-3 bg-muted/20 flex items-center justify-end gap-3 shrink-0">
         <div className="flex items-center gap-2 ml-auto">
           <Button
             type="button"
@@ -457,6 +384,7 @@ export function TaskForm({
           </Button>
           <Button
             type="submit"
+            form="task-form"
             size="sm"
             disabled={isSubmitting || isPending}
             className="rounded-xl h-8 text-xs font-semibold px-4 shadow-sm"
