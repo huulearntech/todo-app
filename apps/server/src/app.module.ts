@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_PIPE } from '@nestjs/core';
-
-// import { BullModule } from '@nestjs/bullmq';
+import { BullModule } from '@nestjs/bullmq';
 
 import { AppConfigModule } from './config/config.module';
+import { TypedConfigService } from './config/typed-config.service';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,7 +17,7 @@ import { TaskLabelModule } from './modules/task-labels/task-label.module';
 import { ProjectModule } from './modules/projects/project.module';
 import { SectionModule } from './modules/sections/section.module';
 import { ColorModule } from './modules/colors/color.module';
-// import { MailerModule } from './modules/mailer/mailer.module';
+import { MailerModule } from './modules/mailer/mailer.module';
 
 import { ZodValidationPipe } from 'nestjs-zod';
 
@@ -36,6 +36,18 @@ import { migrations } from './migrations';
       }),
     }),
 
+    BullModule.forRootAsync({
+      imports: [AppConfigModule],
+      useFactory: (configService: TypedConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST') || 'localhost',
+          port: configService.get('REDIS_PORT') || 6379,
+          password: configService.get('REDIS_PASSWORD') || undefined,
+        },
+      }),
+      inject: [TypedConfigService],
+    }),
+
     AuthModule,
     TaskModule,
     TaskLabelModule,
@@ -43,21 +55,16 @@ import { migrations } from './migrations';
     SectionModule,
     ColorModule,
     UserModule,
-    // MailerModule,
-    ImageStorageModule.register(), // Register the ImageStorageModule with its dynamic configuration
-
-    // ConfigModule.forRoot({
-    //   validate,
-    //   isGlobal: true, // makes ConfigModule available globally without needing to import it in other modules
-    // }),
-    AppConfigModule, // Wrapper module for ConfigModule with validation, set as global
+    MailerModule,
+    ImageStorageModule.register(),
+    AppConfigModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_PIPE,
-      useClass: ZodValidationPipe, // Global validation pipe for DTOs
+      useClass: ZodValidationPipe,
     },
   ],
 })

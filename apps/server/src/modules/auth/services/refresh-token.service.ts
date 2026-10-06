@@ -1,12 +1,12 @@
+import * as crypto from 'crypto';
+
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { MoreThan, Repository } from 'typeorm';
 
-import { RefreshToken } from './entities/refresh-token.entity';
-
-import * as crypto from 'crypto';
-import { TypedConfigService } from '../../config/typed-config.service';
+import { RefreshToken } from '../entities/refresh-token.entity';
+import { TypedConfigService } from '@config/typed-config.service';
 
 // NOTE: This does not handle the case where a user has multiple refresh tokens (e.g., from different devices). In a real-world application, you might want to associate refresh tokens with specific devices or sessions and handle them accordingly.
 @Injectable()

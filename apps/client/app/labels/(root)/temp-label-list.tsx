@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { taskLabelService } from "@/services/task-label.service";
@@ -8,7 +8,6 @@ import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
 import { Badge } from "@/components/reui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -31,7 +30,6 @@ import { toast } from "@/components/ui/toast";
 
 import {
   TagIcon,
-  SearchIcon,
   MoreHorizontalIcon,
   PencilIcon,
   Trash2Icon,
@@ -52,35 +50,97 @@ export default function TempTaskLabelList() {
 
   const [editingLabel, setEditingLabel] = useState<TaskLabel | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<TaskLabel | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter labels by search query
-  const filteredLabels = useMemo(() => {
-    if (!searchQuery.trim()) return labels;
-    const query = searchQuery.toLowerCase();
-    return labels.filter(
-      (label) =>
-        label.name.toLowerCase().includes(query) ||
-        (label.description && label.description.toLowerCase().includes(query))
-    );
-  }, [labels, searchQuery]);
-
-  console.log(filteredLabels)
+  // DO NOT FUCKING INTRODUCE BULLSHITS THAT I DID NOT ASK FOR. WHO TOLD YOU TO PUT A FUCKING SEARCH HERE? WHO?
+  // const [searchQuery, setSearchQuery] = useState("");
+  // // Filter labels by search query
+  // const filteredLabels = useMemo(() => {
+  //   if (!searchQuery.trim()) return labels;
+  //   const query = searchQuery.toLowerCase();
+  //   return labels.filter(
+  //     (label) =>
+  //       label.name.toLowerCase().includes(query) ||
+  //       (label.description && label.description.toLowerCase().includes(query))
+  //   );
+  // }, [labels, searchQuery]);
 
   const handleDeleteConfirm = async () => {
     if (!deletingLabel) return;
 
-    // TODO: Optimistic delete
-    await taskLabelService.deleteTaskLabel(deletingLabel.id);
-    queryClient.invalidateQueries({ queryKey: ["task-labels"] });
-
-    toast.add({
-      title: "Label deleted",
-      description: `"${deletingLabel.name}" was deleted successfully.`,
-      type: "success",
-    });
+    const labelToDelete = deletingLabel;
+    const targetIndex = labels.findIndex((l) => l.id === labelToDelete.id);
 
     setDeletingLabel(null);
+
+    // 1. Optimistic UI update: remove label from query cache
+    queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) =>
+      old ? old.filter((l) => l.id !== labelToDelete.id) : []
+    );
+
+    let isUndone = false;
+
+    // 2. Pending server update timeout reference
+    const deleteTimeout = setTimeout(async () => {
+      if (isUndone) return;
+      try {
+        await taskLabelService.deleteTaskLabel(labelToDelete.id);
+        queryClient.invalidateQueries({ queryKey: ["task-labels"] });
+      } catch {
+        queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
+          if (!old) return [labelToDelete];
+          if (old.some((l) => l.id === labelToDelete.id)) return old;
+          const next = [...old];
+          if (targetIndex >= 0 && targetIndex <= next.length) {
+            next.splice(targetIndex, 0, labelToDelete);
+          } else {
+            next.push(labelToDelete);
+          }
+          return next;
+        });
+        toast.add({
+          title: "Error deleting label",
+          description: `Failed to delete "${labelToDelete.name}".`,
+          type: "error",
+        });
+      }
+    }, 4000);
+
+    // 3. Show Toast with Undo Action
+    const toastId = toast.add({
+      title: "Label deleted",
+      description: `"${labelToDelete.name}" was deleted.`,
+      type: "success",
+      actionProps: {
+        children: "Undo",
+        onClick: () => {
+          isUndone = true;
+          clearTimeout(deleteTimeout);
+
+          // Restore label back into local React Query cache
+          queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
+            if (!old) return [labelToDelete];
+            if (old.some((l) => l.id === labelToDelete.id)) return old;
+            const next = [...old];
+            if (targetIndex >= 0 && targetIndex <= next.length) {
+              next.splice(targetIndex, 0, labelToDelete);
+            } else {
+              next.push(labelToDelete);
+            }
+            return next;
+          });
+
+          if (toastId) {
+            toast.close(toastId);
+          }
+
+          toast.add({
+            title: "Deletion cancelled",
+            description: `"${labelToDelete.name}" was restored.`,
+            type: "info",
+          });
+        },
+      },
+    });
   };
 
   if (isLoading) {
@@ -126,7 +186,7 @@ export default function TempTaskLabelList() {
       </div>
 
       {/* Search Input */}
-      {labels.length > 0 && (
+      {/* {labels.length > 0 && (
         <div className="relative w-full">
           <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -136,10 +196,10 @@ export default function TempTaskLabelList() {
             className="pl-9 bg-card border-border/70 rounded-xl focus-visible:ring-primary/40"
           />
         </div>
-      )}
+      )} */}
 
       {/* Label List */}
-      {filteredLabels.length === 0 ? (
+      {/* {filteredLabels.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-border/70 text-center bg-card/40 my-2">
           <div className="p-3 rounded-full bg-muted text-muted-foreground mb-3">
             <TagIcon className="size-6" />
@@ -153,9 +213,10 @@ export default function TempTaskLabelList() {
               : `No labels matched "${searchQuery}". Try a different keyword.`}
           </p>
         </div>
-      ) : (
+      ) : ( */}
         <ul className="flex flex-col gap-2.5">
-          {filteredLabels.map((label) => (
+          {/* {filteredLabels.map((label) => ( */}
+          {labels.map((label) => (
             <li key={label.id} className="group relative">
               <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-xs">
                 {/* Clickable card area leading to /labels/[id] */}
@@ -233,7 +294,7 @@ export default function TempTaskLabelList() {
             </li>
           ))}
         </ul>
-      )}
+      {/* )} */}
 
       {/* Edit Label Dialog */}
       {editingLabel && (
@@ -246,7 +307,7 @@ export default function TempTaskLabelList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Label</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <span className="font-semibold text-foreground">"{deletingLabel?.name}"</span>? Tasks tagged with this label will not be deleted.
+              Are you sure you want to delete <span className="font-semibold text-foreground">&quot;{deletingLabel?.name}&quot;</span>? Tasks tagged with this label will not be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

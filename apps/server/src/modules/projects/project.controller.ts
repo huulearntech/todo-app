@@ -1,6 +1,16 @@
-import { Body, Controller, Post, Get, Query, Param } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Query,
+  Param,
+} from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { TaskService } from '../tasks/services/task.service';
 import { TaskFilterDto } from '../tasks/dto/get-my-tasks.dto';
 import { SectionService } from '../sections/section.service';
@@ -39,6 +49,20 @@ export class ProjectController {
     return this.projectService.getProjectById(id);
   }
 
+  @Patch(':id')
+  async updateProject(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() body: UpdateProjectDto,
+  ) {
+    return this.projectService.updateProject(id, body, user.id);
+  }
+
+  @Delete(':id')
+  async deleteProject(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.projectService.deleteProject(id);
+  }
+
   @Get(':id/tasks')
   async getTasksByProjectId(
     @CurrentUser() user: JwtUser,
@@ -57,10 +81,6 @@ export class ProjectController {
     @CurrentUser() user: JwtUser,
     @Param('id') projectId: string,
   ) {
-    // return this.sectionService.getSectionsByProjectId({
-    //   ownerId: user.id,
-    //   projectId
-    // });
     return this.sectionService.getMySections(user.id, { projectId });
   }
 }

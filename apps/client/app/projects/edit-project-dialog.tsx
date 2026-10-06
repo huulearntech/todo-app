@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon, Loader2Icon } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 
 import {
   Dialog,
@@ -13,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 import {
@@ -35,26 +34,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { projectService } from "@/services/project.service";
 import { colorService } from "@/services/color.service";
-import { createProjectSchema, type CreateProjectDto } from "@todo/shared";
+import { updateProjectSchema, type UpdateProjectDto } from "@todo/shared";
+import { useEditProjectDialog } from "@/providers/EditProjectProvider";
 
-export interface AddProjectDialogProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  trigger?: React.ReactNode;
-  onSuccess?: () => void;
-}
-
-export default function AddProjectDialog({
-  open: controlledOpen,
-  onOpenChange: setControlledOpen,
-  trigger,
-  onSuccess,
-}: AddProjectDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = controlledOpen !== undefined;
-  const dialogOpen = isControlled ? controlledOpen : internalOpen;
-  const setDialogOpen = isControlled ? setControlledOpen! : setInternalOpen;
-
+// Fuck AI bullshit
+export default function EditProjectDialog() {
+  const { projectToEdit, isOpen, closeEditProjectDialog } = useEditProjectDialog();
   const queryClient = useQueryClient();
 
   const { data: colors = [] } = useQuery({
@@ -65,10 +50,9 @@ export default function AddProjectDialog({
   const {
     control,
     handleSubmit,
-    formState: { errors },
     reset,
-  } = useForm<CreateProjectDto>({
-    resolver: zodResolver(createProjectSchema),
+  } = useForm<UpdateProjectDto>({
+    resolver: zodResolver(updateProjectSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -76,66 +60,60 @@ export default function AddProjectDialog({
     },
   });
 
-  const createProjectMutation = useMutation({
-    mutationFn: (data: CreateProjectDto) => projectService.createProject(data),
+  // NOTE: WTF?
+  useEffect(() => {
+    if (projectToEdit) {
+      reset({
+        name: projectToEdit.name,
+        description: projectToEdit.description || "",
+        colorHexCode: projectToEdit.colorHexCode || "#E0E0E0",
+      });
+    }
+  }, [projectToEdit, reset]);
+
+  const updateProjectMutation = useMutation({
+    // TODO: fix this "!", because shitty AI have all the basic code wrong, I have to temporarily patch it here.
+    mutationFn: (data: UpdateProjectDto) => projectService.updateProject(projectToEdit!.id, data),
     onSuccess: (res, variables) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.add({
-        title: "Project created",
-        description: `"${variables.name}" has been created successfully.`,
+        title: "Project updated",
+        description: `"${variables.name || projectToEdit?.name}" has been updated successfully.`,
         type: "success",
       });
-      reset();
-      setDialogOpen(false);
-      onSuccess?.();
+      closeEditProjectDialog();
     },
     onError: (err) => {
       toast.add({
-        title: "Error creating project",
+        title: "Error updating project",
         description: err instanceof Error ? err.message : "An unexpected error occurred.",
         type: "error",
       });
     },
   });
 
-  const onSubmit = (data: CreateProjectDto) => {
-    createProjectMutation.mutate(data);
-  };
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      reset();
-    }
-    setDialogOpen(nextOpen);
+  const onSubmit = (data: UpdateProjectDto) => {
+    if (!projectToEdit) return;
+    updateProjectMutation.mutate({
+      ...data,
+      id: projectToEdit.id,
+    });
   };
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
-      {trigger ? (
-        <DialogTrigger render={(props) => <div {...props} className="inline-flex w-full">{trigger}</div>} />
-      ) : (
-        <DialogTrigger
-          render={(props) => (
-            <Button {...props} className="gap-2 rounded-xl font-medium shrink-0">
-              <PlusIcon className="size-4" />
-              <span>Add Project</span>
-            </Button>
-          )}
-        />
-      )}
-
+    <Dialog open={isOpen} onOpenChange={(open) => !open && closeEditProjectDialog()}>
       <DialogContent className="sm:max-w-md rounded-2xl p-6">
         <DialogHeader className="space-y-1 text-left">
           <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
-            New Project
+            Edit Project
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Create a new project to organize and manage your tasks.
+            Update project details, description, or color.
           </DialogDescription>
         </DialogHeader>
 
         <form
-          id="add-project-dialog-form"
+          id="edit-project-dialog-form"
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-4 pt-2"
         >
@@ -145,14 +123,14 @@ export default function AddProjectDialog({
               control={control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid} className="space-y-1.5">
-                  <FieldLabel htmlFor="project-name" className="text-xs font-semibold text-foreground">
+                  <FieldLabel htmlFor="edit-project-name" className="text-xs font-semibold text-foreground">
                     Project name
                   </FieldLabel>
                   <Input
                     {...field}
-                    id="project-name"
+                    id="edit-project-name"
                     placeholder="e.g. Website Redesign, Marketing"
-                    disabled={createProjectMutation.isPending}
+                    disabled={updateProjectMutation.isPending}
                     className="h-9 rounded-xl border-border/70 text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/40"
                   />
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -165,14 +143,14 @@ export default function AddProjectDialog({
               control={control}
               render={({ field, fieldState }) => (
                 <Field className="space-y-1.5">
-                  <FieldLabel htmlFor="project-description" className="text-xs font-semibold text-foreground">
+                  <FieldLabel htmlFor="edit-project-description" className="text-xs font-semibold text-foreground">
                     Description <span className="text-muted-foreground font-normal">(Optional)</span>
                   </FieldLabel>
                   <Input
                     {...field}
-                    id="project-description"
+                    id="edit-project-description"
                     placeholder="Brief description or purpose of this project..."
-                    disabled={createProjectMutation.isPending}
+                    disabled={updateProjectMutation.isPending}
                     className="h-9 rounded-xl border-border/70 text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/40"
                   />
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -189,11 +167,11 @@ export default function AddProjectDialog({
                 );
                 return (
                   <Field data-invalid={fieldState.invalid} className="space-y-1.5">
-                    <FieldLabel htmlFor="project-color" className="text-xs font-semibold text-foreground">
+                    <FieldLabel htmlFor="edit-project-color" className="text-xs font-semibold text-foreground">
                       Color
                     </FieldLabel>
                     <Select
-                      id="project-color"
+                      id="edit-project-color"
                       value={field.value}
                       onValueChange={field.onChange}
                     >
@@ -242,8 +220,8 @@ export default function AddProjectDialog({
               type="button"
               variant="outline"
               size="sm"
-              disabled={createProjectMutation.isPending}
-              onClick={() => handleOpenChange(false)}
+              disabled={updateProjectMutation.isPending}
+              onClick={closeEditProjectDialog}
               className="rounded-xl h-8 px-4 text-xs font-medium"
             >
               Cancel
@@ -251,16 +229,16 @@ export default function AddProjectDialog({
             <Button
               type="submit"
               size="sm"
-              disabled={createProjectMutation.isPending}
+              disabled={updateProjectMutation.isPending}
               className="rounded-xl h-8 px-4 text-xs font-semibold shadow-xs"
             >
-              {createProjectMutation.isPending ? (
+              {updateProjectMutation.isPending ? (
                 <>
                   <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
-                  Creating...
+                  Saving...
                 </>
               ) : (
-                "Create Project"
+                "Save Changes"
               )}
             </Button>
           </DialogFooter>

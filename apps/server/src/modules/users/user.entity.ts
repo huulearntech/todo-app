@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { RefreshToken } from '../jwt/entities/refresh-token.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
 import { Project } from '../projects/project.entity';
 import { Color } from '../colors/color.entity';

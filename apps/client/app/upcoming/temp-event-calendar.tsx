@@ -1,11 +1,9 @@
-// TODO: Fix flickering when move task around on the calendar.
-"use client"
+"use client";
 
-import { useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   EventCalendar,
   type EventCalendarApi,
-  type EventCalendarRenderEventProps,
 } from "@/components/reui/event-calendar/event-calendar"
 import { EventCalendarContent } from "@/components/reui/event-calendar/event-calendar-content"
 import {
@@ -16,7 +14,9 @@ import type {
   CalendarEvent,
   EventCalendarInteractions,
   EventCalendarProposedUpdate,
+  EventCalendarRecurrenceRule,
   EventCalendarViewSettings,
+  EventCalendarWeekday,
 } from "@/components/reui/event-calendar/event-calendar-types"
 import { addDays } from "date-fns"
 
@@ -37,6 +37,34 @@ const taskPriorityColorMap: Record<TaskPriority, string> = {
   low: "var(--color-blue-500)",
 }
 
+function mapTaskToCalendarEvent(task: Task): CalendarEvent<Task> {
+  const start = task.timeRange ? new Date(task.timeRange.start) : new Date();
+  const end = task.timeRange ? new Date(task.timeRange.end) : addDays(start, 1);
+
+  const recurrence: EventCalendarRecurrenceRule | undefined = task.recurrence
+    ? {
+        ...task.recurrence,
+        until: task.recurrence.until ? new Date(task.recurrence.until) : undefined,
+        byWeekday: task.recurrence.byWeekday?.map((w) =>
+          w.ordinal !== undefined
+            ? { day: w.day as EventCalendarWeekday, ordinal: w.ordinal }
+            : (w.day as EventCalendarWeekday)
+        ),
+        weekStart: task.recurrence.weekStart as EventCalendarWeekday | undefined,
+      }
+    : undefined;
+
+  return {
+    id: task.id,
+    title: task.title,
+    start,
+    end,
+    allDay: !task.timeRange,
+    color: task.priority ? taskPriorityColorMap[task.priority] : undefined,
+    data: task,
+    recurrence,
+  };
+}
 
 /** Everything the settings panel drives, as one resettable object. */
 interface DemoSettings {
@@ -77,29 +105,29 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
   const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
   const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
 
-  const { data: events = [] } = useQuery({
+  const apiRef = useRef<EventCalendarApi<Task> | null>(null);
+  const isDragUpdatingRef = useRef(false);
+
+  const { data: tasks = [] } = useQuery({
     queryKey: ["tasks", { projectId }],
     queryFn: () => taskService.getTasksByProjectId(projectId),
-    select: (tasks) => {
-      const calendarEvents: CalendarEvent<Task>[] = tasks.map((task) => {
-        const start = task.timeRange ? new Date(task.timeRange.start) : new Date();
-        const end = task.timeRange ? new Date(task.timeRange.end) : addDays(start, 1);
-
-        return {
-          id: task.id,
-          title: task.title,
-          start,
-          end, // end of this is exclusive. This causes a bit of confusion.
-          allDay: !task.timeRange, // If no timeRange, consider it an all-day event.
-          color: task.priority ? taskPriorityColorMap[task.priority] : undefined,
-          data: task,
-          // resourceId: task.ownerId, // Assuming ownerId can be used as resourceId
-          recurrence: task.recurrence
-        } as CalendarEvent<Task>;
-      });
-      return calendarEvents;
-    },
   });
+
+  // NOTE: This part might be optimizable
+  const calendarEvents = useMemo(() => {
+    return tasks.map(mapTaskToCalendarEvent);
+  }, [tasks]);
+
+  // Synchronize external tasks (query fetch, project switch, Add/Edit dialogs) into the calendar
+  useEffect(() => {
+    if (isDragUpdatingRef.current) {
+      isDragUpdatingRef.current = false;
+      return;
+    }
+    if (apiRef.current) {
+      apiRef.current.setEvents(calendarEvents);
+    }
+  }, [calendarEvents]);
 
   // Optimistic update mutation for updating an event
   const updateEventMutation = useMutation({
@@ -109,9 +137,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
         throw new Error("Event data is missing for the updated event.");
       }
 
-      // NOTE: The ReUI calendar uses TZDate and it will cause serious shit here
-      // if you don't convert it back to Date object before calling ".toISOString()".
-      // So this is a workaround for now until we fix the shittiness of Javascript wrapper over wrapper libraries.
+      // NOTE: The ReUI calendar uses TZDate, convert to Date before toISOString()
       const startStr = new Date(start).toISOString();
       const endStr = new Date(end).toISOString();
 
@@ -127,41 +153,45 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
       return taskService.updateTask(updated.event.id, taskToUpdate);
     },
     onMutate: async (updated, context) => {
-      // Optimistically update the cache
+      const previousTasks = context.client.getQueryData<Task[]>(["tasks", { projectId }]);
+
+      const startStr = new Date(updated.start).toISOString();
+      const endStr = new Date(updated.end).toISOString();
+
+      // Synchronously update the cache to prevent any microtask lag
+      context.client.setQueryData<Task[]>(["tasks", { projectId }], (oldTasks) =>
+        oldTasks?.map((task) =>
+          task.id === updated.event.id
+            ? {
+                ...task,
+                timeRange: { start: startStr, end: endStr },
+              }
+            : task
+        ) || []
+      );
+
+      // Cancel any ongoing queries in the background without blocking cache update
       await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] });
 
-      const previousEvents = context.client.getQueryData<Task[]>(["tasks", { projectId }]);
-
-      if (previousEvents) {
-        context.client.setQueryData<Task[]>(["tasks", { projectId }], (oldTasks) =>
-          oldTasks?.map((task) =>
-            task.id === updated.event.id
-              ? {
-                ...task,
-                timeRange: { start: updated.start.toISOString(), end: updated.end.toISOString() },
-              }
-              : task
-          ) || []
-        );
-      }
-
-      return { previousEvents };
+      return { previousTasks };
+    },
+    onSuccess: (updatedTask, _variables, _onMutateResult, context) => {
+      // Sync cache with server response without triggering a full refetch
+      context.client.setQueryData<Task[]>(["tasks", { projectId }], (oldTasks) =>
+        oldTasks?.map((task) => (task.id === updatedTask.id ? updatedTask : task)) || []
+      );
     },
     onError: (_error, _updatedEvent, onMutateResult, context) => {
-      // Rollback to previous events on error
-      if (onMutateResult?.previousEvents) {
-        context.client.setQueryData<Task[]>(["tasks", { projectId }], onMutateResult.previousEvents);
+      // Rollback to previous tasks on error
+      if (onMutateResult?.previousTasks) {
+        context.client.setQueryData<Task[]>(["tasks", { projectId }], onMutateResult.previousTasks);
+        if (apiRef.current) {
+          apiRef.current.setEvents(onMutateResult.previousTasks.map(mapTaskToCalendarEvent));
+        }
       }
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      // Refetch tasks after mutation
-      context.client.invalidateQueries({ queryKey: ["tasks", { projectId }] });
     },
   });
 
-
-  // TODO: might want to display event with no due date as all-day event.
-  const apiRef = useRef<EventCalendarApi<Task> | null>(null)
   const [settings, setSettings] = useState<DemoSettings>(DEFAULT_SETTINGS)
 
   const patch = (partial: Partial<DemoSettings>) =>
@@ -171,7 +201,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
     <Card className="w-full py-0">
       <CardContent className="p-0">
         <EventCalendar
-          events={events}
+          defaultEvents={calendarEvents}
           defaultView="week"
           views={["month", "week", "day"]}
           apiRef={apiRef}
@@ -202,6 +232,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
             setTaskBeingEdited(occurence.event.data);
           }}
           onEventUpdate={(update) => {
+            isDragUpdatingRef.current = true;
             updateEventMutation.mutate(update);
           }}
         >

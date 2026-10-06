@@ -35,9 +35,11 @@ import {
   CopyIcon,
   ExternalLinkIcon,
 } from "lucide-react";
+import { useEditProjectDialog } from "@/providers/EditProjectProvider";
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const { openEditProjectDialog } = useEditProjectDialog();
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: projects = [], isLoading } = useQuery({
@@ -227,14 +229,7 @@ export default function ProjectsPage() {
                         >
                           <DropdownMenuGroup>
                             <DropdownMenuItem
-                              onClick={() => {
-                                toast.add({
-                                  title: "Edit project",
-                                  description:
-                                    "Project editing functionality will be available soon.",
-                                  type: "info",
-                                });
-                              }}
+                              onClick={() => openEditProjectDialog(project)}
                               className="gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
                             >
                               <PencilIcon className="size-3.5 text-muted-foreground" />

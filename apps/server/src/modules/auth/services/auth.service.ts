@@ -3,11 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import argon2 from 'argon2';
 
-import { SignInDto } from './dto/sign-in.dto';
-import { User } from '../users/user.entity';
+import { SignInDto } from '../dto/sign-in.dto';
+import { User } from '@/src/modules/users/user.entity';
 
-import { RefreshTokenService } from '../jwt/refresh-token.service';
-import { UserResponseDto } from '../users/dto/user.dto';
+import { RefreshTokenService } from './refresh-token.service';
+import { UserResponseDto } from '@/src/modules/users/dto/user.dto';
 
 @Injectable()
 export class AuthService {

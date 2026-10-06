@@ -6,6 +6,7 @@ import {
   ItemContent,
   ItemDescription,
   ItemFooter,
+  ItemHeader,
   ItemTitle,
 } from "@/components/ui/item"
 
@@ -20,8 +21,13 @@ import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { taskLabelService } from "@/services/task-label.service";
 import { useQuery } from "@tanstack/react-query";
+import { Checkbox } from "../ui/checkbox";
+
+import { priorityConfig } from "./task-form";
+import { cn } from "cn";
 
 function TaskCardInner({ task }: { task: Task }) {
+  // TODO: aad reminder to the task entity
   const mockTask = {
     reminder: "1 hour before",
   };
@@ -50,22 +56,33 @@ function TaskCardInner({ task }: { task: Task }) {
         setDialogIsOpen(true);
       }}
     >
-      <ItemContent className="space-y-1.5">
-        <ItemTitle className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-          {task.title}
-        </ItemTitle>
+      {/* <ItemContent> */}
+        <ItemHeader>
+          <div  className="space-y-1.5">
+          <ItemTitle className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+            {task.title}
+          </ItemTitle>
+
         {task.description && (
           <ItemDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {task.description}
           </ItemDescription>
         )}
 
+          </div>
+          <Checkbox
+            className={cn("rounded-full size-6", priorityConfig[task.priority])}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </ItemHeader>
+      {/* </ItemContent> */}
+
         <ItemFooter className="pt-1.5 [&_svg]:size-3.5 flex items-center justify-between gap-2 border-t border-border/30 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             {taskDueLocalTime && (
               <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-md">
                 <CalendarRangeIcon className="text-primary/70" />
-                <span title={taskDueLocalTime} className="text-[11px] font-medium">
+                <span title={taskDueLocalTime} className="text-xs font-medium">
                   {taskDueLocalTime}
                 </span>
               </div>
@@ -89,7 +106,7 @@ function TaskCardInner({ task }: { task: Task }) {
                   render={
                     <div className="flex items-center gap-1 text-muted-foreground bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-md">
                       <TagIcon />
-                      <span className="text-[11px] font-medium">{labels.length}</span>
+                      <span className="text-xs font-medium">{labels.length}</span>
                     </div>
                   }
                 />
@@ -107,13 +124,16 @@ function TaskCardInner({ task }: { task: Task }) {
           </div>
 
           {task.section?.project?.name && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/80 ml-auto shrink-0">
+            <div
+              className="flex items-center gap-1 text-xs ml-auto shrink-0"
+              // TODO: project color
+              // style={{ color: task.section.project.color }}
+            >
               <span className="truncate max-w-[80px] font-medium">{task.section.project.name}</span>
               <HashIcon className="size-3 opacity-60" />
             </div>
           )}
         </ItemFooter>
-      </ItemContent>
     </Item>
   );
 }

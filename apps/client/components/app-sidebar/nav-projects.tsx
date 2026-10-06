@@ -6,10 +6,9 @@ import { useQuery } from "@tanstack/react-query"
 import { projectService } from "@/services/project.service"
 
 import {
-  FolderIcon,
-  ForwardIcon,
   HashIcon,
   MoreHorizontalIcon,
+  PencilIcon,
   Trash2Icon,
 } from "lucide-react"
 
@@ -31,10 +30,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import CreateProjectDialog from "./create-project-dialog"
+import { useEditProjectDialog } from "@/providers/EditProjectProvider"
 
 export function NavProjects() {
   const { isMobile } = useSidebar()
   const pathname = usePathname()
+  const { openEditProjectDialog } = useEditProjectDialog()
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects", "non_default"],
@@ -81,7 +82,10 @@ export function NavProjects() {
                 tooltip={item.name}
                 render={<Link href={projectUrl} />}
               >
-                <HashIcon className="size-4 shrink-0 text-muted-foreground" />
+                <HashIcon
+                  className="size-4 shrink-0"
+                  style={{ color: item.colorHexCode || undefined }}
+                />
                 <span className="truncate">{item.name}</span>
               </SidebarMenuButton>
 
@@ -103,15 +107,11 @@ export function NavProjects() {
                   align={isMobile ? "end" : "start"}
                 >
                   <DropdownMenuItem
-                    render={<Link href={projectUrl} />}
+                    onClick={() => openEditProjectDialog(item)}
                     className="rounded-lg gap-2 cursor-pointer"
                   >
-                    <FolderIcon className="size-4 text-muted-foreground" />
-                    <span>View Project</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-lg gap-2 cursor-pointer">
-                    <ForwardIcon className="size-4 text-muted-foreground" />
-                    <span>Share Project</span>
+                    <PencilIcon className="size-4 text-muted-foreground" />
+                    <span>Edit Project</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="my-1 bg-border/50" />
                   <DropdownMenuItem

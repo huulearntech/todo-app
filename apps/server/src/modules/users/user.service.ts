@@ -11,11 +11,14 @@ import { Project } from '../projects/project.entity';
 import { Color } from '../colors/color.entity';
 import { DEFAULT_COLORS } from '../colors/color.service';
 
+import { MailerSchedulerService } from '../mailer/services/mailer-scheduler.service';
+
 @Injectable()
 export class UserService {
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(User) private readonly userRepository: Repository<User>,
+    private readonly mailerSchedulerService: MailerSchedulerService,
   ) {}
 
   async createUser(signUp: SignUpDto): Promise<UserResponseDto> {
@@ -34,12 +37,7 @@ export class UserService {
       async (transactionalEntityManager) => {
         const savedUser = await transactionalEntityManager.save(User, user);
 
-        await transactionalEntityManager.save(Project, {
-          id: defaultProjectId,
-          name: 'Inbox',
-          owner: savedUser,
-        });
-
+        // TODO: Consider redesign this
         const defaultColors = DEFAULT_COLORS.map((dc) =>
           transactionalEntityManager.create(Color, {
             ownerId: savedUser.id,
@@ -48,6 +46,13 @@ export class UserService {
           }),
         );
         await transactionalEntityManager.save(Color, defaultColors);
+
+        await transactionalEntityManager.save(Project, {
+          id: defaultProjectId,
+          name: 'Inbox',
+          owner: savedUser,
+          colorHexCode: '#E0E0E0',
+        });
 
         return {
           id: savedUser.id,
@@ -58,6 +63,20 @@ export class UserService {
         };
       },
     );
+
+    // Send immediate welcome email asynchronously
+    this.mailerSchedulerService
+      .sendImmediateEmail({
+        to: userResponse.email,
+        subject: 'Welcome to Todo App!',
+        templateType: 'welcome',
+        context: {
+          name: userResponse.name,
+        },
+      })
+      .catch(() => {
+        // Logging error is handled inside MailerSchedulerService/Worker
+      });
 
     return userResponse;
   }

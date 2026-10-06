@@ -4,7 +4,7 @@ import * as React from "react";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { PlusIcon, Loader2Icon } from "lucide-react";
 
 import {
@@ -23,13 +23,25 @@ import {
   FieldLabel,
   FieldError,
 } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { toast } from "@/components/ui/toast";
 import { createProjectSchema, CreateProjectDto } from "@todo/shared";
 import { projectService } from "@/services/project.service";
+import { colorService } from "@/services/color.service";
 
 export default function CreateProjectDialog() {
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const { data: colors = [] } = useQuery({
+    queryKey: ["colors"],
+    queryFn: colorService.getMyColors,
+  });
 
   const {
     control,
@@ -41,6 +53,7 @@ export default function CreateProjectDialog() {
     defaultValues: {
       name: "",
       description: "",
+      colorHexCode: "#E0E0E0",
     },
   });
 
@@ -134,6 +147,62 @@ export default function CreateProjectDialog() {
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
+          />
+
+          <Controller
+            name="colorHexCode"
+            control={control}
+            render={({ field, fieldState }) => {
+              const selectedColor = colors.find(
+                (c) => c.hexCode.toUpperCase() === field.value?.toUpperCase()
+              );
+              return (
+                <Field data-invalid={fieldState.invalid} className="space-y-1.5">
+                  <FieldLabel htmlFor="create-project-color" className="text-xs font-semibold text-foreground">
+                    Color
+                  </FieldLabel>
+                  <Select
+                    id="create-project-color"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="w-full h-9 rounded-xl border-border/70 bg-background/80 hover:bg-background transition-colors text-xs font-medium">
+                      <div className="flex items-center gap-2 w-full">
+                        <span
+                          className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
+                          style={{ backgroundColor: field.value }}
+                        />
+                        <span>{selectedColor?.name || field.value || "Select color"}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                          {field.value}
+                        </span>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false} className="rounded-xl">
+                      {colors.map((color) => (
+                        <SelectItem
+                          key={color.hexCode}
+                          value={color.hexCode}
+                          className="text-xs rounded-lg cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <span
+                              className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
+                              style={{ backgroundColor: color.hexCode }}
+                            />
+                            <span>{color.name}</span>
+                            <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                              {color.hexCode}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              );
+            }}
           />
 
           <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">

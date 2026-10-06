@@ -116,7 +116,7 @@ export default function Dialog_AddLabel() {
           </Button>
         )}
       />
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Label</DialogTitle>
           <DialogDescription>

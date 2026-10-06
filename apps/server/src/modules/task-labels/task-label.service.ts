@@ -38,10 +38,14 @@ export class TaskLabelService {
 
     let targetColor: Color | undefined;
     if (normalizedHex === '#E0E0E0') {
-      const defaultColors = await this.colorService.ensureDefaultColors(ownerId);
+      const defaultColors =
+        await this.colorService.ensureDefaultColors(ownerId);
       targetColor = defaultColors.find((c) => c.hexCode === '#E0E0E0');
     } else {
-      targetColor = await this.colorService.getColorByHexCode(ownerId, normalizedHex);
+      targetColor = await this.colorService.getColorByHexCode(
+        ownerId,
+        normalizedHex,
+      );
     }
 
     const taskLabel = this.taskLabelRepository.create({

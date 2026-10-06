@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// TODO: move to constants
 export const priorityConfig = {
   high: {
     label: "High",

@@ -9,23 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { taskService } from "@/services/task.service";
-import { sectionService } from "@/services/section.service";
-import { projectService } from "@/services/project.service";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import type { TaskResponseDto as Task } from "@todo/shared";
 import {
   createTaskSchemaDefaultValues,
   type CreateTaskOutput,
 } from "@todo/shared/browser";
-
-
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 
 import { Plus } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
@@ -56,19 +45,6 @@ export default function AddTaskDialog() {
   const dialogIsOpen = useAddTaskDialogStore((state) => state.dialogIsOpen);
   const setDialogIsOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
 
-  // Fetch section and project details to show Todoist breadcrumbs in header
-  const { data: section } = useQuery({
-    queryKey: ["section", sectionId],
-    queryFn: () => sectionService.getSectionById(sectionId!),
-    enabled: !!sectionId && dialogIsOpen,
-  });
-
-  const { data: project } = useQuery({
-    queryKey: ["project", section?.projectId],
-    queryFn: () => projectService.getProjectById(section!.projectId),
-    enabled: !!section?.projectId && dialogIsOpen,
-  });
-
   const createTaskMutation = useMutation({
     mutationFn: (newTask: CreateTaskOutput) => taskService.createTask(newTask),
     onMutate: async (newTask, context) => {
@@ -78,8 +54,6 @@ export default function AddTaskDialog() {
 
       context.client.setQueryData<Task[]>(["tasks"], (oldTasks) => {
         if (!oldTasks) return [newTask as Task];
-        // FIX: Fuck it, the AI again patches code with some bullshit
-        // and I'll find myself dumb as fuck in the future with these kind of subtle bugs
         return [...oldTasks, { ...newTask, id: `temp-${Date.now()}` } as Task];
       });
 
@@ -108,7 +82,7 @@ export default function AddTaskDialog() {
     },
   });
 
-  if (!user || !sectionId || !section || !project) {
+  if (!user || !sectionId) {
     return null;
   }
 
@@ -120,23 +94,7 @@ export default function AddTaskDialog() {
     <Dialog open={dialogIsOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[840px] max-h-[90vh] sm:max-h-[calc(100vh-3rem)] p-0 gap-0 overflow-hidden rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-2xl flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between border-b border-border/40 px-5 py-3 space-y-0 bg-muted/20 shrink-0">
-          <Breadcrumb>
-            <BreadcrumbList className="text-xs">
-              <BreadcrumbItem>
-                <span className="font-semibold text-foreground truncate max-w-[150px]">
-                  {project.name}
-                </span>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="truncate max-w-[150px]">
-                  {section.name}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-
-          <DialogTitle className="sr-only">Add Task</DialogTitle>
+          <DialogTitle className="text-sm font-semibold">Add Task</DialogTitle>
         </DialogHeader>
 
         {/* Reusable Todoist Task Form */}

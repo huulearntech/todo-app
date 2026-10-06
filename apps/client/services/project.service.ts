@@ -3,6 +3,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   SectionResponseDto,
   CreateProjectDto,
+  UpdateProjectDto,
   ProjectResponseDto,
   ProjectFilterDto,
 } from "@todo/shared";
@@ -38,8 +39,11 @@ export const projectService = {
     return result.data;
   },
 
-  updateProject: async (id: string, name: string, description?: string) => {
-    return apiClient.put<ProjectResponseDto>(`/projects/${id}`, { name, description });
+  updateProject: async (projectId: string, updateProjectDto: UpdateProjectDto) => {
+    return apiClient.patch<ProjectResponseDto>(
+      `/projects/${projectId}`,
+      updateProjectDto
+    );
   },
   deleteProject: async (id: string) => {
     return apiClient.delete(`/projects/${id}`);

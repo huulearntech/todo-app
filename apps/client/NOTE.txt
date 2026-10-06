@@ -8,3 +8,5 @@ NOTE (29 Sep 2026): Read the recurrence of event-calendar-recurrence.tsx, implem
 The DTOs sent over the wire should follow that interface.
 
 NOTE: (6 Oct 2026): the label list has a unique key problem when adding new label.
+For magic link account verification, can use sse to notify browser about verification even on a different device.
+the problem is, how to know which browser they request verification, and what if there is many browsers that request the thing?

@@ -7,7 +7,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import type { Response, Request } from 'express';
 
 import { SignInDto } from './dto/sign-in.dto';
@@ -17,10 +17,10 @@ import { Public } from './decorators/public.decorator';
 import { CurrentUser, type JwtUser } from './decorators/current-user.decorator';
 
 import { TypedConfigService } from '../../config/typed-config.service';
-import { RefreshTokenGuard } from '../jwt/guards/refresh-token.guard';
+import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { UserService } from '../users/user.service';
-import { RefreshTokenService } from '../jwt/refresh-token.service';
-import { GuestGuard } from '../jwt/guards/guest.guard';
+import { RefreshTokenService } from './services/refresh-token.service';
+import { GuestGuard } from './guards/guest.guard';
 
 @Controller('auth')
 export class AuthController {

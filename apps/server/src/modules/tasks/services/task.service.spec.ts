@@ -7,6 +7,9 @@ import { Task } from '../entities/task.entity';
 import { Section } from '@/src/modules/sections/section.entity';
 import { TaskPriority } from '@todo/shared';
 
+import { User } from '@/src/modules/users/user.entity';
+import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
+
 describe('TaskService', () => {
   let service: TaskService;
   let dataSource: { query: jest.Mock };
@@ -16,6 +19,13 @@ describe('TaskService', () => {
     delete: jest.Mock;
   };
   let sectionRepository: { exists: jest.Mock };
+  let userRepository: { findOne: jest.Mock };
+  let mailerSchedulerService: {
+    scheduleTaskReminder: jest.Mock;
+    cancelTaskReminder: jest.Mock;
+    scheduleRecurringTaskReminder: jest.Mock;
+    cancelRecurringTaskReminder: jest.Mock;
+  };
 
   beforeEach(async () => {
     dataSource = {
@@ -28,6 +38,15 @@ describe('TaskService', () => {
     };
     sectionRepository = {
       exists: jest.fn(),
+    };
+    userRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    mailerSchedulerService = {
+      scheduleTaskReminder: jest.fn().mockResolvedValue(undefined),
+      cancelTaskReminder: jest.fn().mockResolvedValue(undefined),
+      scheduleRecurringTaskReminder: jest.fn().mockResolvedValue(undefined),
+      cancelRecurringTaskReminder: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -44,6 +63,14 @@ describe('TaskService', () => {
         {
           provide: getRepositoryToken(Section),
           useValue: sectionRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: userRepository,
+        },
+        {
+          provide: MailerSchedulerService,
+          useValue: mailerSchedulerService,
         },
       ],
     }).compile();

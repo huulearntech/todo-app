@@ -40,6 +40,9 @@ function handleDatabaseOrderingError(error: unknown): never {
   throw error;
 }
 
+import { User } from '@/src/modules/users/user.entity';
+import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
+
 @Injectable()
 export class TaskService {
   constructor(
@@ -47,6 +50,9 @@ export class TaskService {
     @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
     @InjectRepository(Section)
     private readonly sectionRepository: Repository<Section>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly mailerSchedulerService: MailerSchedulerService,
   ) {}
 
   async createTask(
@@ -89,7 +95,7 @@ export class TaskService {
         ],
       );
 
-      return {
+      const createdTask = {
         id: rawTask.id,
         title: rawTask.title,
         description: rawTask.description,
@@ -104,6 +110,29 @@ export class TaskService {
         recurrence: null,
         occurences: [],
       } as unknown as Task;
+
+      if (timeRangeStart) {
+        this.userRepository
+          .findOne({ where: { id: ownerId } })
+          .then((user) => {
+            if (user) {
+              const dueTime = new Date(timeRangeStart);
+              const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
+              return this.mailerSchedulerService.scheduleTaskReminder({
+                taskId: createdTask.id,
+                userId: ownerId,
+                to: user.email,
+                userName: user.name,
+                taskTitle: createdTask.title,
+                dueTime,
+                reminderTime,
+              });
+            }
+          })
+          .catch(() => {});
+      }
+
+      return createdTask;
     } catch (error: unknown) {
       handleDatabaseOrderingError(error);
     }
@@ -290,7 +319,40 @@ export class TaskService {
       return null;
     }
     Object.assign(task, updatedTask);
-    return this.taskRepository.save(task);
+    const savedTask = await this.taskRepository.save(task);
+
+    if (savedTask.completedAt !== null) {
+      await this.mailerSchedulerService.cancelTaskReminder(id);
+      await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
+    } else if (updatedTask.timeRange?.start) {
+      const section = await this.sectionRepository.findOne({
+        where: { id: savedTask.sectionId },
+        relations: { project: true },
+      });
+
+      if (section?.project?.ownerId) {
+        const user = await this.userRepository.findOne({
+          where: { id: section.project.ownerId },
+        });
+        if (user) {
+          const dueTime = new Date(updatedTask.timeRange.start);
+          const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
+          this.mailerSchedulerService
+            .scheduleTaskReminder({
+              taskId: savedTask.id,
+              userId: user.id,
+              to: user.email,
+              userName: user.name,
+              taskTitle: savedTask.title,
+              dueTime,
+              reminderTime,
+            })
+            .catch(() => {});
+        }
+      }
+    }
+
+    return savedTask;
   }
 
   async updateTaskOrder({
@@ -322,6 +384,8 @@ export class TaskService {
   }
 
   async deleteTask(id: string): Promise<boolean> {
+    await this.mailerSchedulerService.cancelTaskReminder(id);
+    await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
     const result = await this.taskRepository.delete(id);
     return result.affected !== 0;
   }

@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
+import { Project } from '../projects/project.entity';
 
 @Entity('colors')
 export class Color {
@@ -26,4 +27,7 @@ export class Color {
 
   @OneToMany(() => TaskLabel, (taskLabel) => taskLabel.color)
   taskLabels!: TaskLabel[];
+
+  @OneToMany(() => Project, (project) => project.color)
+  projects!: Project[];
 }

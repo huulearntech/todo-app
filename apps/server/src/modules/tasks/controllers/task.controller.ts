@@ -23,7 +23,7 @@ import {
 
 @Controller('tasks')
 export class TasksController {
-  constructor(private readonly taskService: TaskService) { }
+  constructor(private readonly taskService: TaskService) {}
 
   @Post()
   async createTask(

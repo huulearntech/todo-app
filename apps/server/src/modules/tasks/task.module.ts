@@ -12,10 +12,15 @@ import { TaskOccurenceService } from './services/task-occurence.service';
 
 import { TasksController } from './controllers/task.controller';
 
+import { MailerModule } from '../mailer/mailer.module';
+
+import { User } from '../users/user.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, TaskRecurrence, TaskOccurence]),
+    TypeOrmModule.forFeature([Task, TaskRecurrence, TaskOccurence, User]),
     SectionModule,
+    MailerModule,
   ],
   controllers: [TasksController],
   providers: [TaskService, TaskRecurrenceService, TaskOccurenceService],

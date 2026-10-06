@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsInt,
   IsString,
+  IsOptional,
   validateSync,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -47,6 +48,40 @@ export class EnvironmentVariables {
 
   @IsString()
   CLOUDINARY_API_SECRET!: string;
+
+  @IsOptional()
+  @IsString()
+  REDIS_HOST?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  REDIS_PORT?: number;
+
+  @IsOptional()
+  @IsString()
+  REDIS_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  MAIL_HOST?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  MAIL_PORT?: number;
+
+  @IsOptional()
+  @IsString()
+  MAIL_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  MAIL_PASS?: string;
+
+  @IsOptional()
+  @IsString()
+  MAIL_FROM?: string;
 }
 
 export function validate(config: Record<string, unknown>) {
