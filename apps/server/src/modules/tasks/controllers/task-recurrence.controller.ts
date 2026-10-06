@@ -1,12 +1,25 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from "@nestjs/common";
-import { TaskRecurrenceService } from "../services/task-recurrence.service";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { TaskRecurrenceService } from '../services/task-recurrence.service';
 
-import { type RRuleDto } from "../dto/task-recurrence.dto";
+import { type RRuleDto } from '../dto/task-recurrence.dto';
 
-import { CurrentUser, type JwtUser } from "@/src/modules/auth/decorators/current-user.decorator";
+import {
+  CurrentUser,
+  type JwtUser,
+} from '@/src/modules/auth/decorators/current-user.decorator';
 
-
-@Controller("task_recurrences")
+@Controller('task_recurrences')
 export class TaskRecurrencesController {
   constructor(private readonly taskRecurrenceService: TaskRecurrenceService) {}
 
@@ -24,9 +37,10 @@ export class TaskRecurrencesController {
   //   );
   // }
 
-  @Get(":id")
-  async getTaskRecurrence(@Param("id") id: string) {
-    const taskRecurrence = await this.taskRecurrenceService.getTaskRecurrenceByTaskId(id);
+  @Get(':id')
+  async getTaskRecurrence(@Param('id') id: string) {
+    const taskRecurrence =
+      await this.taskRecurrenceService.getTaskRecurrenceByTaskId(id);
     if (!taskRecurrence) {
       throw new BadRequestException(`Task recurrence with id ${id} not found`);
     }

@@ -5,6 +5,7 @@ import { useRef, useState } from "react"
 import {
   EventCalendar,
   type EventCalendarApi,
+  type EventCalendarRenderEventProps,
 } from "@/components/reui/event-calendar/event-calendar"
 import { EventCalendarContent } from "@/components/reui/event-calendar/event-calendar-content"
 import {
@@ -27,6 +28,14 @@ import { taskService } from "@/services/task.service"
 import { useAddTaskDialogStore, useEditTaskDialogStore } from "@/providers/MyStoreProvider"
 import { TaskResponseDto as Task } from "@todo/shared"
 import { UpdateTaskOutput } from "@todo/shared/browser"
+
+import { TaskPriority } from "@todo/shared";
+
+const taskPriorityColorMap: Record<TaskPriority, string> = {
+  high: "var(--color-red-500)",
+  medium: "var(--color-amber-500)",
+  low: "var(--color-blue-500)",
+}
 
 
 /** Everything the settings panel drives, as one resettable object. */
@@ -82,6 +91,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
           start,
           end, // end of this is exclusive. This causes a bit of confusion.
           allDay: !task.timeRange, // If no timeRange, consider it an all-day event.
+          color: task.priority ? taskPriorityColorMap[task.priority] : undefined,
           data: task,
           // resourceId: task.ownerId, // Assuming ownerId can be used as resourceId
           recurrence: task.recurrence

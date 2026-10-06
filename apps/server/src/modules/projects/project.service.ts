@@ -1,61 +1,76 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
-import { Project } from "./project.entity";
-import { CreateProjectDto } from "./dto/create-project.dto";
-import { User } from "../users/user.entity";
-import { ProjectFilterDto } from "./dto/project-filter.dto";
-
-
+import { Project } from './project.entity';
+import { CreateProjectDto } from './dto/create-project.dto';
+import { User } from '../users/user.entity';
+import { ProjectFilterDto } from './dto/project-filter.dto';
 
 @Injectable()
 export class ProjectService {
   constructor(
     @InjectRepository(Project)
-    private readonly projectRepository: Repository<Project>
-  ) { }
+    private readonly projectRepository: Repository<Project>,
+  ) {}
 
-  async createProject(ownerId: string, createProjectDto: CreateProjectDto): Promise<Project> {
+  async createProject(
+    ownerId: string,
+    createProjectDto: CreateProjectDto,
+  ): Promise<Project> {
     const { name, description } = createProjectDto;
-    const project = this.projectRepository.create({ ownerId, name, description });
+    const project = this.projectRepository.create({
+      ownerId,
+      name,
+      description,
+    });
     return this.projectRepository.save(project);
   }
 
-  async getProjectsByOwnerIdAndFilter(ownerId: string, filter: ProjectFilterDto): Promise<Project[]> { // TODO: pagination
-    return this.projectRepository.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query('SET LOCAL pg_trgm.similarity_threshold = 0.2;');
+  async getProjectsByOwnerIdAndFilter(
+    ownerId: string,
+    filter: ProjectFilterDto,
+  ): Promise<Project[]> {
+    // TODO: pagination
+    return this.projectRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        await transactionalEntityManager.query(
+          'SET LOCAL pg_trgm.similarity_threshold = 0.2;',
+        );
 
-      const queryBuilder = transactionalEntityManager
-        .createQueryBuilder(Project, "project")
-        .where("project.ownerId = :ownerId", { ownerId })
+        const queryBuilder = transactionalEntityManager
+          .createQueryBuilder(Project, 'project')
+          .where('project.ownerId = :ownerId', { ownerId });
 
-      if (filter.isDefault !== undefined) {
-        queryBuilder.innerJoin(User, "user", "user.id = project.ownerId")
-        if (filter.isDefault) {
-          queryBuilder.andWhere("project.id = user.defaultProjectId")
-        } else {
-          queryBuilder.andWhere("project.id != user.defaultProjectId")
+        if (filter.isDefault !== undefined) {
+          queryBuilder.innerJoin(User, 'user', 'user.id = project.ownerId');
+          if (filter.isDefault) {
+            queryBuilder.andWhere('project.id = user.defaultProjectId');
+          } else {
+            queryBuilder.andWhere('project.id != user.defaultProjectId');
+          }
         }
-      }
 
-      if (filter.name) {
-        queryBuilder.andWhere("project.name % :name", { name: filter.name })
-        queryBuilder.orderBy("similarity(project.name, :name)", "DESC")
-      } else {
-        queryBuilder.orderBy("project.createdAt", "DESC")
-      }
+        if (filter.name) {
+          queryBuilder.andWhere('project.name % :name', { name: filter.name });
+          queryBuilder.orderBy('similarity(project.name, :name)', 'DESC');
+        } else {
+          queryBuilder.orderBy('project.createdAt', 'DESC');
+        }
 
-      return queryBuilder.getMany();
-    });
+        return queryBuilder.getMany();
+      },
+    );
   }
 
   async getProjectById(id: string): Promise<Project | null> {
     return this.projectRepository.findOne({ where: { id } });
   }
 
-
-  async updateProject(id: string, updatedProject: Partial<Project>): Promise<Project | null> {
+  async updateProject(
+    id: string,
+    updatedProject: Partial<Project>,
+  ): Promise<Project | null> {
     const project = await this.getProjectById(id);
     if (!project) {
       return null;

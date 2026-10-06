@@ -34,16 +34,12 @@ import {
 import { useProjectView } from "./project-view-context";
 import Link from "next/link";
 
-export default function ProjectHeader() {
+
+
+export default function ProjectHeader({ projectName }: { projectName: string }) {
   const params = useParams();
   const projectId = params?.id as string;
   const { view, setView } = useProjectView();
-
-  const { data: project, isLoading } = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => projectService.getProjectById(projectId),
-    enabled: !!projectId,
-  });
 
   return (
     <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b border-border/60 sticky top-0 z-10 bg-card">
@@ -53,27 +49,20 @@ export default function ProjectHeader() {
           orientation="vertical"
           className="h-4 bg-border/60 shrink-0"
         />
-        {isLoading ? (
-          <Skeleton className="h-5 w-32 rounded" />
-        ) : (
-          // <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">
-          //   {project?.name || "Project"}
-          // </h1>
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href="/projects" />}>
-                  Projects
-                </BreadcrumbLink>
-              </BreadcrumbItem>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href="/projects" />}>
+                Projects
+              </BreadcrumbLink>
+            </BreadcrumbItem>
 
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage> {project?.name || "Project"} </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        )}
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{projectName}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       <DropdownMenu>

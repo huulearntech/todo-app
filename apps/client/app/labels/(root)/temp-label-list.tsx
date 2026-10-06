@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { taskLabelService } from "@/services/task-label.service";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
@@ -43,6 +43,8 @@ import Dialog_AddLabel from "./add-label-form";
 import Dialog_EditLabel from "./temp-edit-label-form";
 
 export default function TempTaskLabelList() {
+  const queryClient = useQueryClient();
+
   const { data: labels = [], isLoading } = useQuery({
     queryKey: ["task-labels"],
     queryFn: taskLabelService.getMyTaskLabels,
@@ -63,13 +65,14 @@ export default function TempTaskLabelList() {
     );
   }, [labels, searchQuery]);
 
-  const handleDeleteConfirm = () => {
+  console.log(filteredLabels)
+
+  const handleDeleteConfirm = async () => {
     if (!deletingLabel) return;
 
-    // TODO: [SERVER CALL] Implement actual server call for deleting a label here.
-    // Example:
-    // await taskLabelService.deleteTaskLabel(deletingLabel.id);
-    // queryClient.invalidateQueries({ queryKey: ["task-labels"] });
+    // TODO: Optimistic delete
+    await taskLabelService.deleteTaskLabel(deletingLabel.id);
+    queryClient.invalidateQueries({ queryKey: ["task-labels"] });
 
     toast.add({
       title: "Label deleted",
@@ -160,7 +163,14 @@ export default function TempTaskLabelList() {
                   href={`/labels/${label.id}`}
                   className="flex flex-1 items-center gap-3.5 min-w-0 pr-2 focus-visible:outline-none"
                 >
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <div
+                    className="flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border"
+                    style={{
+                      backgroundColor: `${label.colorHexCode || '#E0E0E0'}20`,
+                      borderColor: `${label.colorHexCode || '#E0E0E0'}40`,
+                      color: label.colorHexCode || '#E0E0E0',
+                    }}
+                  >
                     <TagIcon className="size-4.5" />
                   </div>
                   <div className="flex flex-col min-w-0">

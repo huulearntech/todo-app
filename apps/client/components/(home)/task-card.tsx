@@ -13,7 +13,7 @@ import {
   AlarmClockIcon,
   CalendarRangeIcon,
   HashIcon,
-  RefreshCwIcon,
+  RepeatIcon,
   TagIcon
 } from "lucide-react";
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
@@ -44,7 +44,7 @@ function TaskCardInner({ task }: { task: Task }) {
   return (
     <Item
       variant="outline"
-      className="group relative bg-card text-card-foreground hover:bg-accent/40 border-border/80 hover:border-primary/50 shadow-xs transition-colors rounded-xl p-2.5 cursor-pointer select-none"
+      className="group relative text-card-foreground border-border/80 hover:border-primary/50 shadow-xs transition-colors rounded-xl p-2.5 cursor-pointer select-none"
       onClick={() => {
         setTask(task);
         setDialogIsOpen(true);
@@ -73,7 +73,7 @@ function TaskCardInner({ task }: { task: Task }) {
 
             {task.recurrence && (
               <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 p-1 rounded-md" title="Recurring task">
-                <RefreshCwIcon className="text-emerald-500" />
+                <RepeatIcon className="text-emerald-500" />
               </div>
             )}
 
@@ -117,5 +117,5 @@ function TaskCardInner({ task }: { task: Task }) {
     </Item>
   );
 }
-
+// TODO : Fix AI bullshit
 export default memo(TaskCardInner);

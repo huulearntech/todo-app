@@ -1,14 +1,13 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import argon2 from "argon2";
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import argon2 from 'argon2';
 
-import { SignInDto } from "./dto/sign-in.dto";
-import { User } from "../users/user.entity";
+import { SignInDto } from './dto/sign-in.dto';
+import { User } from '../users/user.entity';
 
-import { RefreshTokenService } from "../jwt/refresh-token.service";
-import { UserResponseDto } from "../users/dto/user.dto";
-
+import { RefreshTokenService } from '../jwt/refresh-token.service';
+import { UserResponseDto } from '../users/dto/user.dto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +16,10 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
-  private async validateUser(email: string, password: string): Promise<UserResponseDto> {
+  private async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserResponseDto> {
     const user = await this.userRepository.findOne({
       where: { email },
       select: {
@@ -30,23 +32,28 @@ export class AuthService {
       },
     });
     if (!user) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordMatches = await argon2.verify(user.passwordHashed, password);
     if (!passwordMatches) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const { passwordHashed, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
 
-  async signIn(signInDto: SignInDto): Promise<{ user: UserResponseDto, accessToken: string, refreshToken: string }> {
+  async signIn(signInDto: SignInDto): Promise<{
+    user: UserResponseDto;
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const { email, password } = signInDto;
-    
+
     const user = await this.validateUser(email, password);
-    const { accessToken, refreshToken } = await this.refreshTokenService.generatePairOfTokens(user.id);
+    const { accessToken, refreshToken } =
+      await this.refreshTokenService.generatePairOfTokens(user.id);
 
     await this.refreshTokenService.createRefreshToken(user.id, refreshToken);
 

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { taskLabelService } from "@/services/task-label.service";
+import { colorService } from "@/services/color.service";
 import { toast } from "@/components/ui/toast";
 
 import {
@@ -15,6 +16,14 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   Dialog,
@@ -41,6 +50,10 @@ export default function Dialog_EditLabel({
   label: TaskLabel;
   setLabel: (label: TaskLabel | null) => void;
 }) {
+  const { data: colors = [] } = useQuery({
+    queryKey: ["colors"],
+    queryFn: colorService.getMyColors,
+  });
 
   const { control, handleSubmit, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
@@ -48,6 +61,7 @@ export default function Dialog_EditLabel({
       id: label.id,
       name: label.name,
       description: label.description || "",
+      colorHexCode: label.colorHexCode || "#E0E0E0",
     },
   });
 
@@ -141,6 +155,59 @@ export default function Dialog_EditLabel({
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
+            />
+            <Controller
+              name="colorHexCode"
+              control={control}
+              render={({ field, fieldState }) => {
+                const selectedColor = colors.find(
+                  (c) => c.hexCode.toUpperCase() === field.value?.toUpperCase(),
+                );
+                return (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="edit-label-color">Color</FieldLabel>
+                    <Select
+                      id="edit-label-color"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger className="w-full h-9 rounded-xl border-border/60 bg-background/80 hover:bg-background transition-colors text-xs font-medium">
+                        <div className="flex items-center gap-2 w-full">
+                          <span
+                            className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
+                            style={{ backgroundColor: field.value }}
+                          />
+                          <span>{selectedColor?.name || field.value || "Select color"}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                            {field.value}
+                          </span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false} className="rounded-xl">
+                        {colors.map((color) => (
+                          <SelectItem
+                            key={color.hexCode}
+                            value={color.hexCode}
+                            className="text-xs rounded-lg cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <span
+                                className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
+                                style={{ backgroundColor: color.hexCode }}
+                              />
+                              <span>{color.name}</span>
+                              <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                                {color.hexCode}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                );
+              }}
             />
           </FieldGroup>
         </form>

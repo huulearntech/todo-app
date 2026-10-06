@@ -186,7 +186,8 @@ export class TaskService {
         .createQueryBuilder(Task, 'task')
         .innerJoin('task.section', 'section')
         .innerJoin('section.project', 'project')
-        .andWhere('project.ownerId = :ownerId', { ownerId });
+        .andWhere('project.ownerId = :ownerId', { ownerId })
+        .leftJoin('task.recurrence', 'recurrence');
 
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title });
@@ -213,6 +214,8 @@ export class TaskService {
         'project.name',
         'label.id',
         'label.name',
+        'recurrence.id',
+        'recurrence.rrule',
       ]);
 
       return queryBuilder.getMany();

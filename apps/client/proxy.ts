@@ -1,21 +1,38 @@
-// proxy.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-// 1. Hàm xử lý proxy chính
+
+function getSafeRedirectUrl(target: string | null, fallback = "/"): string {
+  if (!target) return fallback;
+  if (target.startsWith("/") && !target.startsWith("//")) {
+    return target;
+  }
+  return fallback;
+}
+
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get('access_token')
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get("access_token")?.value;
 
-  // Ví dụ: Chặn người dùng chưa đăng nhập khi vào trang dashboard
-  if (!token && request.nextUrl.pathname.startsWith('/profile')) {
-    return NextResponse.redirect(new URL('/auth', request.url))
+
+  // If already logged in and navigating to /auth, redirect to redirect param or homepage
+  if (pathname === "/auth" && token) {
+    const redirectParam = request.nextUrl.searchParams.get("redirect");
+    const targetUrl = getSafeRedirectUrl(redirectParam, "/");
+    return NextResponse.redirect(new URL(targetUrl, request.url));
   }
 
-  // Nếu hợp lệ, cho phép request tiếp tục đi tiếp
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
-// 2. Bộ lọc (Matcher) giúp Proxy chỉ chạy trên các đường dẫn được chỉ định
 export const config = {
-  matcher: ['/:path*', '/api-custom/:path*'],
-}
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, public assets with file extensions
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};

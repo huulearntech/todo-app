@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToOne,
+} from 'typeorm';
 import { Task } from '../entities/task.entity';
 import { RecurrenceTransformer } from '@/src/common/transformers/rrule_plpgsql.transformer';
 import { RRule } from 'rrule';
@@ -8,7 +15,7 @@ export class TaskRecurrence {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => Task, task => task.recurrence)
+  @OneToOne(() => Task, (task) => task.recurrence)
   task: Task;
 
   @Column({

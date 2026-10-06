@@ -21,6 +21,8 @@ export default function TempTaskList({ labelId }: { labelId: string }) {
     queryFn: () => taskService.getMyTasks({ taskLabelIds: [labelId] }),
   });
 
+  if (!label) return null;
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-5 w-full">
@@ -53,8 +55,11 @@ export default function TempTaskList({ labelId }: { labelId: string }) {
       {/* Label Detail Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
         <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-primary/10 text-primary shrink-0">
-            <TagIcon className="size-6" />
+          <div
+            className="p-3 rounded-xl shrink-0"
+            style={{ backgroundColor: `color-mix(in srgb, ${label.colorHexCode} 10%, transparent` || undefined }}
+          >
+            <TagIcon className="size-6" style={{ color: label.colorHexCode }} />
           </div>
           <div>
             <div className="flex items-center gap-2.5">

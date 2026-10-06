@@ -1,22 +1,28 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
-import { AuthService } from "./auth.service";
-import type { Response, Request } from "express";
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import type { Response, Request } from 'express';
 
-import { SignInDto } from "./dto/sign-in.dto";
-import { SignUpDto } from "./dto/sign-up.dto";
+import { SignInDto } from './dto/sign-in.dto';
+import { SignUpDto } from './dto/sign-up.dto';
 
+import { Public } from './decorators/public.decorator';
+import { CurrentUser, type JwtUser } from './decorators/current-user.decorator';
 
-import { Public } from "./decorators/public.decorator";
-import { CurrentUser, type JwtUser } from "./decorators/current-user.decorator";
+import { TypedConfigService } from '../../config/typed-config.service';
+import { RefreshTokenGuard } from '../jwt/guards/refresh-token.guard';
+import { UserService } from '../users/user.service';
+import { RefreshTokenService } from '../jwt/refresh-token.service';
+import { GuestGuard } from '../jwt/guards/guest.guard';
 
-import { TypedConfigService } from "../../config/typed-config.service";
-import { RefreshTokenGuard } from "../jwt/guards/refresh-token.guard";
-import { UserService } from "../users/user.service";
-import { RefreshTokenService } from "../jwt/refresh-token.service";
-import { GuestGuard } from "../jwt/guards/guest.guard";
-
-
-@Controller("auth")
+@Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -27,29 +33,30 @@ export class AuthController {
 
   @Public()
   @UseGuards(GuestGuard)
-  @Post("sign-up")
+  @Post('sign-up')
   async signUp(@Body() signUpDto: SignUpDto) {
     const user = await this.userService.createUser(signUpDto);
     return user;
   }
 
-
   @Public()
   @UseGuards(GuestGuard)
-  @Post("sign-in")
+  @Post('sign-in')
   async signIn(
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
   ) {
     // Validate credentials and generate tokens inside service
-    const { accessToken, refreshToken, user } = await this.authService.signIn(signInDto);
+    const { accessToken, refreshToken, user } =
+      await this.authService.signIn(signInDto);
 
     // 2. Set Refresh Token Cookie
     response.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
+      maxAge:
+        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
       path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
     });
 
@@ -62,38 +69,37 @@ export class AuthController {
       path: '/',
     });
 
-
     // 4. Return user profile data or a success flag back as JSON
     return user;
   }
 
-  @Post("sign-out")
+  @Post('sign-out')
   async signOut(
     @CurrentUser() user: JwtUser,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ) {
     await this.authService.signOut(user.id);
 
-    response.clearCookie("refresh_token", {
+    response.clearCookie('refresh_token', {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: 'lax',
       secure: true,
-      path: "/auth/refresh-token",
+      path: '/auth/refresh-token',
     });
 
-    response.clearCookie("access_token", {
+    response.clearCookie('access_token', {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: 'lax',
       secure: true,
-      path: "/",
+      path: '/',
     });
 
-    return { message: "Signed out" };
+    return { message: 'Signed out' };
   }
 
   @Public()
   @UseGuards(RefreshTokenGuard)
-  @Post("refresh-token")
+  @Post('refresh-token')
   async refreshToken(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
@@ -102,14 +108,17 @@ export class AuthController {
 
     // 1. Validate Refresh Token and generate new tokens inside service
     const { accessToken, refreshToken: newRefreshToken } =
-      await this.refreshTokenService.validateAndRotateRefreshToken(oldRefreshToken);
+      await this.refreshTokenService.validateAndRotateRefreshToken(
+        oldRefreshToken,
+      );
 
     // 2. Set new Refresh Token Cookie
     response.cookie('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
+      maxAge:
+        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
       path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
     });
 
@@ -121,11 +130,11 @@ export class AuthController {
       maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
       path: '/',
     });
-    
+
     return { accessToken };
   }
 
-  @Get("me")
+  @Get('me')
   async getCurrentUser(@CurrentUser() jwtUser: JwtUser) {
     return this.userService.findById(jwtUser.id);
   }

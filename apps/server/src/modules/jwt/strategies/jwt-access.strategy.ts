@@ -6,10 +6,14 @@ import { TypedConfigService } from '@config/typed-config.service';
 import { JwtPayload } from '../interfaces/jwt.interface';
 
 @Injectable()
-export class JwtAccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {
+export class JwtAccessStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-access',
+) {
   constructor(configService: TypedConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
         (req) => req?.cookies?.['access_token'] || null,
       ]),
       ignoreExpiration: false,

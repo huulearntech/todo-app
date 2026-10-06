@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  Index,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import { User } from '../users/user.entity';
 import { Section } from '../sections/section.entity';
@@ -25,10 +35,10 @@ export class Project {
   @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;
 
-  @ManyToOne(() => User, user => user.projects, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.projects, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner!: User;
 
-  @OneToMany(() => Section, section => section.project, { cascade: true })
+  @OneToMany(() => Section, (section) => section.project, { cascade: true })
   sections!: Section[];
 }

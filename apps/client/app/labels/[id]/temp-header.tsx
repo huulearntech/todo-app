@@ -91,7 +91,10 @@ export default function Header() {
               <BreadcrumbSeparator />
               <BreadcrumbItem className="min-w-0">
                 <BreadcrumbPage className="flex items-center gap-1.5 font-semibold text-foreground text-xs sm:text-sm truncate">
-                  <TagIcon className="size-3.5 text-primary shrink-0" />
+                  <TagIcon
+                    className="size-3.5 shrink-0"
+                    style={{ color: currentLabel?.colorHexCode || undefined }}
+                  />
                   <span className="truncate">{labelName}</span>
                 </BreadcrumbPage>
               </BreadcrumbItem>

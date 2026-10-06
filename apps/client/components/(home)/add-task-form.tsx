@@ -27,7 +27,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-import { FolderIcon, LayersIcon, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
 import { TaskForm } from "./task-form";
@@ -108,7 +108,7 @@ export default function AddTaskDialog() {
     },
   });
 
-  if (!user || !sectionId) {
+  if (!user || !sectionId || !section || !project) {
     return null;
   }
 
@@ -119,46 +119,18 @@ export default function AddTaskDialog() {
   return (
     <Dialog open={dialogIsOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[840px] max-h-[90vh] sm:max-h-[calc(100vh-3rem)] p-0 gap-0 overflow-hidden rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-2xl flex flex-col">
-        {/* Header Breadcrumb Banner */}
-        {/* Why does these AI like to decorate using some redundant bullshit that does not mean
-          * any damn thing to the user?
-          */}
         <DialogHeader className="flex flex-row items-center justify-between border-b border-border/40 px-5 py-3 space-y-0 bg-muted/20 shrink-0">
-          {/* <div className="flex items-center gap-2 text-xs font-medium min-w-0">
-            <div className="flex items-center gap-1.5 truncate">
-              {project ? (
-                <>
-                  <FolderIcon className="size-3.5 text-muted-foreground/70 shrink-0" />
-                  <span className="text-foreground font-semibold truncate max-w-[150px]">
-                    {project.name}
-                  </span>
-                  <span className="text-muted-foreground/40">/</span>
-                </>
-              ) : null}
-              {section ? (
-                <>
-                  <LayersIcon className="size-3.5 text-muted-foreground/70 shrink-0" />
-                  <span className="text-muted-foreground truncate max-w-[150px]">
-                    {section.name}
-                  </span>
-                </>
-              ) : (
-                <span className="text-foreground font-semibold">New Task</span>
-              )}
-            </div>
-          </div> */}
-
           <Breadcrumb>
             <BreadcrumbList className="text-xs">
               <BreadcrumbItem>
                 <span className="font-semibold text-foreground truncate max-w-[150px]">
-                  {project?.name || "TODO: Fix AI bullshit"}
+                  {project.name}
                 </span>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbPage className="truncate max-w-[150px]">
-                  {section?.name || "TODO: Fix AI bullshit"}
+                  {section.name}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>

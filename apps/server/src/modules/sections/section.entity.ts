@@ -1,4 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index, Unique, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  Index,
+  Unique,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/project.entity';
@@ -25,11 +36,13 @@ export class Section {
   @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToOne(() => Project, project => project.sections, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, (project) => project.sections, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'project_id' })
   project: Project;
 
-  @OneToMany(() => Task, task => task.section, { cascade: true })
+  @OneToMany(() => Task, (task) => task.section, { cascade: true })
   tasks: Task[];
 
   // TODO: need to factor this out

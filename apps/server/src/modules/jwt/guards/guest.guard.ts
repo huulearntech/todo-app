@@ -1,4 +1,8 @@
-import { ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  Injectable,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 // Định nghĩa kiểu user trả về sau khi validate dựa trên cấu trúc JwtStrategy của bạn
 interface AuthenticatedUser {

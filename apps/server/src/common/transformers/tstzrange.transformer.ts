@@ -11,7 +11,7 @@ export class TstzRangeTransformer implements ValueTransformer {
     if (!value) return null;
     const startStr = new Date(value.start).toISOString();
     const endStr = new Date(value.end).toISOString();
-    
+
     // Lưu xuống DB dưới dạng dải [start, end)
     return `[${startStr},${endStr})`;
   }
@@ -20,7 +20,10 @@ export class TstzRangeTransformer implements ValueTransformer {
   from(value: string | null): TstzRange | null {
     if (!value) return null;
 
-    const [start, end] = value.replace(/[\[\]\(\)]/g, '').split(',').map((dateStr) => new Date(dateStr).toISOString());
+    const [start, end] = value
+      .replace(/[\[\]\(\)]/g, '')
+      .split(',')
+      .map((dateStr) => new Date(dateStr).toISOString());
     return { start, end };
   }
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/providers/AuthProvider";
 import { signInSchema, type SignInDto } from "@todo/shared";
+import { useAuth } from "@/providers/AuthProvider";
+import { signInServerAction } from "@/lib/actions/auth.actions";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,8 +22,19 @@ import {
 } from "@/components/ui/card";
 import { Loader2Icon, MailIcon, LockIcon, LogInIcon } from "lucide-react";
 
+// TODO: Fix AI bullshit. It shitted on my code base
+function getSafeRedirectUrl(target: string | null, fallback = "/"): string {
+  if (!target) return fallback;
+  if (target.startsWith("/") && !target.startsWith("//")) {
+    return target;
+  }
+  return fallback;
+}
+
 export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }) {
-  const { signIn } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const { handleSubmit, control } = useForm<SignInDto>({
@@ -35,16 +48,37 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
   const onSubmit = async (data: SignInDto) => {
     try {
       setIsLoading(true);
-      await signIn(data);
+      const result = await signInServerAction(data);
+
+      if (!result.success) {
+        toast.add({
+          title: "Error signing in",
+          description: result.error,
+          type: "error",
+        });
+        return;
+      }
+
+      // 1. Update AuthProvider user state
+      setUser(result.user);
+
+      // 2. Display success toast
       toast.add({
         title: "Signed in successfully!",
         description: "Welcome back!",
         type: "success",
       });
-    } catch (error) {
+
+      // 3. Navigate to destination or homepage
+      const redirectParam = searchParams.get("redirect");
+      const destination = getSafeRedirectUrl(redirectParam, "/");
+
+      router.push(destination);
+      router.refresh();
+    } catch {
       toast.add({
         title: "Error signing in",
-        description: "Invalid email or password. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         type: "error",
       });
     } finally {
@@ -137,7 +171,7 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
 
         {onSwitchTab && (
           <p className="text-xs text-muted-foreground text-center pt-1">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <button
               type="button"
               onClick={onSwitchTab}

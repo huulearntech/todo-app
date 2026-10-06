@@ -96,7 +96,7 @@ export function TaskForm({
   const { data: labels = [] } = useQuery({
     queryKey: ["task-labels"],
     queryFn: taskLabelService.getMyTaskLabels,
-    select: (data) => data.map((label) => ({ id: label.id, name: label.name })),
+    select: (data) => data.map((label) => ({ id: label.id, name: label.name, colorHexCode: label.colorHexCode })),
   });
 
   const {
@@ -231,14 +231,18 @@ export function TaskForm({
                       className="min-h-9 rounded-xl border-border/60 bg-background/80 p-1 text-xs"
                     >
                       <ComboboxValue>
-                        {field.value.map((fieldItem) => (
-                          <ComboboxChip
-                            key={fieldItem.id}
-                            className="text-xs rounded-md py-0.5 px-2 bg-primary/10 text-primary border border-primary/20"
-                          >
-                            {labels.find((label) => label.id === fieldItem.id)?.name || "Label"}
-                          </ComboboxChip>
-                        ))}
+                        {field.value.map((fieldItem) => {
+                          const label = labels.find((l) => l.id === fieldItem.id);
+                          return label && (
+                            <ComboboxChip
+                              key={fieldItem.id}
+                              className="text-xs rounded-md py-0.5 px-2"
+                              style={{ backgroundColor: `color-mix(in srgb, ${label.colorHexCode} 10%, transparent` }}
+                            >
+                              {label.name}
+                            </ComboboxChip>
+                          );
+                        })}
                         <ComboboxChipsInput
                           placeholder="Add labels..."
                           className="text-xs placeholder:text-muted-foreground/60"
@@ -259,7 +263,7 @@ export function TaskForm({
                             className="text-xs rounded-lg cursor-pointer"
                           >
                             <div className="flex items-center gap-2">
-                              <TagIcon className="size-3.5 text-purple-500" />
+                              <TagIcon className="size-3.5" style={{ color: label?.colorHexCode || undefined }} />
                               <span>{label.name}</span>
                             </div>
                           </ComboboxItem>

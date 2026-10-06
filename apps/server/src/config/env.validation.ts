@@ -1,5 +1,11 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsInt, IsString, validateSync } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsInt,
+  IsString,
+  validateSync,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 enum Environment {
@@ -33,7 +39,6 @@ export class EnvironmentVariables {
   @IsInt()
   JWT_REFRESH_SECRET_EXPIRATION_SECONDS!: number;
 
-
   @IsString()
   CLOUDINARY_CLOUD_NAME!: string;
 
@@ -48,10 +53,12 @@ export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToInstance(
     EnvironmentVariables,
     config,
-    { enableImplicitConversion: true } // Automatically converts strings to numbers/booleans
+    { enableImplicitConversion: true }, // Automatically converts strings to numbers/booleans
   );
-  
-  const errors = validateSync(validatedConfig, { skipMissingProperties: false });
+
+  const errors = validateSync(validatedConfig, {
+    skipMissingProperties: false,
+  });
 
   if (errors.length > 0) {
     throw new Error(errors.toString());

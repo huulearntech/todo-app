@@ -40,11 +40,24 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/providers/AuthProvider"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { user, signOut } = useAuth()
+  const { user, isLoading, signOut } = useAuth()
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 p-2">
+        <Skeleton className="size-8 rounded-lg shrink-0" />
+        <div className="flex-1 space-y-1.5 group-data-[collapsible=icon]:hidden">
+          <Skeleton className="h-3.5 w-20 rounded" />
+          <Skeleton className="h-2.5 w-28 rounded" />
+        </div>
+      </div>
+    )
+  }
 
   if (!user) {
     return null

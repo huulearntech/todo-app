@@ -1,65 +1,83 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 
 import { TaskLabelService } from './task-label.service';
-import { TaskLabelDto } from './task-label.dto';
+import { CreateTaskLabelDto, UpdateTaskLabelDto } from './task-label.dto';
 import { TaskService } from '../tasks/services/task.service';
-import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtUser,
+} from '../auth/decorators/current-user.decorator';
 
 @Controller('task-labels')
 export class TaskLabelController {
   constructor(
     private readonly taskLabelService: TaskLabelService,
-    private readonly taskService: TaskService
+    private readonly taskService: TaskService,
   ) {}
 
   @Post()
   async createTaskLabel(
     @CurrentUser() user: JwtUser,
-    @Body() body: TaskLabelDto
+    @Body() body: CreateTaskLabelDto,
   ) {
-    const { name, description } = body;
-
-    return this.taskLabelService.createTaskLabel(user.id, name, description);
+    return this.taskLabelService.createTaskLabel(user.id, body);
   }
 
-  @Get("me")
-  async getMyTaskLabels(
-    @CurrentUser() user: JwtUser
-  ) {
+  @Get('me')
+  async getMyTaskLabels(@CurrentUser() user: JwtUser) {
     return this.taskLabelService.getTaskLabelsByOwnerId(user.id);
   }
 
   @Get(':id')
-  async getTaskLabelById() {
-  
+  async getTaskLabelById(@Param('id') labelId: string) {
+    const label = await this.taskLabelService.getTaskLabelById(labelId);
+    if (!label) {
+      throw new NotFoundException(`Task label with ID ${labelId} not found`);
+    }
+    return label;
   }
 
   // TODO: @Remove
   @Get(':id/tasks')
   async getTasksByTaskLabelId(
     @CurrentUser() user: JwtUser,
-    @Param('id') labelId: string
+    @Param('id') labelId: string,
   ) {
-    return this.taskService.getTasksByOwnerIdAndFilter(user.id, { taskLabelIds: [labelId] });
+    return this.taskService.getTasksByOwnerIdAndFilter(user.id, {
+      taskLabelIds: [labelId],
+    });
   }
 
   @Patch(':id')
   async updateTaskLabel(
-    // @CurrentUser() user: JwtUser,
+    @CurrentUser() user: JwtUser,
     @Param('id') labelId: string,
-    @Body() body: TaskLabelDto
+    @Body() body: UpdateTaskLabelDto,
   ) {
-    const updatedTaskLabel = await this.taskLabelService.updateTaskLabel(labelId, body);
+    const updatedTaskLabel = await this.taskLabelService.updateTaskLabel(
+      labelId,
+      body,
+      user.id,
+    );
 
     if (!updatedTaskLabel) {
-      throw new Error(`Task label with ID ${labelId} not found`);
+      throw new NotFoundException(`Task label with ID ${labelId} not found`);
     }
 
     return updatedTaskLabel;
   }
 
   @Delete(':id')
-  async deleteTaskLabel() {
-    
+  async deleteTaskLabel(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.taskLabelService.deleteTaskLabel({ ownerId: user.id, id: id });
   }
 }

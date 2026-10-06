@@ -1,10 +1,13 @@
-import { IsString, IsOptional } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import {
+  createTaskLabelSchema,
+  updateTaskLabelSchema,
+  taskLabelResponseSchema,
+} from '@todo/shared';
 
-export class TaskLabelDto {
-  @IsString()
-  name!: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-}
+export class CreateTaskLabelDto extends createZodDto(createTaskLabelSchema) {}
+export class UpdateTaskLabelDto extends createZodDto(updateTaskLabelSchema) {}
+export class TaskLabelResponseDto extends createZodDto(
+  taskLabelResponseSchema,
+) {}
+export class TaskLabelDto extends CreateTaskLabelDto {}

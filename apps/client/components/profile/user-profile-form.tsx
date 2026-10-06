@@ -136,12 +136,9 @@ export default function UserProfileForm({
                 <Field data-invalid={fieldState.invalid} className="space-y-1.5">
                   <FieldLabel
                     htmlFor="name"
-                    className="text-xs font-semibold text-foreground flex items-center justify-between"
+                  // className="text-xs font-semibold text-foreground flex items-center justify-between"
                   >
                     <span>Full Name</span>
-                    <span className="text-[11px] font-normal text-muted-foreground">
-                      Required
-                    </span>
                   </FieldLabel>
                   <div className="relative">
                     <Input
@@ -169,13 +166,6 @@ export default function UserProfileForm({
                 className="text-xs font-semibold text-foreground flex items-center justify-between"
               >
                 <span>Email Address</span>
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] h-4.5 px-2 py-0 gap-1 rounded-full font-medium text-muted-foreground bg-muted"
-                >
-                  <LockIcon className="size-2.5" />
-                  Primary
-                </Badge>
               </FieldLabel>
               <div className="relative">
                 <Input
@@ -189,58 +179,47 @@ export default function UserProfileForm({
                 />
               </div>
               <p className="text-[11px] text-muted-foreground leading-normal flex items-center gap-1.5">
-                <ShieldCheckIcon className="size-3.5 text-emerald-500 shrink-0" />
-                Email address is tied to your account login and cannot be altered directly.
+                Email address cannot be changed
               </p>
             </Field>
           </FieldGroup>
         </CardContent>
 
-        <CardFooter className="flex items-center justify-between pt-4 pb-5 border-t border-border/40 gap-3">
-          <div className="text-xs text-muted-foreground hidden sm:block">
-            {isDirty ? (
-              <span className="text-amber-500 font-medium">
-                You have unsaved changes
-              </span>
-            ) : (
-              <span>All changes saved</span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 ml-auto">
-            {isDirty && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleDiscard}
-                disabled={isSubmitting}
-                className="rounded-xl h-9 text-xs font-medium px-3 text-muted-foreground hover:text-foreground gap-1.5"
-              >
-                <RotateCcwIcon className="size-3.5" />
-                Discard
-              </Button>
-            )}
-
+        <CardFooter className="justify-end gap-2">
+          {/* <div className="flex items-center gap-2 ml-auto"> */}
+          {isDirty && (
             <Button
-              type="submit"
-              size="sm"
-              disabled={!isDirty || isSubmitting}
-              className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs gap-1.5 transition-all"
+              type="button"
+              variant="outline"
+              // size="sm"
+              onClick={handleDiscard}
+              disabled={isSubmitting}
+            // className="rounded-xl h-9 text-xs font-medium px-3 text-muted-foreground hover:text-foreground gap-1.5"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2Icon className="size-3.5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <CheckIcon className="size-3.5" />
-                  <span>Save Changes</span>
-                </>
-              )}
+              <RotateCcwIcon className="size-3.5" />
+              Discard
             </Button>
-          </div>
+          )}
+
+          <Button
+            type="submit"
+            // size="sm"
+            disabled={!isDirty || isSubmitting}
+          // className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs gap-1.5 transition-all"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2Icon className="size-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <CheckIcon className="size-3.5" />
+                <span>Save Changes</span>
+              </>
+            )}
+          </Button>
+          {/* </div> */}
         </CardFooter>
       </form>
     </Card>

@@ -15,7 +15,7 @@ export class Lexorank {
 
     while (true) {
       const pChar = p.charCodeAt(i) || this.MIN_CHAR;
-      const nChar = n.charCodeAt(i) || (this.MAX_CHAR + 1);
+      const nChar = n.charCodeAt(i) || this.MAX_CHAR + 1;
 
       if (pChar === nChar) {
         result += String.fromCharCode(pChar);

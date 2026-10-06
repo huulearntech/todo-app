@@ -2,7 +2,9 @@ NOTE (23 Sep 2026): may put lexorank in separate table and use somekind of forei
 that they belong to. That is the context of the lexorank. For example, we even have the lexorank in home page where those tasks do not belong to a single section.
 
 
-NOTE: Learn more about zod code and transform.
+NOTE: Learn more about zod codec and transform.
 
 NOTE (29 Sep 2026): Read the recurrence of event-calendar-recurrence.tsx, implement zod schema according to it
 The DTOs sent over the wire should follow that interface.
+
+NOTE: (6 Oct 2026): the label list has a unique key problem when adding new label.

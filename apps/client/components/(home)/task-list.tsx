@@ -105,20 +105,26 @@ export default function TaskList() {
       // 2. Pending server update timeout reference (TODO: server call)
       let isUndone = false;
 
-      const postponeTimeout = setTimeout(() => {
+      const postponeTimeout = setTimeout(async () => {
         if (isUndone) return;
         // TODO: [SERVER CALL] Implement server call here to update the task's due date to tomorrow.
         // Example implementation:
-        // const tomorrow = new Date();
-        // tomorrow.setDate(tomorrow.getDate() + 1);
-        // await taskService.updateTask(taskId, {
-        //   timeRange: {
-        //     start: taskToPostpone.timeRange?.start,
-        //     end: tomorrow.toISOString(),
-        //   },
-        // });
-        // queryClient.invalidateQueries({ queryKey: ["tasks", "due-today"] });
-        // queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowIso = tomorrow.toISOString();
+        await taskService.updateTask(taskId, {
+          title: taskToPostpone.title,
+          description: taskToPostpone.description,
+          priority: taskToPostpone.priority,
+          sectionId: taskToPostpone.sectionId,
+          labels: taskToPostpone.labels,
+          timeRange: {
+            start: taskToPostpone.timeRange?.start ?? tomorrowIso,
+            end: tomorrowIso,
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["tasks", "due-today"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
       }, 4000);
 
       // 3. Show Toast with Undo Action

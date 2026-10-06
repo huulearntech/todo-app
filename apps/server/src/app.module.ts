@@ -16,6 +16,7 @@ import { ImageStorageModule } from './modules/image_storage/image_storage.module
 import { TaskLabelModule } from './modules/task-labels/task-label.module';
 import { ProjectModule } from './modules/projects/project.module';
 import { SectionModule } from './modules/sections/section.module';
+import { ColorModule } from './modules/colors/color.module';
 // import { MailerModule } from './modules/mailer/mailer.module';
 
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -40,6 +41,7 @@ import { migrations } from './migrations';
     TaskLabelModule,
     ProjectModule,
     SectionModule,
+    ColorModule,
     UserModule,
     // MailerModule,
     ImageStorageModule.register(), // Register the ImageStorageModule with its dynamic configuration

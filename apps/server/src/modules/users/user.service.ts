@@ -8,7 +8,8 @@ import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { SignUpDto } from '../auth/dto/sign-up.dto';
 import { User } from './user.entity';
 import { Project } from '../projects/project.entity';
-
+import { Color } from '../colors/color.entity';
+import { DEFAULT_COLORS } from '../colors/color.service';
 
 @Injectable()
 export class UserService {
@@ -29,23 +30,34 @@ export class UserService {
       defaultProjectId,
     });
 
-    const userResponse = await this.dataSource.transaction(async (transactionalEntityManager) => {
-      const savedUser = await transactionalEntityManager.save(User, user);
+    const userResponse = await this.dataSource.transaction(
+      async (transactionalEntityManager) => {
+        const savedUser = await transactionalEntityManager.save(User, user);
 
-      await transactionalEntityManager.save(Project, {
-        id: defaultProjectId,
-        name: 'Inbox',
-        owner: savedUser,
-      });
+        await transactionalEntityManager.save(Project, {
+          id: defaultProjectId,
+          name: 'Inbox',
+          owner: savedUser,
+        });
 
-      return {
-        id: savedUser.id,
-        email: savedUser.email,
-        name: savedUser.name,
-        avatarUrl: savedUser.avatarUrl,
-        defaultProjectId: savedUser.defaultProjectId,
-      };
-    });
+        const defaultColors = DEFAULT_COLORS.map((dc) =>
+          transactionalEntityManager.create(Color, {
+            ownerId: savedUser.id,
+            hexCode: dc.hexCode,
+            name: dc.name,
+          }),
+        );
+        await transactionalEntityManager.save(Color, defaultColors);
+
+        return {
+          id: savedUser.id,
+          email: savedUser.email,
+          name: savedUser.name,
+          avatarUrl: savedUser.avatarUrl,
+          defaultProjectId: savedUser.defaultProjectId,
+        };
+      },
+    );
 
     return userResponse;
   }
@@ -71,7 +83,10 @@ export class UserService {
     });
   }
 
-  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+  async updateUser(
+    id: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<UserResponseDto> {
     const user = await this.userRepository.findOneOrFail({ where: { id } });
 
     Object.assign(user, updateUserDto);

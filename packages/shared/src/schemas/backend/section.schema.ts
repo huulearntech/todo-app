@@ -6,12 +6,8 @@ const createSectionSchema = z.object({
   description: z.string().optional(),
 });
 
-// TODO: may call this payload, in order to call the response data as "response"
-type CreateSectionDto = z.infer<typeof createSectionSchema>;
 
 const updateSectionSchema = createSectionSchema.omit({ projectId: true }).partial();
-type UpdateSectionDto = z.infer<typeof updateSectionSchema>;
-
 
 const sectionResponseSchema = z.object({
   id: z.uuid("Section ID must be a valid UUID"),
@@ -22,14 +18,17 @@ const sectionResponseSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
-type SectionResponseDto = z.infer<typeof sectionResponseSchema>;
-
 const sectionFilterSchema = z.object({
   projectId: z.string().optional(),
   name: z.string().optional(),
 });
 
-type SectionFilterDto = z.infer<typeof sectionFilterSchema>;
+
+// TODO: differentiate dto from server to client and vice versa
+type CreateSectionDto   = z.infer<typeof createSectionSchema>;
+type UpdateSectionDto   = z.infer<typeof updateSectionSchema>;
+type SectionResponseDto = z.infer<typeof sectionResponseSchema>;
+type SectionFilterDto   = z.infer<typeof sectionFilterSchema>;
 
 export {
   createSectionSchema,

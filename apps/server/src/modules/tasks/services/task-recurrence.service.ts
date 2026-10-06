@@ -1,14 +1,15 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
-import { TaskRecurrence } from "../entities/task-recurrence.entity";
-import { RRule } from "rrule";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { TaskRecurrence } from '../entities/task-recurrence.entity';
+import { RRule } from 'rrule';
 
 @Injectable()
 export class TaskRecurrenceService {
   constructor(
     // private readonly dataSource: DataSource,
-    @InjectRepository(TaskRecurrence) private readonly taskRecurrenceRepository: Repository<TaskRecurrence>,
+    @InjectRepository(TaskRecurrence)
+    private readonly taskRecurrenceRepository: Repository<TaskRecurrence>,
   ) {}
 
   async createTaskRecurrence(
@@ -16,7 +17,7 @@ export class TaskRecurrenceService {
     rrule: RRule,
     startsAt: Date | null,
     endsAt: Date | null,
-    timezone: string
+    timezone: string,
   ): Promise<TaskRecurrence> {
     const newTaskRecurrence = this.taskRecurrenceRepository.create({
       rrule,
@@ -28,8 +29,12 @@ export class TaskRecurrenceService {
     return this.taskRecurrenceRepository.save(newTaskRecurrence);
   }
 
-  async getTaskRecurrenceByTaskId(taskId: string): Promise<TaskRecurrence | null> {
-    return this.taskRecurrenceRepository.findOne({ where: { task: { id: taskId } } });
+  async getTaskRecurrenceByTaskId(
+    taskId: string,
+  ): Promise<TaskRecurrence | null> {
+    return this.taskRecurrenceRepository.findOne({
+      where: { task: { id: taskId } },
+    });
   }
 
   async updateTaskRecurrence(
@@ -37,7 +42,7 @@ export class TaskRecurrenceService {
     rrule: RRule,
     startsAt: Date | null,
     endsAt: Date | null,
-    timezone: string
+    timezone: string,
   ): Promise<TaskRecurrence | null> {
     const taskRecurrence = await this.getTaskRecurrenceByTaskId(taskId);
     if (!taskRecurrence) {

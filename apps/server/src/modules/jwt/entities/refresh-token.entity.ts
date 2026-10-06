@@ -1,14 +1,14 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  CreateDateColumn, 
-  UpdateDateColumn, 
-  ManyToOne, 
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
   JoinColumn,
-  Index
-} from "typeorm";
-import { User } from "../../users/user.entity"; // Adjust the import path as needed
+  Index,
+} from 'typeorm';
+import { User } from '../../users/user.entity'; // Adjust the import path as needed
 
 @Entity({ name: 'refresh_tokens' })
 export class RefreshToken {

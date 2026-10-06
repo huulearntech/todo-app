@@ -1,54 +1,83 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
 import type { UserResponseDto, SignInDto } from "@todo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 
-type AuthContextType = {
+interface AuthContextType {
   user: UserResponseDto | null;
   isLoading: boolean;
-  signIn: ({ email, password } : { email: string, password: string }) => Promise<void>;
+  signIn: ({ email, password }: { email: string; password: string }) => Promise<UserResponseDto>;
   signOut: () => void;
-};
+  setUser: React.Dispatch<React.SetStateAction<UserResponseDto | null>>;
+}
 
+interface AuthProviderProps {
+  children: React.ReactNode;
+  initialUser?: UserResponseDto | null;
+}
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
+export default function AuthProvider({ children, initialUser }: AuthProviderProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [user, setUser] = useState<UserResponseDto | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<UserResponseDto | null>(initialUser ?? null);
+  const [isLoading, setIsLoading] = useState<boolean>(initialUser === undefined);
+  const [prevInitialUser, setPrevInitialUser] = useState(initialUser);
+
+  if (initialUser !== prevInitialUser) {
+    setPrevInitialUser(initialUser);
+    setUser(initialUser ?? null);
+    setIsLoading(false);
+  }
 
   useEffect(() => {
+    if (initialUser !== undefined) {
+      return;
+    }
+
+    let isMounted = true;
     const fetchCurrentUser = async () => {
       try {
         const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        setUser(null);
+        if (isMounted) {
+          setUser(currentUser);
+        }
+      } catch {
+        if (isMounted) {
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchCurrentUser();
-  }, []);
-  
 
-  const signIn = async (signInDto: SignInDto) => {
+    return () => {
+      isMounted = false;
+    };
+  }, [initialUser]);
+
+  const signIn = async (signInDto: SignInDto): Promise<UserResponseDto> => {
     try {
       setIsLoading(true);
-      const user = await authService.signIn(signInDto);
-      setUser(user);
+      const authenticatedUser = await authService.signIn(signInDto);
+      setUser(authenticatedUser);
+      return authenticatedUser;
     } catch (error) {
       setUser(null);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   const signOut = async () => {
     try {
@@ -59,13 +88,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       throw error;
     } finally {
       setIsLoading(false);
-      queryClient.clear(); // Clear the query cache on sign out
+      queryClient.clear();
+      router.push("/");
+      router.refresh();
     }
-  }
-
+  };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signOut, setUser }}>
       {children}
     </AuthContext.Provider>
   );

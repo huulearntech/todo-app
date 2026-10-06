@@ -11,17 +11,21 @@ export class MailerSchedulerService {
     await this.emailQueue.add(
       'send-email',
       { userId, ...emailData },
-      { 
+      {
         delay: delayMs,
         // Tiêu chuẩn mới khuyên dùng đối tượng cấu hình chi tiết cho việc dọn dẹp bộ nhớ
         removeOnComplete: { age: 3600 }, // Xóa sau 1 giờ hoàn thành để tránh phình dữ liệu Redis
-        removeOnFail: { age: 86400 },   // Giữ lại log lỗi trong 24 giờ để debug
-      }
+        removeOnFail: { age: 86400 }, // Giữ lại log lỗi trong 24 giờ để debug
+      },
     );
   }
 
   // 2. Recurrent email (Được cập nhật theo tiêu chuẩn mới sử dụng Job Schedulers)
-  async scheduleRecurrentEmail(userId: string, emailData: any, cronPattern: string) {
+  async scheduleRecurrentEmail(
+    userId: string,
+    emailData: any,
+    cronPattern: string,
+  ) {
     // Định danh scheduler duy nhất theo từng user để tránh trùng lặp hoặc ghi đè sai lịch
     const schedulerId = `scheduler-email-${userId}`;
 
@@ -37,9 +41,9 @@ export class MailerSchedulerService {
         opts: {
           // Cấu hình dọn dẹp các job con do scheduler này sinh ra sau khi chạy xong
           removeOnComplete: true,
-          removeOnFail: { count: 10 } 
-        }
-      }
+          removeOnFail: { count: 10 },
+        },
+      },
     );
   }
 

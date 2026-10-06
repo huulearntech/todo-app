@@ -1,16 +1,20 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
-import { TaskOccurence } from "../entities/task-occurence.entity";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { TaskOccurence } from '../entities/task-occurence.entity';
 
 @Injectable()
 export class TaskOccurenceService {
   constructor(
     private readonly dataSource: DataSource,
-    @InjectRepository(TaskOccurence) private readonly taskOccurenceRepository: Repository<TaskOccurence>,
+    @InjectRepository(TaskOccurence)
+    private readonly taskOccurenceRepository: Repository<TaskOccurence>,
   ) {}
 
-  async createTaskOccurence(taskId: string, occurenceDate: Date): Promise<TaskOccurence> {
+  async createTaskOccurence(
+    taskId: string,
+    occurenceDate: Date,
+  ): Promise<TaskOccurence> {
     const newTaskOccurence = this.taskOccurenceRepository.create({
       taskId,
     });

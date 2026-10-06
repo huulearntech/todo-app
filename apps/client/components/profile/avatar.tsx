@@ -124,14 +124,14 @@ export default function Avatar({
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
                 unoptimized={!currentAvatarUrl?.includes("res.cloudinary.com")}
               />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+              {/* <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                 <CameraIcon className="size-5" />
-              </div>
+              </div> */}
             </div>
             {/* Edit badge */}
-            <div className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground shadow-xs ring-2 ring-background transition-transform group-hover:scale-110">
+            {/* <div className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground shadow-xs ring-2 ring-background transition-transform group-hover:scale-110">
               <CameraIcon className="size-3.5" />
-            </div>
+            </div> */}
           </button>
         }
       />

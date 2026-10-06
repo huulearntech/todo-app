@@ -66,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Script
           src="https://unpkg.com/react-scan/dist/auto.global.js"
           crossOrigin="anonymous"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
       </body>
     </html>

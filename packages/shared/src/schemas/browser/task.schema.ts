@@ -40,7 +40,7 @@ const dateTime_ApiToForm_Codec = z.codec(
 )
 
 
-export const createTaskSchema = createTaskSchema_BE
+const createTaskSchema = createTaskSchema_BE
   .omit({ timeRange: true }) // Not neccessary to omit here but for clarity.
   .extend({
     timeRange: z
@@ -60,10 +60,7 @@ export const createTaskSchema = createTaskSchema_BE
   })
   .pipe(createTaskSchema_BE);
 
-export type CreateTaskInput = z.input<typeof createTaskSchema>;
-export type CreateTaskOutput = z.output<typeof createTaskSchema>;
-
-export const createTaskSchemaDefaultValues: CreateTaskInput = {
+const createTaskSchemaDefaultValues: CreateTaskInput = {
   title: "",
   description: "",
   timeRange: null,
@@ -72,7 +69,23 @@ export const createTaskSchemaDefaultValues: CreateTaskInput = {
   labels: [],
 };
 
-export const updateTaskSchema = createTaskSchema;
+const updateTaskSchema = createTaskSchema;
 
-export type UpdateTaskInput  = z.input<typeof updateTaskSchema>;
-export type UpdateTaskOutput = z.output<typeof updateTaskSchema>;
+
+type CreateTaskInput = z.input<typeof createTaskSchema>;
+type CreateTaskOutput = z.output<typeof createTaskSchema>;
+type UpdateTaskInput  = z.input<typeof updateTaskSchema>;
+type UpdateTaskOutput = z.output<typeof updateTaskSchema>;
+
+export {
+  createTaskSchema,
+  createTaskSchemaDefaultValues,
+  updateTaskSchema,
+}
+
+export type {
+  CreateTaskInput,
+  CreateTaskOutput,
+  UpdateTaskInput,
+  UpdateTaskOutput
+}
