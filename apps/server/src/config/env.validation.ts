@@ -82,6 +82,14 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   MAIL_FROM?: string;
+
+  @IsOptional()
+  @IsString()
+  FRONTEND_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  BACKEND_URL?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

@@ -8,14 +8,11 @@ import { TaskModule } from '../tasks/task.module';
 import { ProjectModule } from '../projects/project.module';
 import { Project } from '../projects/project.entity';
 
-import { MailerModule } from '../mailer/mailer.module';
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Task, Project]),
     TaskModule,
     ProjectModule,
-    MailerModule,
   ],
   controllers: [UserController],
   providers: [UserService],

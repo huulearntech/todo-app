@@ -32,6 +32,7 @@ import {
 @Index('tasks_section_lexorank_uq', ['sectionId', 'lexorank'], {
   unique: true,
 })
+@Index('idx_tasks_completed_at', ['completedAt'])
 export class Task {
   @PrimaryGeneratedColumn('uuid')
   id: string;

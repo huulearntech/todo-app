@@ -12,15 +12,18 @@ import type { Response, Request } from 'express';
 
 import { SignInDto } from './dto/sign-in.dto';
 import { SignUpDto } from './dto/sign-up.dto';
+import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 
 import { Public } from './decorators/public.decorator';
 import { CurrentUser, type JwtUser } from './decorators/current-user.decorator';
 
 import { TypedConfigService } from '../../config/typed-config.service';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { MagicLinkGuard } from './guards/magic-link.guard';
 import { UserService } from '../users/user.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { GuestGuard } from './guards/guest.guard';
+import { User } from '../users/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -35,7 +38,7 @@ export class AuthController {
   @UseGuards(GuestGuard)
   @Post('sign-up')
   async signUp(@Body() signUpDto: SignUpDto) {
-    const user = await this.userService.createUser(signUpDto);
+    const user = await this.authService.signUp(signUpDto);
     return user;
   }
 
@@ -132,6 +135,65 @@ export class AuthController {
     });
 
     return { accessToken };
+  }
+
+  @Public()
+  @UseGuards(GuestGuard)
+  @Post('magic-link')
+  async requestMagicLink(@Body() body: MagicLinkRequestDto) {
+    return this.authService.sendMagicLink(body.email);
+  }
+
+  @Public()
+  @UseGuards(MagicLinkGuard)
+  @Get('magic-link/callback')
+  async magicLinkCallback(@Req() request: Request, @Res() response: Response) {
+    const user = request.user as User;
+
+    // Generate tokens
+    const { accessToken, refreshToken } =
+      await this.refreshTokenService.generatePairOfTokens(user.id);
+    await this.refreshTokenService.createRefreshToken(user.id, refreshToken);
+
+    // Set Refresh Token Cookie
+    response.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge:
+        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000,
+      path: '/auth/refresh-token',
+    });
+
+    // Set Access Token Cookie
+    response.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000,
+      path: '/',
+    });
+
+    const isJsonRequest =
+      request.headers['accept']?.includes('application/json');
+
+    if (isJsonRequest) {
+      return response.status(200).json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          defaultProjectId: user.defaultProjectId,
+          isEmailVerified: user.isEmailVerified,
+        },
+        accessToken,
+      });
+    }
+
+    const frontendBaseUrl =
+      this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
+    return response.redirect(`${frontendBaseUrl}/`);
   }
 
   @Get('me')

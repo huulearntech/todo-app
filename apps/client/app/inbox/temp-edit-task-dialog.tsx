@@ -61,6 +61,8 @@ export default function TempEditTaskDialog() {
     },
     onSettled: (_data, _error, _variables, _onMutateResult, context) => {
       context.client.invalidateQueries({ queryKey: ["tasks"] });
+      context.client.invalidateQueries({ queryKey: ["productivity-goals"] });
+      context.client.invalidateQueries({ queryKey: ["completed-tasks-last-7-days"] });
     },
   });
 
@@ -80,17 +82,23 @@ export default function TempEditTaskDialog() {
         <DialogHeader className="flex flex-row items-center justify-between border-b border-border/40 px-5 py-3 space-y-0 bg-muted/20 shrink-0">
           <Breadcrumb>
             <BreadcrumbList className="text-xs">
-              <BreadcrumbItem>
-                <span className="font-semibold text-foreground truncate max-w-[150px]">
-                  {task.section.project.name}
-                </span>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="truncate max-w-[150px]">
-                  {task.section.name}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
+              {task.section?.project?.name && (
+                <>
+                  <BreadcrumbItem>
+                    <span className="font-semibold text-foreground truncate max-w-[150px]">
+                      {task.section.project.name}
+                    </span>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                </>
+              )}
+              {task.section?.name && (
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="truncate max-w-[150px]">
+                    {task.section.name}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
           <DialogTitle className="sr-only">Edit Task: {task.title}</DialogTitle>

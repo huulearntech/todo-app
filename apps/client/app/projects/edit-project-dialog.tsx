@@ -94,10 +94,7 @@ export default function EditProjectDialog() {
 
   const onSubmit = (data: UpdateProjectDto) => {
     if (!projectToEdit) return;
-    updateProjectMutation.mutate({
-      ...data,
-      id: projectToEdit.id,
-    });
+    updateProjectMutation.mutate(data);
   };
 
   return (

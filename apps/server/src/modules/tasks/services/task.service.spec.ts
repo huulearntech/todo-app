@@ -16,6 +16,7 @@ describe('TaskService', () => {
   let taskRepository: {
     find: jest.Mock;
     findOne: jest.Mock;
+    save: jest.Mock;
     delete: jest.Mock;
   };
   let sectionRepository: { exists: jest.Mock };
@@ -34,6 +35,7 @@ describe('TaskService', () => {
     taskRepository = {
       find: jest.fn(),
       findOne: jest.fn(),
+      save: jest.fn(),
       delete: jest.fn(),
     };
     sectionRepository = {
@@ -153,6 +155,66 @@ describe('TaskService', () => {
           timeRange: null,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('updateTask', () => {
+    it('should return null if task does not exist', async () => {
+      taskRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.updateTask('non-existent-id', {
+        title: 'New Title',
+      });
+
+      expect(result).toBeNull();
+      expect(taskRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should update task and return it with relations', async () => {
+      const existingTask = {
+        id: 'task-1',
+        title: 'Old Title',
+        completedAt: null,
+        sectionId: 'section-1',
+      };
+      const savedTask = {
+        ...existingTask,
+        title: 'New Title',
+      };
+      const populatedTask = {
+        ...savedTask,
+        section: {
+          id: 'section-1',
+          name: 'Section 1',
+          project: { id: 'project-1', name: 'Project 1' },
+        },
+        labels: [],
+        recurrence: null,
+      };
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(existingTask)
+        .mockResolvedValueOnce(populatedTask);
+      taskRepository.save.mockResolvedValue(savedTask);
+
+      const result = await service.updateTask('task-1', {
+        title: 'New Title',
+      });
+
+      expect(taskRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'New Title' }),
+      );
+      expect(taskRepository.findOne).toHaveBeenLastCalledWith({
+        where: { id: 'task-1' },
+        relations: {
+          section: {
+            project: true,
+          },
+          labels: true,
+          recurrence: true,
+        },
+      });
+      expect(result).toEqual(populatedTask);
     });
   });
 

@@ -1,5 +1,6 @@
 import ProjectContent from "./project-content";
 
+// NOTE: Consider adding parameters like "year=", "month=", "week=",...
 export default async function ProjectPage({
   params,
 }: {

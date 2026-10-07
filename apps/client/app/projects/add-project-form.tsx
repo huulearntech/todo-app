@@ -109,10 +109,11 @@ export default function AddProjectDialog({
     setDialogOpen(nextOpen);
   };
 
+  // TODO: Fix this pile of AI shit
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       {trigger ? (
-        <DialogTrigger render={(props) => <div {...props} className="inline-flex w-full">{trigger}</div>} />
+        <DialogTrigger nativeButton={false} render={(props) => <div {...props} className="inline-flex w-full">{trigger}</div>} />
       ) : (
         <DialogTrigger
           render={(props) => (

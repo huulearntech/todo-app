@@ -170,3 +170,21 @@ export function getRecurringReminderEmailTemplate(
     `,
   });
 }
+
+export function getMagicLinkEmailTemplate(
+  name: string,
+  magicLinkUrl: string,
+): string {
+  return baseEmailTemplate({
+    title: 'Verify your account',
+    contentHtml: `
+      <h2>Verify your account</h2>
+      <p>Hi ${name},</p>
+      <p>Click the button below to verify your email address and securely sign in to your Todo App account:</p>
+      <a href="${magicLinkUrl}" class="button">Verify &amp; Sign In</a>
+      <div class="highlight-box">
+        <p style="margin: 0; font-size: 13px;">This link will expire in 15 minutes and can only be used once. If you did not request this link, you can safely ignore this email.</p>
+      </div>
+    `,
+  });
+}

@@ -178,7 +178,9 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
     onSuccess: (updatedTask, _variables, _onMutateResult, context) => {
       // Sync cache with server response without triggering a full refetch
       context.client.setQueryData<Task[]>(["tasks", { projectId }], (oldTasks) =>
-        oldTasks?.map((task) => (task.id === updatedTask.id ? updatedTask : task)) || []
+        oldTasks?.map((task) =>
+          task.id === updatedTask.id ? { ...task, ...updatedTask } : task
+        ) || []
       );
     },
     onError: (_error, _updatedEvent, onMutateResult, context) => {

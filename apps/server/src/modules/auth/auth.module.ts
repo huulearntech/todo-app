@@ -9,9 +9,13 @@ import { User } from '../users/user.entity';
 import { UserModule } from '../users/user.module';
 
 import { RefreshToken } from './entities/refresh-token.entity';
+import { MagicLinkToken } from './entities/magic-link-token.entity';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
+import { MagicLinkStrategy } from './strategies/magic-link.strategy';
 import { JwtAccessGuard } from './guards/jwt-access.guard';
+import { MagicLinkGuard } from './guards/magic-link.guard';
 import { RefreshTokenService } from './services/refresh-token.service';
+import { MailerModule } from '../mailer/mailer.module';
 
 @Module({
   imports: [
@@ -20,12 +24,15 @@ import { RefreshTokenService } from './services/refresh-token.service';
       secret: process.env.JWT_SECRET, // Must match the Strategy secret
       signOptions: { expiresIn: '900s' }, // Access token expiration time // FIX: @Consistency
     }),
-    TypeOrmModule.forFeature([User, RefreshToken]),
+    TypeOrmModule.forFeature([User, RefreshToken, MagicLinkToken]),
     UserModule,
+    MailerModule,
   ],
   providers: [
     AuthService,
     JwtAccessStrategy,
+    MagicLinkStrategy,
+    MagicLinkGuard,
     {
       provide: 'APP_GUARD',
       useClass: JwtAccessGuard, // Use the JwtAuthGuard globally, public routes must be explicitly marked

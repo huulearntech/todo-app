@@ -18,6 +18,8 @@ import { ProjectModule } from './modules/projects/project.module';
 import { SectionModule } from './modules/sections/section.module';
 import { ColorModule } from './modules/colors/color.module';
 import { MailerModule } from './modules/mailer/mailer.module';
+import { SearchModule } from './modules/search/search.module';
+import { ProductivityModule } from './modules/productivity/productivity.module';
 
 import { ZodValidationPipe } from 'nestjs-zod';
 
@@ -56,6 +58,8 @@ import { migrations } from './migrations';
     ColorModule,
     UserModule,
     MailerModule,
+    SearchModule,
+    ProductivityModule,
     ImageStorageModule.register(),
     AppConfigModule,
   ],

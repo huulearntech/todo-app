@@ -15,3 +15,18 @@ export const signUpSchema = z.object({
 });
 
 export type SignUpDto = z.infer<typeof signUpSchema>;
+
+export const magicLinkRequestSchema = z.object({
+  email: z.email("Invalid email address"),
+});
+
+export type MagicLinkRequestDto = z.infer<typeof magicLinkRequestSchema>;
+
+export const magicLinkCallbackQuerySchema = z.object({
+  token: z.string().min(1, "Token is required"),
+});
+
+export type MagicLinkCallbackQueryDto = z.infer<
+  typeof magicLinkCallbackQuerySchema
+>;
+

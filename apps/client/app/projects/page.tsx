@@ -43,8 +43,10 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => projectService.getMyProjects(),
+    queryKey: ["projects", "non_default"],
+    queryFn: () => projectService.getMyNonDefaultProjects(),
+    // queryKey: ["projects"],
+    // queryFn: () => projectService.getMyProjects(),
   });
 
   const filteredProjects = useMemo(() => {
@@ -177,8 +179,15 @@ export default function ProjectsPage() {
                     className="group relative flex items-center justify-between p-3.5 sm:p-4 rounded-xl border border-border/70 bg-card hover:bg-accent/40 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all duration-150 select-none"
                   >
                     <div className="flex items-center gap-3.5 min-w-0 pr-4">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors shrink-0">
-                        <HashIcon className="size-4" />
+                      <div
+                        className="flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border"
+                        style={{
+                          backgroundColor: `${project.colorHexCode || "#E0E0E0"}20`,
+                          borderColor: `${project.colorHexCode || "#E0E0E0"}40`,
+                          color: project.colorHexCode || "#E0E0E0",
+                        }}
+                      >
+                        <HashIcon className="size-4.5" />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">

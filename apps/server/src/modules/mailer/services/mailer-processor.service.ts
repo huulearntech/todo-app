@@ -15,6 +15,7 @@ import { MailerSchedulerService } from './mailer-scheduler.service';
 import {
   getWelcomeEmailTemplate,
   getPasswordResetEmailTemplate,
+  getMagicLinkEmailTemplate,
   getTaskReminderEmailTemplate,
   getRecurringReminderEmailTemplate,
 } from '../templates/email-templates';
@@ -67,6 +68,13 @@ export class MailerProcessor extends WorkerHost {
 
       case 'password-reset':
         html = getPasswordResetEmailTemplate(
+          data.context.name,
+          data.context.actionUrl ?? '#',
+        );
+        break;
+
+      case 'magic-link':
+        html = getMagicLinkEmailTemplate(
           data.context.name,
           data.context.actionUrl ?? '#',
         );

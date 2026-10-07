@@ -352,7 +352,16 @@ export class TaskService {
       }
     }
 
-    return savedTask;
+    return this.taskRepository.findOne({
+      where: { id: savedTask.id },
+      relations: {
+        section: {
+          project: true,
+        },
+        labels: true,
+        recurrence: true,
+      },
+    });
   }
 
   async updateTaskOrder({

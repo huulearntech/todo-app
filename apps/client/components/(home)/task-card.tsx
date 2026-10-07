@@ -3,7 +3,6 @@ import { TaskResponseDto as Task } from "@todo/shared";
 
 import {
   Item,
-  ItemContent,
   ItemDescription,
   ItemFooter,
   ItemHeader,
@@ -23,8 +22,13 @@ import { taskLabelService } from "@/services/task-label.service";
 import { useQuery } from "@tanstack/react-query";
 import { Checkbox } from "../ui/checkbox";
 
-import { priorityConfig } from "./task-form";
 import { cn } from "cn";
+
+const priorityCheckboxStyles: Record<string, string> = {
+  high: "border-red-500 dark:border-red-500 not-data-checked:hover:bg-red-500/10 data-checked:bg-red-500 data-checked:border-red-500 dark:data-checked:bg-red-500 dark:data-checked:border-red-500",
+  medium: "border-amber-500 dark:border-amber-500 not-data-checked:hover:bg-amber-500/10 data-checked:bg-amber-500 data-checked:border-amber-500 dark:data-checked:bg-amber-500 dark:data-checked:border-amber-500",
+  low: "border-blue-500 dark:border-blue-500 not-data-checked:hover:bg-blue-500/10 data-checked:bg-blue-500 data-checked:border-blue-500 dark:data-checked:bg-blue-500 dark:data-checked:border-blue-500",
+};
 
 function TaskCardInner({ task }: { task: Task }) {
   // TODO: aad reminder to the task entity
@@ -56,26 +60,29 @@ function TaskCardInner({ task }: { task: Task }) {
         setDialogIsOpen(true);
       }}
     >
-      {/* <ItemContent> */}
-        <ItemHeader>
-          <div  className="space-y-1.5">
+      <ItemHeader>
+        <div className="space-y-1.5">
           <ItemTitle className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {task.title}
           </ItemTitle>
 
-        {task.description && (
-          <ItemDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-            {task.description}
-          </ItemDescription>
-        )}
+          {task.description && (
+            <ItemDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              {task.description}
+            </ItemDescription>
+          )}
 
-          </div>
-          <Checkbox
-            className={cn("rounded-full size-6", priorityConfig[task.priority])}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </ItemHeader>
-      {/* </ItemContent> */}
+        </div>
+        <Checkbox
+          defaultChecked={!!task.completedAt}
+          className={cn(
+            "rounded-full size-6 border-2 dark:bg-transparent transition-colors",
+            "data-checked:text-white dark:data-checked:text-background",
+            priorityCheckboxStyles[task.priority] ?? priorityCheckboxStyles.low
+          )}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </ItemHeader>
 
         <ItemFooter className="pt-1.5 [&_svg]:size-3.5 flex items-center justify-between gap-2 border-t border-border/30 text-xs">
           <div className="flex items-center gap-2 flex-wrap">

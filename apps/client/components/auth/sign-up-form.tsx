@@ -1,27 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authService } from "@/services/auth.service";
 import { signUpSchema, type SignUpDto } from "@todo/shared";
 
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { toast } from "@/components/ui/toast";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
-import { Loader2Icon, MailIcon, LockIcon, UserIcon, UserPlusIcon } from "lucide-react";
+  Loader2Icon,
+  MailIcon,
+  LockIcon,
+  UserIcon,
+  EyeIcon,
+  EyeOffIcon,
+} from "lucide-react";
 
 export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SignUpDto>({
     resolver: zodResolver(signUpSchema),
@@ -32,7 +40,7 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
     },
   });
 
-  const { handleSubmit } = form;
+  const { handleSubmit, control } = form;
 
   const onSubmit = async (data: SignUpDto) => {
     try {
@@ -45,8 +53,10 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
       });
       if (onSwitchTab) {
         onSwitchTab();
+      } else {
+        router.push("/auth/sign-in");
       }
-    } catch (error) {
+    } catch {
       toast.add({
         title: "Sign up failed",
         description: "Could not create account. Please try again.",
@@ -58,125 +68,164 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
   };
 
   return (
-    <Card className="w-full border border-border/80 shadow-md rounded-2xl bg-card/95 backdrop-blur-xs">
-      <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-          <UserPlusIcon className="size-5 text-primary" />
-          Create Account
-        </CardTitle>
-        <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-          Fill in your details below to get started with Todo.
-        </CardDescription>
-      </CardHeader>
+    <div className="w-full">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          Sign Up
+        </h1>
+      </div>
 
-      <CardContent className="space-y-4 pt-0">
-        <form id="sign-up-form" onSubmit={handleSubmit(onSubmit)}>
-          <FieldGroup className="space-y-3.5">
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="name" className="text-xs font-semibold">
-                    Full Name
-                  </FieldLabel>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="John Doe"
-                      autoComplete="name"
-                      className="pl-9 rounded-xl h-10 border-border/70 focus-visible:ring-primary/40 text-sm"
-                      {...field}
-                    />
-                  </div>
-                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
+      <form id="sign-up-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <FieldGroup className="space-y-4">
+          <Controller
+            name="name"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="name" className="text-xs font-semibold text-foreground/90">
+                  Full Name
+                </FieldLabel>
+                <InputGroup
+                  data-invalid={fieldState.invalid}
+                  className="h-10 rounded-lg border-border/80 bg-background transition-colors hover:border-border focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20"
+                >
+                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
+                    <UserIcon className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    autoComplete="name"
+                    aria-invalid={fieldState.invalid}
+                    className="h-full text-sm pl-1 placeholder:text-muted-foreground/60"
+                    {...field}
+                  />
+                </InputGroup>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
 
-            <Controller
-              name="email"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="email" className="text-xs font-semibold">
-                    Email Address
-                  </FieldLabel>
-                  <div className="relative">
-                    <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      autoComplete="email"
-                      className="pl-9 rounded-xl h-10 border-border/70 focus-visible:ring-primary/40 text-sm"
-                      {...field}
-                    />
-                  </div>
-                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
+          <Controller
+            name="email"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="email" className="text-xs font-semibold text-foreground/90">
+                  Email Address
+                </FieldLabel>
+                <InputGroup
+                  data-invalid={fieldState.invalid}
+                  className="h-10 rounded-lg border-border/80 bg-background transition-colors hover:border-border focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20"
+                >
+                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
+                    <MailIcon className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    autoComplete="email"
+                    aria-invalid={fieldState.invalid}
+                    className="h-full text-sm pl-1 placeholder:text-muted-foreground/60"
+                    {...field}
+                  />
+                </InputGroup>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
 
-            <Controller
-              name="password"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="password" className="text-xs font-semibold">
-                    Password
-                  </FieldLabel>
-                  <div className="relative">
-                    <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="At least 6 characters"
-                      autoComplete="new-password"
-                      className="pl-9 rounded-xl h-10 border-border/70 focus-visible:ring-primary/40 text-sm"
-                      {...field}
-                    />
-                  </div>
-                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </form>
-      </CardContent>
+          <Controller
+            name="password"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="password" className="text-xs font-semibold text-foreground/90">
+                  Password
+                </FieldLabel>
+                <InputGroup
+                  data-invalid={fieldState.invalid}
+                  className="h-10 rounded-lg border-border/80 bg-background transition-colors hover:border-border focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20"
+                >
+                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
+                    <LockIcon className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    aria-invalid={fieldState.invalid}
+                    className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
+                    {...field}
+                  />
+                  <InputGroupAddon align="inline-end" className="pr-1.5">
+                    <InputGroupButton
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="size-7 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOffIcon className="size-3.5" />
+                      ) : (
+                        <EyeIcon className="size-3.5" />
+                      )}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+        </FieldGroup>
 
-      <CardFooter className="flex flex-col gap-3 pt-4 pb-6 border-t border-border/40 bg-muted/20 rounded-b-2xl">
+        <p className="text-[11px] text-muted-foreground/80 leading-normal">
+          By signing up, you agree to Todo&apos;s Terms of Service and Privacy Policy.
+        </p>
+
         <Button
           type="submit"
           form="sign-up-form"
           disabled={isLoading}
-          className="w-full h-10 rounded-xl font-semibold shadow-xs gap-2"
+          className="w-full h-10 rounded-lg font-medium shadow-xs hover:shadow-sm active:translate-y-px transition-all gap-2"
         >
           {isLoading ? (
             <>
               <Loader2Icon className="size-4 animate-spin" />
-              <span>Creating Account...</span>
+              <span>Signing Up...</span>
             </>
           ) : (
-            <span>Create Account</span>
+            <span>Sign Up</span>
           )}
         </Button>
+      </form>
 
-        {onSwitchTab && (
-          <p className="text-xs text-muted-foreground text-center pt-1">
-            Already have an account?{" "}
+      <div className="pt-6 mt-6 border-t border-border/50 text-center">
+        <p className="text-xs text-muted-foreground">
+          Already have an account?{" "}
+          {onSwitchTab ? (
             <button
               type="button"
               onClick={onSwitchTab}
-              className="text-primary font-semibold hover:underline cursor-pointer"
+              className="text-primary font-medium hover:underline hover:text-primary/90 cursor-pointer"
             >
               Sign In
             </button>
-          </p>
-        )}
-      </CardFooter>
-    </Card>
+          ) : (
+            <Link
+              href="/auth/sign-in"
+              className="text-primary font-medium hover:underline hover:text-primary/90 cursor-pointer"
+            >
+              Sign In
+            </Link>
+          )}
+        </p>
+      </div>
+    </div>
   );
 }

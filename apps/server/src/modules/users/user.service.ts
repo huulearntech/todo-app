@@ -11,14 +11,11 @@ import { Project } from '../projects/project.entity';
 import { Color } from '../colors/color.entity';
 import { DEFAULT_COLORS } from '../colors/color.service';
 
-import { MailerSchedulerService } from '../mailer/services/mailer-scheduler.service';
-
 @Injectable()
 export class UserService {
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(User) private readonly userRepository: Repository<User>,
-    private readonly mailerSchedulerService: MailerSchedulerService,
   ) {}
 
   async createUser(signUp: SignUpDto): Promise<UserResponseDto> {
@@ -60,23 +57,10 @@ export class UserService {
           name: savedUser.name,
           avatarUrl: savedUser.avatarUrl,
           defaultProjectId: savedUser.defaultProjectId,
+          isEmailVerified: savedUser.isEmailVerified,
         };
       },
     );
-
-    // Send immediate welcome email asynchronously
-    this.mailerSchedulerService
-      .sendImmediateEmail({
-        to: userResponse.email,
-        subject: 'Welcome to Todo App!',
-        templateType: 'welcome',
-        context: {
-          name: userResponse.name,
-        },
-      })
-      .catch(() => {
-        // Logging error is handled inside MailerSchedulerService/Worker
-      });
 
     return userResponse;
   }

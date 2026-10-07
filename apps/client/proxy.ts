@@ -15,8 +15,8 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get("access_token")?.value;
 
 
-  // If already logged in and navigating to /auth, redirect to redirect param or homepage
-  if (pathname === "/auth" && token) {
+  // If already logged in and navigating to /auth routes, redirect to redirect param or homepage
+  if ((pathname === "/auth" || pathname.startsWith("/auth/")) && token) {
     const redirectParam = request.nextUrl.searchParams.get("redirect");
     const targetUrl = getSafeRedirectUrl(redirectParam, "/");
     return NextResponse.redirect(new URL(targetUrl, request.url));

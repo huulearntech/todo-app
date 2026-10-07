@@ -8,9 +8,11 @@ import {
 } from 'typeorm';
 
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
 import { Project } from '../projects/project.entity';
 import { Color } from '../colors/color.entity';
+import { UserGoal } from './entities/user-goal.entity';
 
 @Entity('users')
 export class User {
@@ -38,9 +40,8 @@ export class User {
   @Column({ type: 'uuid', name: 'default_project_id', update: false })
   defaultProjectId: string;
 
-  // TODO: Verify email after registration.
-  // @Column({ name: 'is_email_verified', default: false })
-  // isEmailVerified!: boolean;
+  @Column({ name: 'is_email_verified', default: false })
+  isEmailVerified!: boolean;
 
   // @OneToMany(() => Task, task => task.owner, { cascade: true })
   // tasks!: Task[];
@@ -56,4 +57,10 @@ export class User {
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
+
+  @OneToMany(() => MagicLinkToken, (magicLinkToken) => magicLinkToken.user)
+  magicLinkTokens: MagicLinkToken[];
+
+  @OneToMany(() => UserGoal, (userGoal) => userGoal.user, { cascade: true })
+  goals?: UserGoal[];
 }

@@ -13,7 +13,7 @@ import {
 export interface SendImmediateEmailParams {
   to: string;
   subject: string;
-  templateType: 'welcome' | 'password-reset' | 'custom';
+  templateType: 'welcome' | 'password-reset' | 'magic-link' | 'custom';
   context: {
     name: string;
     actionUrl?: string;

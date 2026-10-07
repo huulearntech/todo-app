@@ -13,6 +13,7 @@ export const userResponseSchema = z.object({
   name: z.string(),
   avatarUrl: z.url().nullish(), // NOTE: is this a good idea? should null be a state at all?
   defaultProjectId: z.uuid(),
+  isEmailVerified: z.boolean().optional(),
 });
 
 export type UserResponseDto = z.infer<typeof userResponseSchema>;
