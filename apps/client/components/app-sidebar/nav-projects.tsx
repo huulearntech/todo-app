@@ -2,8 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
-import { projectService } from "@/services/project.service"
+import { useProjects } from "@/hooks/projects/use-projects"
 
 import {
   HashIcon,
@@ -37,10 +36,7 @@ export function NavProjects() {
   const pathname = usePathname()
   const { openEditProjectDialog } = useEditProjectDialog()
 
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects", "non_default"],
-    queryFn: () => projectService.getMyNonDefaultProjects(),
-  })
+  const { data: projects = [], isLoading } = useProjects("non_default");
 
   if (isLoading) {
     return (

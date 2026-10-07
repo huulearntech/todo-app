@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDueTodayTasks } from "@/hooks/tasks/use-due-today-tasks";
+import { usePostponeTask } from "@/hooks/tasks/use-postpone-task";
 import { useDroppable, type DragEndEvent } from "@dnd-kit/core";
-import { taskService } from "@/services/task.service";
 import TaskCard from "@/components/(home)/task-card";
 import {
   Sortable,
@@ -66,12 +66,8 @@ function PostponeDropZone() {
 }
 
 export default function TaskList() {
-  const queryClient = useQueryClient();
-
-  const { data: initialTasks, isLoading } = useQuery({
-    queryKey: ["tasks", "due-today"],
-    queryFn: () => taskService.getMyTasksDueToday(),
-  });
+  const { data: initialTasks, isLoading } = useDueTodayTasks();
+  const postponeTaskMutation = usePostponeTask();
 
   // Local state for drag-and-drop sortable items
   const [items, setItems] = useState<Task[]>([]);
@@ -105,14 +101,12 @@ export default function TaskList() {
       // 2. Pending server update timeout reference (TODO: server call)
       let isUndone = false;
 
-      const postponeTimeout = setTimeout(async () => {
+      const postponeTimeout = setTimeout(() => {
         if (isUndone) return;
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowIso = tomorrow.toISOString();
-        await taskService.postponeTask(taskId, tomorrowIso);
-        queryClient.invalidateQueries({ queryKey: ["tasks", "due-today"] });
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        postponeTaskMutation.mutate({ taskId, postponeTo: tomorrowIso });
       }, 4000);
 
       // 3. Show Toast with Undo Action

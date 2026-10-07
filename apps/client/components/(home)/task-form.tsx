@@ -41,8 +41,7 @@ import {
 import { DateTimePicker } from "@/components/date-time-picker";
 
 import { priorityItems } from "@/lib/constants";
-import { taskLabelService } from "@/services/task-label.service";
-import { useQuery } from "@tanstack/react-query";
+import { useLabels } from "@/hooks/labels/use-labels";
 import { format, setHours, setMinutes } from "date-fns";
 import {
   CalendarRangeIcon,
@@ -94,9 +93,7 @@ export function TaskForm({
 }: TaskFormProps) {
   const anchor = useComboboxAnchor();
 
-  const { data: labels = [] } = useQuery({
-    queryKey: ["task-labels"],
-    queryFn: taskLabelService.getMyTaskLabels,
+  const { data: labels = [] } = useLabels({
     select: (data) => data.map((label) => ({ id: label.id, name: label.name, colorHexCode: label.colorHexCode })),
   });
 

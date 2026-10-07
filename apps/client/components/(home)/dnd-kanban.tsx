@@ -3,7 +3,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { ComponentProps, useState, Fragment, useEffect } from "react"
+import { ComponentProps, useState, Fragment, useEffect, useRef } from "react"
 import { Badge } from "@/components/reui/badge"
 import {
   Kanban,
@@ -18,22 +18,40 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { GripVerticalIcon, Plus } from 'lucide-react'
+import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react"
 
 import TaskItemListView from "./task-card"
 
-import { useMutation, useQuery } from "@tanstack/react-query"
-import { taskService } from "@/services/task.service"
-
 import type { TaskResponseDto as Task } from "@todo/shared"
-import { sectionService } from "@/services/section.service"
-import { SectionResponseDto } from "@todo/shared"
-
+import { useProjectTasks } from "@/hooks/tasks/use-project-tasks"
+import { useSections } from "@/hooks/sections/use-sections"
+import { useMoveTasks } from "@/hooks/tasks/use-move-tasks"
+import { useMoveSection } from "@/hooks/sections/use-move-section"
+import { useRenameSection } from "@/hooks/sections/use-rename-section"
+import { useDeleteSection } from "@/hooks/sections/use-delete-section"
 import { AddTaskFormTrigger } from "./add-task-form"
-
-import AddSectionForm from "../../app/projects/add-section-form";
-import { projectService } from "@/services/project.service"
+import AddSectionForm from "../../app/projects/add-section-form"
 import { Skeleton } from "../ui/skeleton"
+import { Input } from "../ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog"
+import { toast } from "../ui/toast"
 
 interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -62,53 +80,190 @@ interface TaskColumnProps extends Omit<
 > {
   tasks: Task[]
   isOverlay?: boolean
+  onRename: (sectionId: string, newName: string) => void
+  onDelete: (sectionId: string) => void
+  isRenaming?: boolean
 }
 
-function TaskColumn({ value, title, tasks, isOverlay, ...props }: TaskColumnProps) {
+function TaskColumn({
+  value,
+  title,
+  tasks,
+  isOverlay,
+  onRename,
+  onDelete,
+  isRenaming,
+  ...props
+}: TaskColumnProps) {
+  const [editingName, setEditingName] = useState<string | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const isEditing = editingName !== null
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [isEditing])
+
+  const handleSave = () => {
+    if (editingName === null) return
+    const trimmed = editingName.trim()
+    if (trimmed && trimmed !== title) {
+      onRename(value, trimmed)
+    }
+    setEditingName(null)
+  }
+
+  const handleCancel = () => {
+    setEditingName(null)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      handleCancel()
+    }
+  }
+
   return (
-    <KanbanColumn value={value} {...props}>
-      <Card className="mb-2.5">
-        <CardHeader className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm font-semibold">
-              {title}
-            </span>
-            <Badge variant="outline">{tasks.length}</Badge>
-          </div>
-          <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" />} >
-            <GripVerticalIcon />
-          </KanbanColumnHandle>
-        </CardHeader>
-        <CardContent>
-          <KanbanColumnContent value={value} className="flex flex-col gap-2.5">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                asHandle={!isOverlay}
-                isOverlay={isOverlay}
-              />
-            ))}
-            <AddTaskFormTrigger sectionId={value} />
-          </KanbanColumnContent>
-        </CardContent>
-      </Card>
-    </KanbanColumn>
+    <>
+      <KanbanColumn value={value} {...props}>
+        <Card className="mb-2.5">
+          <CardHeader className="flex items-center justify-between gap-2">
+            {isEditing ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSave()
+                }}
+                className="flex-1 min-w-0"
+              >
+                <Input
+                  ref={inputRef}
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={handleSave}
+                  disabled={isRenaming}
+                  className="h-7 px-2 py-0 text-sm font-semibold rounded-md bg-background border-primary/50 shadow-xs focus-visible:ring-1 focus-visible:ring-primary w-full"
+                  maxLength={100}
+                  aria-label="Section name"
+                />
+              </form>
+            ) : (
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => setEditingName(title ?? "")}
+                  className="text-sm font-semibold text-foreground truncate rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-muted/70 transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-w-[190px]"
+                  title="Click to rename section"
+                  aria-label={`Rename section ${title ?? ""}`}
+                >
+                  {title || "Untitled section"}
+                </button>
+                <Badge variant="outline" className="shrink-0">{tasks.length}</Badge>
+              </div>
+            )}
+
+            <div className="flex items-center gap-0.5 shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={(triggerProps) => (
+                    <Button
+                      {...triggerProps}
+                      size="icon-xs"
+                      variant="ghost"
+                      className="opacity-0 group-hover/kanban-column:opacity-100 data-popup-open:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground transition-opacity rounded-md"
+                      aria-label={`Section options for ${title ?? "section"}`}
+                    />
+                  )}
+                >
+                  <MoreHorizontalIcon className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 rounded-xl p-1 shadow-md">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      onClick={() => setEditingName(title ?? "")}
+                      className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
+                    >
+                      <PencilIcon className="size-3.5 text-muted-foreground" />
+                      <span>Rename</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-1 bg-border/50" />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
+                    >
+                      <Trash2Icon className="size-3.5" />
+                      <span>Delete section</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" className="rounded-md" />} >
+                <GripVerticalIcon className="size-4" />
+              </KanbanColumnHandle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <KanbanColumnContent value={value} className="flex flex-col gap-2.5">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  asHandle={!isOverlay}
+                  isOverlay={isOverlay}
+                />
+              ))}
+              <AddTaskFormTrigger sectionId={value} />
+            </KanbanColumnContent>
+          </CardContent>
+        </Card>
+      </KanbanColumn>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Section</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &ldquo;{title}&rdquo;?
+              {tasks.length > 0 && (
+                <span className="block mt-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                  This section contains {tasks.length} {tasks.length === 1 ? "task" : "tasks"}.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="rounded-lg"
+              onClick={() => {
+                onDelete(value)
+                setIsDeleteDialogOpen(false)
+              }}
+            >
+              Delete section
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
 
 function DndKanban({ projectId }: { projectId: string }) {
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ["tasks", { projectId }],
-    queryFn: () => taskService.getTasksByProjectId(projectId),
-  });
-
-  const { data: sections, isLoading: sectionsLoading } = useQuery({
-    queryKey: ["sections", { projectId }],
-    queryFn: () => projectService.getSectionsByProjectId(projectId),
-  });
-
+  const { data: tasks, isLoading: tasksLoading } = useProjectTasks(projectId);
+  const { data: sections, isLoading: sectionsLoading } = useSections(projectId);
   const isLoading = tasksLoading || sectionsLoading;
 
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
@@ -128,72 +283,10 @@ function DndKanban({ projectId }: { projectId: string }) {
     setColumns(acc)
   }, [sections, tasks])
 
-  const moveTasksMutation = useMutation({
-    mutationFn: async ({ taskId, sectionId, prevId }: {
-      taskId: string;
-      sectionId: string;
-      prevId: string | null;
-    }) => {
-      await taskService.updateTaskOrder({ taskId, prevId, sectionId });
-    },
-    onMutate: async ({ }, context) => {
-      await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] })
-      const previousTasks = context.client.getQueryData<Task[]>(["tasks", { projectId }])
-      return { previousTasks }
-    },
-    onError: (_error, _nextColumns, onMutateResult, context) => {
-      if (onMutateResult?.previousTasks) {
-        context.client.setQueryData(["tasks", { projectId }], onMutateResult.previousTasks)
-      }
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["tasks", { projectId }] })
-    },
-  })
-
-  const moveSectionMutation = useMutation({
-    mutationFn: async ({ sectionId, prevId }: {
-      sectionId: string;
-      prevId: string | null;
-    }) => {
-      await sectionService.updateSectionOrder({ sectionId, prevId });
-    },
-    onMutate: async ({ sectionId, prevId }, context) => {
-      await context.client.cancelQueries({ queryKey: ["sections", { projectId }] })
-      const previousSections = context.client.getQueryData<SectionResponseDto[]>(["sections", { projectId }])
-
-      // NOTE: Optimistically update the UI state for immediate feedback
-      context.client.setQueryData<SectionResponseDto[]>(
-        ["sections", { projectId }],
-        (oldItems = []) => {
-          const sectionToMove = oldItems.find((s) => s.id === sectionId);
-          if (!sectionToMove) return oldItems;
-
-          const newItems = oldItems.filter((s) => s.id !== sectionId);
-
-          const prevIndex = prevId ? newItems.findIndex((s) => s.id === prevId) : -1;
-          const newIndex = prevIndex + 1;
-
-          newItems.splice(newIndex, 0, sectionToMove);
-
-          return newItems;
-        }
-      );
-
-      return { previousSections }
-    },
-    onError: (_err, _payload, onMutateResult, context) => {
-      if (onMutateResult?.previousSections) {
-        context.client.setQueryData(
-          ["sections", { projectId }],
-          onMutateResult.previousSections
-        )
-      }
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["sections", { projectId }] })
-    },
-  })
+  const moveTasksMutation = useMoveTasks(projectId);
+  const moveSectionMutation = useMoveSection(projectId);
+  const renameSectionMutation = useRenameSection(projectId);
+  const deleteSectionMutation = useDeleteSection(projectId);
 
   if (isLoading) {
     return <KanbanBoardSkeleton />
@@ -254,6 +347,9 @@ function DndKanban({ projectId }: { projectId: string }) {
               value={sectionId}
               title={sections?.find((s) => s.id === sectionId)?.name}
               tasks={tasks}
+              onRename={(id, name) => renameSectionMutation.mutate({ sectionId: id, name })}
+              onDelete={(id) => deleteSectionMutation.mutate(id)}
+              isRenaming={renameSectionMutation.isPending}
             />
           ))}
 

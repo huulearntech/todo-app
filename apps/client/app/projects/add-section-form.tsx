@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useCreateSection } from "@/hooks/sections/use-create-section";
 import { PlusIcon, Loader2Icon } from "lucide-react";
 
 import {
@@ -22,10 +22,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-import { sectionService } from "@/services/section.service";
 import {
   createSectionSchema,
-  type SectionResponseDto,
   type CreateSectionDto,
 } from "@todo/shared";
 
@@ -54,43 +52,7 @@ export default function AddSectionForm({
 
   const sectionName = watch("name");
 
-  const addSectionMutation = useMutation({
-    mutationFn: (data: CreateSectionDto) => sectionService.createSection(data),
-    onMutate: async (newSection, context) => {
-      await context.client.cancelQueries({ queryKey: ["sections", { projectId }] });
-
-      const previousSections = context.client.getQueryData<SectionResponseDto[]>([
-        "sections",
-        { projectId },
-      ]);
-
-      context.client.setQueryData(
-        ["sections", { projectId }],
-        (oldSections: SectionResponseDto[] | undefined) => [
-          ...(oldSections || []),
-          {
-            ...newSection,
-            id: `temp-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]
-      );
-
-      return { previousSections };
-    },
-    onError: (_err, _newSection, onMutateResult, context) => {
-      if (onMutateResult?.previousSections) {
-        context.client.setQueryData(
-          ["sections", { projectId }],
-          onMutateResult.previousSections
-        );
-      }
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["sections", { projectId }] });
-    },
-  });
+  const addSectionMutation = useCreateSection(projectId);
 
   const onSubmit = (data: CreateSectionDto) => {
     addSectionMutation.mutate(data, {

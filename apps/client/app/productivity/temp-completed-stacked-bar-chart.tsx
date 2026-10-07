@@ -25,8 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { useQuery } from "@tanstack/react-query";
-import { taskService } from "@/services/task.service";
+import { useCompletedTasksLast7Days } from "@/hooks/productivity/use-completed-tasks-last-7-days";
 import { CheckCircle2Icon, CalendarIcon, FolderIcon, ZapIcon } from "lucide-react";
 
 // Distinct harmonious palette for projects (light & dark mode compatible)
@@ -40,9 +39,7 @@ const CHART_COLORS = [
 ];
 
 export default function TempCompletedStackedBarChart() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["completed-tasks-last-7-days"],
-    queryFn: taskService.getMyTasksCompletedInLast7Days,
+  const { data, isLoading } = useCompletedTasksLast7Days({
     select: (tasks) => {
       // 1. Initialize the last 7 days excluding current day (today), ordered chronologically
       const today = new Date();

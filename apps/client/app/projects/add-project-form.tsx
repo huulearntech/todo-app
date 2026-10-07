@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useColors } from "@/hooks/colors/use-colors";
+import { useCreateProject } from "@/hooks/projects/use-create-project";
 import { PlusIcon, Loader2Icon } from "lucide-react";
 
 import {
@@ -33,8 +34,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
-import { projectService } from "@/services/project.service";
-import { colorService } from "@/services/color.service";
 import { createProjectSchema, type CreateProjectDto } from "@todo/shared";
 
 export interface AddProjectDialogProps {
@@ -55,12 +54,7 @@ export default function AddProjectDialog({
   const dialogOpen = isControlled ? controlledOpen : internalOpen;
   const setDialogOpen = isControlled ? setControlledOpen! : setInternalOpen;
 
-  const queryClient = useQueryClient();
-
-  const { data: colors = [] } = useQuery({
-    queryKey: ["colors"],
-    queryFn: colorService.getMyColors,
-  });
+  const { data: colors = [] } = useColors();
 
   const {
     control,
@@ -76,30 +70,28 @@ export default function AddProjectDialog({
     },
   });
 
-  const createProjectMutation = useMutation({
-    mutationFn: (data: CreateProjectDto) => projectService.createProject(data),
-    onSuccess: (res, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.add({
-        title: "Project created",
-        description: `"${variables.name}" has been created successfully.`,
-        type: "success",
-      });
-      reset();
-      setDialogOpen(false);
-      onSuccess?.();
-    },
-    onError: (err) => {
-      toast.add({
-        title: "Error creating project",
-        description: err instanceof Error ? err.message : "An unexpected error occurred.",
-        type: "error",
-      });
-    },
-  });
+  const createProjectMutation = useCreateProject();
 
   const onSubmit = (data: CreateProjectDto) => {
-    createProjectMutation.mutate(data);
+    createProjectMutation.mutate(data, {
+      onSuccess: (_res, variables) => {
+        toast.add({
+          title: "Project created",
+          description: `"${variables.name}" has been created successfully.`,
+          type: "success",
+        });
+        reset();
+        setDialogOpen(false);
+        onSuccess?.();
+      },
+      onError: (err) => {
+        toast.add({
+          title: "Error creating project",
+          description: err instanceof Error ? err.message : "An unexpected error occurred.",
+          type: "error",
+        });
+      },
+    });
   };
 
   const handleOpenChange = (nextOpen: boolean) => {

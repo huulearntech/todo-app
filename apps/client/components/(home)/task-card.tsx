@@ -18,10 +18,8 @@ import {
 } from "lucide-react";
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
-import { taskLabelService } from "@/services/task-label.service";
-import { taskService } from "@/services/task.service";
-import { toast } from "@/components/ui/toast";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToggleTaskComplete } from "@/hooks/tasks/use-toggle-task-complete";
+import { useTaskLabels } from "@/hooks/labels/use-task-labels";
 import { Checkbox } from "../ui/checkbox";
 
 import { cn } from "cn";
@@ -33,57 +31,17 @@ const priorityCheckboxStyles: Record<string, string> = {
 };
 
 function TaskCardInner({ task }: { task: Task }) {
-  const queryClient = useQueryClient();
   // TODO: aad reminder to the task entity
   const mockTask = {
     reminder: "1 hour before",
   };
 
-  const handleCheckedChange = async (checked: boolean) => {
-    try {
-      if (checked) {
-        const scheduledDate = task.timeRange?.start ?? undefined;
-        const result = await taskService.completeTaskOccurrence(task.id, {
-          scheduledDate,
-        });
-        toast.add({
-          title: result.isRecurringAdvanced
-            ? "Occurrence completed"
-            : "Task completed",
-          description: result.isRecurringAdvanced
-            ? `Next occurrence scheduled for ${
-                result.nextDueTime
-                  ? new Date(result.nextDueTime).toLocaleDateString()
-                  : "future date"
-              }.`
-            : `"${task.title}" marked as completed.`,
-          type: "success",
-        });
-      } else {
-        await taskService.uncompleteTaskOccurrence(task.id);
-        toast.add({
-          title: "Occurrence restored",
-          description: `"${task.title}" marked as incomplete.`,
-          type: "info",
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["productivity"] });
-    } catch {
-      toast.add({
-        title: "Error",
-        description: "Failed to update task status",
-        type: "error",
-      });
-    }
-  };
+  const toggleCompleteMutation = useToggleTaskComplete();
+  const { data: labels = [] } = useTaskLabels(task);
 
-  const { data: labels = [] } = useQuery({
-    queryKey: ["task-labels", task.id],
-    queryFn: taskLabelService.getMyTaskLabels,
-    select: (labels) => labels.filter(label => task.labels.some(taskLabel => taskLabel.id === label.id)),
-    staleTime: 1000 * 60 * 5,
-  });
+  const handleCheckedChange = (checked: boolean) => {
+    toggleCompleteMutation.mutate({ task, checked });
+  };
 
   const setTask = useEditTaskDialogStore((state) => state.setTask);
   const setDialogIsOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
@@ -131,7 +89,7 @@ function TaskCardInner({ task }: { task: Task }) {
           <div className="flex items-center gap-2 flex-wrap">
             {taskDueLocalTime && (
               <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-md">
-                <CalendarRangeIcon className="text-primary/70" />
+                <CalendarRangeIcon />
                 <span title={taskDueLocalTime} className="text-xs font-medium">
                   {taskDueLocalTime}
                 </span>
@@ -139,14 +97,14 @@ function TaskCardInner({ task }: { task: Task }) {
             )}
 
             {task.recurrence && (
-              <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 p-1 rounded-md" title="Recurring task">
-                <RepeatIcon className="text-emerald-500" />
+              <div className="flex items-center gap-1 text-muted-foreground p-1 rounded-md" title="Recurring task">
+                <RepeatIcon />
               </div>
             )}
 
             {mockTask.reminder && (
-              <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 p-1 rounded-md" title="Reminder set">
-                <AlarmClockIcon className="text-amber-500" />
+              <div className="flex items-center gap-1 text-muted-foreground p-1 rounded-md" title="Reminder set">
+                <AlarmClockIcon />
               </div>
             )}
 
@@ -154,7 +112,7 @@ function TaskCardInner({ task }: { task: Task }) {
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <div className="flex items-center gap-1 text-muted-foreground bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-md">
+                    <div className="flex items-center gap-1 text-muted-foreground px-1.5 py-0.5 rounded-md">
                       <TagIcon />
                       <span className="text-xs font-medium">{labels.length}</span>
                     </div>

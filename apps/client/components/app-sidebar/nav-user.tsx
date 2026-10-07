@@ -1,12 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   User2Icon,
   ChevronsUpDownIcon,
   LogOutIcon,
   TargetIcon,
+  SunIcon,
+  MoonIcon,
+  LaptopIcon,
+  CheckIcon,
 } from "lucide-react"
 
 import {
@@ -21,6 +25,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -40,12 +47,19 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/providers/AuthProvider"
+import { useTheme } from "next-themes"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, isLoading, signOut } = useAuth()
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   if (isLoading) {
     return (
@@ -138,6 +152,54 @@ export function NavUser() {
                   <TargetIcon className="size-4 text-muted-foreground" />
                   <span>Productivity</span>
                 </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="rounded-lg gap-2 cursor-pointer">
+                    {mounted && resolvedTheme === "dark" ? (
+                      <MoonIcon className="size-4 text-muted-foreground" />
+                    ) : (
+                      <SunIcon className="size-4 text-muted-foreground" />
+                    )}
+                    <span>Theme</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="min-w-36 rounded-xl p-1 shadow-md border-border/60">
+                    <DropdownMenuItem
+                      onClick={() => setTheme("light")}
+                      className="flex items-center justify-between gap-2 rounded-lg cursor-pointer text-xs px-2.5 py-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <SunIcon className="size-3.5 text-muted-foreground" />
+                        <span>Light</span>
+                      </div>
+                      {mounted && theme === "light" && (
+                        <CheckIcon className="size-3.5 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setTheme("dark")}
+                      className="flex items-center justify-between gap-2 rounded-lg cursor-pointer text-xs px-2.5 py-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MoonIcon className="size-3.5 text-muted-foreground" />
+                        <span>Dark</span>
+                      </div>
+                      {mounted && theme === "dark" && (
+                        <CheckIcon className="size-3.5 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setTheme("system")}
+                      className="flex items-center justify-between gap-2 rounded-lg cursor-pointer text-xs px-2.5 py-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <LaptopIcon className="size-3.5 text-muted-foreground" />
+                        <span>System</span>
+                      </div>
+                      {mounted && theme === "system" && (
+                        <CheckIcon className="size-3.5 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               </DropdownMenuGroup>
               <DropdownMenuSeparator className="my-1 bg-border/50" />
               <DropdownMenuItem

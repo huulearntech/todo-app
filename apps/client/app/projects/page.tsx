@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { projectService } from "@/services/project.service";
+import { useProjects } from "@/hooks/projects/use-projects";
 import { useAuth } from "@/providers/AuthProvider";
 import Header from "@/components/header";
 import AddProjectDialog from "./add-project-form";
@@ -42,12 +41,7 @@ export default function ProjectsPage() {
   const { openEditProjectDialog } = useEditProjectDialog();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects", "non_default"],
-    queryFn: () => projectService.getMyNonDefaultProjects(),
-    // queryKey: ["projects"],
-    // queryFn: () => projectService.getMyProjects(),
-  });
+  const { data: projects = [], isLoading } = useProjects("non_default");
 
   const filteredProjects = useMemo(() => {
     if (!searchQuery.trim()) return projects;
@@ -131,7 +125,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-16 w-full rounded-xl" />
               <Skeleton className="h-16 w-full rounded-xl" />
             </div>
-          ) : filteredProjects.length === 0 ? (
+          ) : !filteredProjects.length ? (
             <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border/70 bg-card/40">
               <div className="p-3 rounded-full bg-muted text-muted-foreground mb-3">
                 <FolderPlusIcon className="size-6" />

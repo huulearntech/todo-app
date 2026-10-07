@@ -7,10 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
-import { taskService } from "@/services/task.service";
-import { useMutation } from "@tanstack/react-query";
-import type { TaskResponseDto as Task } from "@todo/shared";
+import { useCreateTask } from "@/hooks/tasks/use-create-task";
 import {
   createTaskSchemaDefaultValues,
   type CreateTaskOutput,
@@ -45,40 +42,9 @@ export default function AddTaskDialog() {
   const dialogIsOpen = useAddTaskDialogStore((state) => state.dialogIsOpen);
   const setDialogIsOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
 
-  const createTaskMutation = useMutation({
-    mutationFn: (newTask: CreateTaskOutput) => taskService.createTask(newTask),
-    onMutate: async (newTask, context) => {
-      await context.client.cancelQueries({ queryKey: ["tasks"] });
-
-      const previousTasks = context.client.getQueryData<Task[]>(["tasks"]);
-
-      context.client.setQueryData<Task[]>(["tasks"], (oldTasks) => {
-        if (!oldTasks) return [newTask as Task];
-        return [...oldTasks, { ...newTask, id: `temp-${Date.now()}` } as Task];
-      });
-
-      return { previousTasks };
-    },
-    onError: (_err, _newTask, onMutateResult, context) => {
-      if (onMutateResult?.previousTasks) {
-        context.client.setQueryData(["tasks"], onMutateResult.previousTasks);
-      }
-      toast.add({
-        title: "Error creating task",
-        description: "An unexpected error occurred while creating the task.",
-        type: "error",
-      });
-    },
+  const createTaskMutation = useCreateTask({
     onSuccess: () => {
-      toast.add({
-        title: "Task created",
-        description: "The task was created successfully.",
-        type: "success",
-      });
       setDialogIsOpen(false);
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 

@@ -6,12 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/toast";
-import { taskService } from "@/services/task.service";
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
-import { useMutation } from "@tanstack/react-query";
-import type { TaskResponseDto as Task } from "@todo/shared";
-import { updateTaskSchema, type UpdateTaskOutput } from "@todo/shared/browser";
+import { useUpdateTask } from "@/hooks/tasks/use-update-task";
+import { updateTaskSchema } from "@todo/shared/browser";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,44 +22,9 @@ export default function TempEditTaskDialog() {
   const task = useEditTaskDialogStore((state) => state.task);
   const setTask = useEditTaskDialogStore((state) => state.setTask);
 
-  const editTaskMutation = useMutation({
-    mutationFn: (data: UpdateTaskOutput) => {
-      if (!task) throw new Error("No task selected");
-      return taskService.updateTask(task.id, data);
-    },
-    onMutate: async (data, context) => {
-      if (!task) return;
-      await context.client.cancelQueries({ queryKey: ["tasks"] });
-      const previousTasks = context.client.getQueryData<Task[]>(["tasks"]);
-
-      context.client.setQueryData<Task[]>(["tasks"], (old) =>
-        old?.map((t) => (t.id === task.id ? { ...t, ...data } : t)) ?? []
-      );
-
-      return { previousTasks };
-    },
-    onError: (_err, _data, onMutateResult, context) => {
-      if (onMutateResult?.previousTasks) {
-        context.client.setQueryData<Task[]>(["tasks"], onMutateResult.previousTasks);
-      }
-      toast.add({
-        title: "Error updating task",
-        description: "An unexpected error occurred.",
-        type: "error",
-      });
-    },
+  const editTaskMutation = useUpdateTask({
     onSuccess: () => {
-      toast.add({
-        title: "Task updated",
-        description: "Task was updated successfully.",
-        type: "success",
-      });
       setTask(null);
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["tasks"] });
-      context.client.invalidateQueries({ queryKey: ["productivity-goals"] });
-      context.client.invalidateQueries({ queryKey: ["completed-tasks-last-7-days"] });
     },
   });
 
@@ -107,7 +69,11 @@ export default function TempEditTaskDialog() {
         {/* Shared Todoist Task Form */}
         <TaskForm
           defaultValues={updateTaskSchema.encode(task)}
-          onSubmit={(data) => editTaskMutation.mutate(data)}
+          onSubmit={(data) => {
+            if (task) {
+              editTaskMutation.mutate({ taskId: task.id, data });
+            }
+          }}
           onCancel={() => setTask(null)}
           isPending={editTaskMutation.isPending}
           submitLabel="Save changes"

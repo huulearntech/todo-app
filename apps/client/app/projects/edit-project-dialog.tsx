@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useColors } from "@/hooks/colors/use-colors";
+import { useUpdateProject } from "@/hooks/projects/use-update-project";
 import { Loader2Icon } from "lucide-react";
 
 import {
@@ -32,20 +33,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
-import { projectService } from "@/services/project.service";
-import { colorService } from "@/services/color.service";
 import { updateProjectSchema, type UpdateProjectDto } from "@todo/shared";
 import { useEditProjectDialog } from "@/providers/EditProjectProvider";
 
-// Fuck AI bullshit
 export default function EditProjectDialog() {
   const { projectToEdit, isOpen, closeEditProjectDialog } = useEditProjectDialog();
-  const queryClient = useQueryClient();
 
-  const { data: colors = [] } = useQuery({
-    queryKey: ["colors"],
-    queryFn: colorService.getMyColors,
-  });
+  const { data: colors = [] } = useColors();
 
   const {
     control,
@@ -60,7 +54,6 @@ export default function EditProjectDialog() {
     },
   });
 
-  // NOTE: WTF?
   useEffect(() => {
     if (projectToEdit) {
       reset({
@@ -71,30 +64,31 @@ export default function EditProjectDialog() {
     }
   }, [projectToEdit, reset]);
 
-  const updateProjectMutation = useMutation({
-    // TODO: fix this "!", because shitty AI have all the basic code wrong, I have to temporarily patch it here.
-    mutationFn: (data: UpdateProjectDto) => projectService.updateProject(projectToEdit!.id, data),
-    onSuccess: (res, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.add({
-        title: "Project updated",
-        description: `"${variables.name || projectToEdit?.name}" has been updated successfully.`,
-        type: "success",
-      });
-      closeEditProjectDialog();
-    },
-    onError: (err) => {
-      toast.add({
-        title: "Error updating project",
-        description: err instanceof Error ? err.message : "An unexpected error occurred.",
-        type: "error",
-      });
-    },
-  });
+  const updateProjectMutation = useUpdateProject();
 
   const onSubmit = (data: UpdateProjectDto) => {
     if (!projectToEdit) return;
-    updateProjectMutation.mutate(data);
+    updateProjectMutation.mutate(
+      { projectId: projectToEdit.id, data },
+      {
+        onSuccess: (_res, variables) => {
+          const updatedName = "name" in variables ? variables.name : projectToEdit?.name;
+          toast.add({
+            title: "Project updated",
+            description: `"${updatedName || projectToEdit?.name}" has been updated successfully.`,
+            type: "success",
+          });
+          closeEditProjectDialog();
+        },
+        onError: (err) => {
+          toast.add({
+            title: "Error updating project",
+            description: err instanceof Error ? err.message : "An unexpected error occurred.",
+            type: "error",
+          });
+        },
+      }
+    );
   };
 
   return (

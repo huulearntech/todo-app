@@ -4,7 +4,8 @@ import * as React from "react";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useColors } from "@/hooks/colors/use-colors";
+import { useCreateProject } from "@/hooks/projects/use-create-project";
 import { PlusIcon, Loader2Icon } from "lucide-react";
 
 import {
@@ -32,16 +33,10 @@ import {
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { toast } from "@/components/ui/toast";
 import { createProjectSchema, CreateProjectDto } from "@todo/shared";
-import { projectService } from "@/services/project.service";
-import { colorService } from "@/services/color.service";
-
 export default function CreateProjectDialog() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: colors = [] } = useQuery({
-    queryKey: ["colors"],
-    queryFn: colorService.getMyColors,
-  });
+  const { data: colors = [] } = useColors();
 
   const {
     control,
@@ -57,30 +52,30 @@ export default function CreateProjectDialog() {
     },
   });
 
-  const createProjectMutation = useMutation({
-    mutationFn: (data: CreateProjectDto) => projectService.createProject(data),
-    onSuccess: (_data, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["projects"] });
-      toast.add({
-        title: "Project created",
-        description: "Your project has been created successfully.",
-        type: "success",
-      });
-    },
-    onError: (error) => {
-      toast.add({
-        title: "Error creating project",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
-        type: "error",
-      });
-    },
-    onSettled: () => {
-      reset();
-      setDialogOpen(false);
-    }
-  });
+  const createProjectMutation = useCreateProject();
 
-  const onSubmit = (data: CreateProjectDto) => createProjectMutation.mutate(data);
+  const onSubmit = (data: CreateProjectDto) => {
+    createProjectMutation.mutate(data, {
+      onSuccess: () => {
+        toast.add({
+          title: "Project created",
+          description: "Your project has been created successfully.",
+          type: "success",
+        });
+      },
+      onError: (error) => {
+        toast.add({
+          title: "Error creating project",
+          description: error instanceof Error ? error.message : "An unknown error occurred.",
+          type: "error",
+        });
+      },
+      onSettled: () => {
+        reset();
+        setDialogOpen(false);
+      },
+    });
+  };
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

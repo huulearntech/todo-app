@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { taskLabelService } from "@/services/task-label.service";
+import { useLabels } from "@/hooks/labels/use-labels";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -45,10 +44,7 @@ export default function Header() {
   const router = useRouter();
   const labelId = params?.id as string;
 
-  const { data: labels = [] } = useQuery({
-    queryKey: ["task-labels"],
-    queryFn: taskLabelService.getMyTaskLabels,
-  });
+  const { data: labels = [] } = useLabels();
 
   const currentLabel = labels.find((l) => l.id === labelId);
   const labelName = currentLabel?.name || "Label";

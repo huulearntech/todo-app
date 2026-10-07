@@ -89,10 +89,13 @@ export class SectionService {
   }
 
   async updateSection(
+    ownerId: string,
     id: string,
     updatedSection: Partial<Section>,
   ): Promise<Section | null> {
-    const section = await this.getSectionById(id);
+    const section = await this.sectionRepository.findOne({
+      where: { id, project: { ownerId } },
+    });
     if (!section) {
       return null;
     }
@@ -158,7 +161,13 @@ export class SectionService {
     await this.sectionRepository.update({ id }, { lexorank: newLexorank });
   }
 
-  async deleteSection(id: string): Promise<boolean> {
+  async deleteSection(ownerId: string, id: string): Promise<boolean> {
+    const section = await this.sectionRepository.findOne({
+      where: { id, project: { ownerId } },
+    });
+    if (!section) {
+      return false;
+    }
     const result = await this.sectionRepository.delete({ id });
     return result.affected !== 0; // NOTE: more detail response
   }

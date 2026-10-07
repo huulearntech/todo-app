@@ -23,7 +23,7 @@ export const sectionService = {
   },
 
   updateSection: async (id: string, updateSectionDto: UpdateSectionDto) => {
-    return apiClient.put<SectionResponseDto>(`/sections/${id}`, updateSectionDto);
+    return apiClient.patch<SectionResponseDto>(`/sections/${id}`, updateSectionDto);
   },
 
   updateSectionOrder: async ({ sectionId, prevId }: { sectionId: string, prevId: string | null }) => {

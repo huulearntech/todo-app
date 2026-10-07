@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useProductivityGoals } from "@/hooks/productivity/use-productivity-goals";
+import { useUpdateGoals } from "@/hooks/productivity/use-update-goals";
 import {
   TargetIcon,
   TrophyIcon,
@@ -32,27 +33,14 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { TempCircularProgress } from "./temp-circular-progress-indicator";
-import { productivityService } from "@/services/productivity.service";
 
 export default function TempGoalProgressCard() {
-  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dailyInput, setDailyInput] = useState<number>(5);
   const [weeklyInput, setWeeklyInput] = useState<number>(20);
 
-  const { data: goals, isLoading } = useQuery({
-    queryKey: ["productivity-goals"],
-    queryFn: () => productivityService.getGoalProgress(),
-  });
-
-  const updateGoalMutation = useMutation({
-    mutationFn: productivityService.updateGoals,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["productivity-goals"] });
-      queryClient.invalidateQueries({ queryKey: ["productivity-history"] });
-      setIsDialogOpen(false);
-    },
-  });
+  const { data: goals, isLoading } = useProductivityGoals();
+  const updateGoalMutation = useUpdateGoals();
 
   const handleOpenDialog = () => {
     if (goals) {
@@ -65,10 +53,17 @@ export default function TempGoalProgressCard() {
   const handleSaveGoals = (e: React.FormEvent) => {
     e.preventDefault();
     if (dailyInput < 1 || weeklyInput < 1) return;
-    updateGoalMutation.mutate({
-      dailyGoal: dailyInput,
-      weeklyGoal: weeklyInput,
-    });
+    updateGoalMutation.mutate(
+      {
+        dailyGoal: dailyInput,
+        weeklyGoal: weeklyInput,
+      },
+      {
+        onSuccess: () => {
+          setIsDialogOpen(false);
+        },
+      }
+    );
   };
 
   if (isLoading || !goals) {

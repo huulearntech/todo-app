@@ -2,12 +2,10 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { taskLabelService } from "@/services/task-label.service";
-import { colorService } from "@/services/color.service";
+import { useColors } from "@/hooks/colors/use-colors";
+import { useCreateLabel } from "@/hooks/labels/use-create-label";
 import { toast } from "@/components/ui/toast";
 
 import {
@@ -45,10 +43,7 @@ import { createTaskLabelSchema, TaskLabelResponseDto, type CreateTaskLabelDto } 
 export default function Dialog_AddLabel() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: colors = [] } = useQuery({
-    queryKey: ["colors"],
-    queryFn: colorService.getMyColors,
-  });
+  const { data: colors = [] } = useColors();
 
   const { control, handleSubmit, reset, formState: { isLoading } } = useForm<CreateTaskLabelDto>({
     resolver: zodResolver(createTaskLabelSchema),
@@ -59,31 +54,7 @@ export default function Dialog_AddLabel() {
     },
   });
 
-  const createLabelMutation = useMutation({
-    mutationFn: (data: CreateTaskLabelDto) => taskLabelService.createTaskLabel(data),
-
-    onMutate: async (newLabel, context) => {
-      await context.client.cancelQueries({ queryKey: ["task-labels"] });
-
-      const previousTaskLabels = context.client.getQueryData<TaskLabelResponseDto[]>(["task-labels"]);
-
-      context.client.setQueryData(["task-labels"], (oldTaskLabels: TaskLabelResponseDto[] | undefined) => {
-        return [...(oldTaskLabels || []), newLabel];
-      });
-
-      return { previousTaskLabels };
-    },
-
-    onError: (_error, _newLabel, onMutateResult, context) => {
-      if (onMutateResult?.previousTaskLabels) {
-        context.client.setQueryData(["task-labels"], onMutateResult.previousTaskLabels);
-      }
-    },
-
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      context.client.invalidateQueries({ queryKey: ["task-labels"] });
-    }
-  });
+  const createLabelMutation = useCreateLabel();
 
   const onSubmit = (data: CreateTaskLabelDto) => createLabelMutation.mutate(data, {
     onSuccess: () => {

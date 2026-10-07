@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { taskLabelService } from "@/services/task-label.service";
-import { colorService } from "@/services/color.service";
+import { useColors } from "@/hooks/colors/use-colors";
+import { useUpdateLabel } from "@/hooks/labels/use-update-label";
 import { toast } from "@/components/ui/toast";
 
 import {
@@ -50,10 +49,7 @@ export default function Dialog_EditLabel({
   label: TaskLabel;
   setLabel: (label: TaskLabel | null) => void;
 }) {
-  const { data: colors = [] } = useQuery({
-    queryKey: ["colors"],
-    queryFn: colorService.getMyColors,
-  });
+  const { data: colors = [] } = useColors();
 
   const { control, handleSubmit, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
@@ -65,37 +61,7 @@ export default function Dialog_EditLabel({
     },
   });
 
-  const updateLabelMutation = useMutation({
-    mutationFn: taskLabelService.updateTaskLabel,
-    onMutate: async (updatedLabel, context) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await context.client.cancelQueries({ queryKey: ["task-labels"] });
-
-      // Snapshot the previous value
-      const previousLabels = context.client.getQueryData<TaskLabel[]>(["task-labels"]);
-
-      // Optimistically update to the new value
-      context.client.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
-        if (!old) return [];
-        return old.map((label) =>
-          label.id === updatedLabel.id ? { ...label, ...updatedLabel } : label
-        );
-      });
-
-      // Return a context object with the snapshotted value
-      return { previousLabels };
-    },
-    onError: (_err, _updatedLabel, onMutateResult, context) => {
-      // Rollback to the previous value
-      if (onMutateResult?.previousLabels) {
-        context.client.setQueryData(["task-labels"], onMutateResult.previousLabels);
-      }
-    },
-    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
-      // Always refetch after error or success:
-      context.client.invalidateQueries({ queryKey: ["task-labels"] });
-    },
-  });
+  const updateLabelMutation = useUpdateLabel();
 
   const onSubmit = (data: UpdateTaskLabelDto) => updateLabelMutation.mutate(data, {
     onSuccess: () => {

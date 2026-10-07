@@ -1,25 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { taskService } from "@/services/task.service";
-import { taskLabelService } from "@/services/task-label.service";
+import { useLabels } from "@/hooks/labels/use-labels";
+import { useLabelTasks } from "@/hooks/tasks/use-label-tasks";
 import TaskCard from "@/components/(home)/task-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/reui/badge";
 import { TagIcon, CheckCircle2Icon } from "lucide-react";
 
 export default function TempTaskList({ labelId }: { labelId: string }) {
-  const { data: labels = [] } = useQuery({
-    queryKey: ["task-labels"],
-    queryFn: taskLabelService.getMyTaskLabels,
-  });
+  const { data: labels = [] } = useLabels();
 
   const label = labels.find((l) => l.id === labelId);
 
-  const { data: tasks = [], isLoading, error } = useQuery({
-    queryKey: ["tasks", { labelId }],
-    queryFn: () => taskService.getMyTasks({ taskLabelIds: [labelId] }),
-  });
+  const { data: tasks = [], isLoading, error } = useLabelTasks(labelId);
 
   if (!label) return null;
 

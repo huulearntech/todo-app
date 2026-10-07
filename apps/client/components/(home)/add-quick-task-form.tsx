@@ -41,11 +41,11 @@ export default function AddQuickTaskForm() {
         ref={taskInputRef}
         type="text"
         placeholder="Add a quick task // TODO: may need to add a keyboard shortcut to focus on this input"
-        className="border border-gray-300 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="border border-input bg-transparent text-foreground placeholder:text-muted-foreground rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-ring"
       />
       <button
         type="submit"
-        className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        className="ml-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0 cursor-pointer text-sm font-medium transition-colors"
       >
         Add Task
       </button>

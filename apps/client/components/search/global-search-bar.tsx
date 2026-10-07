@@ -9,8 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { useHotkeys } from "@tanstack/react-hotkeys";
-import { useQuery } from "@tanstack/react-query";
+import { useHotkey } from "@tanstack/react-hotkeys";
 import {
   SearchIcon,
   TagIcon,
@@ -39,12 +38,11 @@ import {
   type SearchProjectResultDto,
   type SearchLabelResultDto,
   type SearchTaskResultDto,
-  type SearchResultsDto,
   TaskPriority,
 } from "@todo/shared";
-import { searchService } from "@/services/search.service";
+import { useGlobalSearch } from "@/hooks/search/use-global-search";
 import { cn } from "@/lib/utils";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
+import { InputGroup, InputGroupAddon } from "../ui/input-group";
 import { Input } from "../ui/input";
 
 export type SearchTaskItem = { itemType: "task" } & SearchTaskResultDto;
@@ -59,19 +57,7 @@ export default function GlobalSearchBar() {
   const [debouncedSearchValue] = useDebouncedValue(searchValue, { wait: 300 });
 
   // Global keyboard shortcuts via TanStack Hotkeys
-  useHotkeys([
-    {
-      hotkey: "Mod+K", callback: () => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }
-    },
-    {
-      hotkey: "/", callback: () => {
-        inputRef.current?.focus();
-      }
-    }
-  ]);
+  useHotkey("/", () => { inputRef.current?.focus(); });
 
   const trimmedQuery = debouncedSearchValue.trim();
 
@@ -80,17 +66,7 @@ export default function GlobalSearchBar() {
     isPending,
     isFetching,
     error,
-  } = useQuery<SearchResultsDto, Error>({
-    queryKey: ["global-search", trimmedQuery],
-    queryFn: async () => {
-      if (!trimmedQuery) {
-        return { projects: [], labels: [], tasks: [] };
-      }
-      return searchService.search(trimmedQuery);
-    },
-    enabled: trimmedQuery.length > 0,
-    staleTime: 1000 * 30, // 30s cache
-  });
+  } = useGlobalSearch(trimmedQuery);
 
   const tasks: SearchTaskItem[] = useMemo(
     () =>
@@ -202,8 +178,7 @@ export default function GlobalSearchBar() {
           />
           <InputGroupAddon align="inline-end">
             <KbdGroup>
-              <Kbd>⌘</Kbd>
-              <Kbd>K</Kbd>
+              <Kbd>/</Kbd>
             </KbdGroup>
           </InputGroupAddon>
         </InputGroup>

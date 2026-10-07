@@ -1,3 +1,5 @@
+// TODO: on creating task with no section, consider make task be able to have no section (!?)
+
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -23,11 +25,13 @@ import { addDays, startOfDay } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PlusIcon } from 'lucide-react'
-import { useMutation, useQuery } from "@tanstack/react-query"
-import { taskService } from "@/services/task.service"
+import { useProjectTasks } from "@/hooks/tasks/use-project-tasks"
+import { useSections } from "@/hooks/sections/use-sections"
+import { useCreateSection } from "@/hooks/sections/use-create-section"
+import { useUpdateCalendarEvent } from "@/hooks/tasks/use-update-calendar-event"
+import { toast } from "@/components/ui/toast"
 import { useAddTaskDialogStore, useEditTaskDialogStore } from "@/providers/MyStoreProvider"
 import { TaskResponseDto as Task } from "@todo/shared"
-import { UpdateTaskOutput } from "@todo/shared/browser"
 
 import { TaskPriority } from "@todo/shared";
 
@@ -110,16 +114,42 @@ const DEFAULT_SETTINGS: DemoSettings = {
 
 export function TempEventCalendar({ projectId }: { projectId: string }) {
   const setAddTaskDialogOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
+  const setSectionId = useAddTaskDialogStore((state) => state.setSectionId);
   const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
   const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
+
+  const createSectionMutation = useCreateSection();
 
   const apiRef = useRef<EventCalendarApi<Task> | null>(null);
   const isDragUpdatingRef = useRef(false);
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ["tasks", { projectId }],
-    queryFn: () => taskService.getTasksByProjectId(projectId),
-  });
+  const { data: tasks = [] } = useProjectTasks(projectId);
+  const { data: sections = [] } = useSections(projectId);
+
+  const handleNewTask = async () => {
+    let targetSectionId = sections[0]?.id || tasks[0]?.sectionId;
+
+    if (!targetSectionId) {
+      try {
+        const response = await createSectionMutation.mutateAsync({
+          projectId,
+          name: "Tasks",
+        });
+        targetSectionId = response.data.id;
+      } catch (error) {
+        console.error("Failed to ensure section for project:", error);
+        toast.add({
+          title: "Error",
+          description: "Could not find or create a section for this project.",
+          type: "error",
+        });
+        return;
+      }
+    }
+
+    setSectionId(targetSectionId);
+    setAddTaskDialogOpen(true);
+  };
 
   // NOTE: This part might be optimizable
   const calendarEvents = useMemo(() => {
@@ -138,66 +168,10 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
   }, [calendarEvents]);
 
   // Optimistic update mutation for updating an event
-  const updateEventMutation = useMutation({
-    mutationFn: (updated: EventCalendarProposedUpdate<Task>) => {
-      const { start, end, event: { title, data } } = updated;
-      if (!data) {
-        throw new Error("Event data is missing for the updated event.");
-      }
-
-      // NOTE: The ReUI calendar uses TZDate, convert to Date before toISOString()
-      const startStr = new Date(start).toISOString();
-      const endStr = new Date(end).toISOString();
-
-      const taskToUpdate: UpdateTaskOutput = {
-        title,
-        description: data.description,
-        timeRange: { start: startStr, end: endStr },
-        priority: data.priority,
-        sectionId: data.sectionId,
-        labels: data.labels,
-      };
-
-      return taskService.updateTask(updated.event.id, taskToUpdate);
-    },
-    onMutate: async (updated, context) => {
-      const previousTasks = context.client.getQueryData<Task[]>(["tasks", { projectId }]);
-
-      const startStr = new Date(updated.start).toISOString();
-      const endStr = new Date(updated.end).toISOString();
-
-      // Synchronously update the cache to prevent any microtask lag
-      context.client.setQueryData<Task[]>(["tasks", { projectId }], (oldTasks) =>
-        oldTasks?.map((task) =>
-          task.id === updated.event.id
-            ? {
-                ...task,
-                timeRange: { start: startStr, end: endStr },
-              }
-            : task
-        ) || []
-      );
-
-      // Cancel any ongoing queries in the background without blocking cache update
-      await context.client.cancelQueries({ queryKey: ["tasks", { projectId }] });
-
-      return { previousTasks };
-    },
-    onSuccess: (updatedTask, _variables, _onMutateResult, context) => {
-      // Sync cache with server response without triggering a full refetch
-      context.client.setQueryData<Task[]>(["tasks", { projectId }], (oldTasks) =>
-        oldTasks?.map((task) =>
-          task.id === updatedTask.id ? { ...task, ...updatedTask } : task
-        ) || []
-      );
-    },
-    onError: (_error, _updatedEvent, onMutateResult, context) => {
-      // Rollback to previous tasks on error
-      if (onMutateResult?.previousTasks) {
-        context.client.setQueryData<Task[]>(["tasks", { projectId }], onMutateResult.previousTasks);
-        if (apiRef.current) {
-          apiRef.current.setEvents(onMutateResult.previousTasks.map(mapTaskToCalendarEvent));
-        }
+  const updateEventMutation = useUpdateCalendarEvent(projectId, {
+    onRollback: (previousTasks) => {
+      if (apiRef.current) {
+        apiRef.current.setEvents(previousTasks.map(mapTaskToCalendarEvent));
       }
     },
   });
@@ -249,7 +223,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
           <div className="flex flex-wrap items-center gap-2 pe-2">
             <EventCalendarNav className="min-w-0 flex-1" />
             <EventCalendarToolbar>
-              <Button size="sm" onClick={() => setAddTaskDialogOpen(true)}>
+              <Button size="sm" onClick={handleNewTask}>
                 <PlusIcon className="size-4" aria-hidden="true" />
                 New task
               </Button>

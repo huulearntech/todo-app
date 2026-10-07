@@ -30,15 +30,23 @@ export const metadata: Metadata = {
 };
 
 import { EditProjectProvider } from "@/providers/EditProjectProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full overflow-hidden">
-        <QueryProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>
           <AuthProvider>
             <MyStoreProvider>
               <EditProjectProvider>
@@ -64,6 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </MyStoreProvider>
           </AuthProvider>
         </QueryProvider>
+        </ThemeProvider>
         <Script
           src="https://unpkg.com/react-scan/dist/auto.global.js"
           crossOrigin="anonymous"

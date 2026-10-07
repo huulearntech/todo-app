@@ -61,8 +61,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter className="p-2 border-t border-sidebar-border/50">
         <NavUser />
       </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   )
 }

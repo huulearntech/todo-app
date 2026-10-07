@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { taskLabelService } from "@/services/task-label.service";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
@@ -39,14 +39,12 @@ import {
 
 import Dialog_AddLabel from "./add-label-form";
 import Dialog_EditLabel from "./temp-edit-label-form";
+import { useLabels } from "@/hooks/labels/use-labels";
 
 export default function TempTaskLabelList() {
   const queryClient = useQueryClient();
 
-  const { data: labels = [], isLoading } = useQuery({
-    queryKey: ["task-labels"],
-    queryFn: taskLabelService.getMyTaskLabels,
-  });
+  const { data: labels = [], isLoading } = useLabels();
 
   const [editingLabel, setEditingLabel] = useState<TaskLabel | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<TaskLabel | null>(null);
