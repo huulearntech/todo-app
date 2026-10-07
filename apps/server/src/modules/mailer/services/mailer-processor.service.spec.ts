@@ -21,12 +21,19 @@ describe('MailerProcessor', () => {
     };
 
     dataSourceMock = {
-      getRepository: jest.fn().mockReturnValue({
-        findOne: jest.fn().mockResolvedValue({
-          id: 'task-1',
-          title: 'Test Task',
-          completedAt: null,
-        }),
+      getRepository: jest.fn().mockImplementation((entity) => {
+        if (entity?.name === 'TaskOccurrence') {
+          return {
+            findOne: jest.fn().mockResolvedValue(null),
+          };
+        }
+        return {
+          findOne: jest.fn().mockResolvedValue({
+            id: 'task-1',
+            title: 'Test Task',
+            completedAt: null,
+          }),
+        };
       }),
     };
 
@@ -105,5 +112,34 @@ describe('MailerProcessor', () => {
       reason: 'Task completed',
     });
     expect(transportServiceMock.sendMail).not.toHaveBeenCalled();
+  });
+
+  it('should process recurring task reminder and chain next occurrence', async () => {
+    const job = {
+      id: 'job-3',
+      name: EmailJobType.RECURRING_TASK_REMINDER,
+      data: {
+        taskId: 'task-1',
+        userId: 'user-1',
+        to: 'user@example.com',
+        userName: 'Alice',
+        taskTitle: 'Daily Standup',
+        occurrenceTime: new Date(Date.now() + 86400000).toISOString(),
+        rruleString: 'RRULE:FREQ=DAILY',
+        reminderOffsetMinutes: 15,
+      },
+    } as any;
+
+    const result = await processor.process(job);
+    expect(result).toEqual({ success: true });
+    expect(transportServiceMock.sendMail).toHaveBeenCalled();
+    expect(
+      schedulerServiceMock.scheduleRecurringTaskReminder,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskId: 'task-1',
+        userId: 'user-1',
+      }),
+    );
   });
 });

@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Patch,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Headers, Patch, Query } from '@nestjs/common';
 import {
   CurrentUser,
   type JwtUser,
@@ -39,7 +32,13 @@ export class ProductivityController {
     @Headers('x-timezone') timezone?: string,
     @Query('days') days?: string,
   ) {
-    const parsedDays = days ? Math.max(1, Math.min(30, parseInt(days, 10) || 7)) : 7;
-    return this.productivityService.getGoalHistory(user.id, timezone, parsedDays);
+    const parsedDays = days
+      ? Math.max(1, Math.min(30, parseInt(days, 10) || 7))
+      : 7;
+    return this.productivityService.getGoalHistory(
+      user.id,
+      timezone,
+      parsedDays,
+    );
   }
 }

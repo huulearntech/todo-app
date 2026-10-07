@@ -4,15 +4,21 @@ import { DataSource } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { Task } from '../entities/task.entity';
+import { TaskOccurrence } from '../entities/task-occurrence.entity';
 import { Section } from '@/src/modules/sections/section.entity';
-import { TaskPriority } from '@todo/shared';
+import {
+  RecurrenceFrequency,
+  TaskPriority,
+  Weekday,
+  type RRule,
+} from '@todo/shared';
 
 import { User } from '@/src/modules/users/user.entity';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
 
 describe('TaskService', () => {
   let service: TaskService;
-  let dataSource: { query: jest.Mock };
+  let dataSource: { query: jest.Mock; transaction: jest.Mock };
   let taskRepository: {
     find: jest.Mock;
     findOne: jest.Mock;
@@ -31,6 +37,7 @@ describe('TaskService', () => {
   beforeEach(async () => {
     dataSource = {
       query: jest.fn(),
+      transaction: jest.fn(),
     };
     taskRepository = {
       find: jest.fn(),
@@ -61,6 +68,17 @@ describe('TaskService', () => {
         {
           provide: getRepositoryToken(Task),
           useValue: taskRepository,
+        },
+        {
+          provide: getRepositoryToken(TaskOccurrence),
+          useValue: {
+            create: jest.fn().mockImplementation((dto) => dto),
+            save: jest
+              .fn()
+              .mockImplementation((entity) => Promise.resolve(entity)),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
         },
         {
           provide: getRepositoryToken(Section),
@@ -272,6 +290,226 @@ describe('TaskService', () => {
           prevId: taskId,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('completeTask', () => {
+    const userId = 'user-uuid-1';
+    const taskId = 'task-uuid-1';
+
+    it('should complete a non-recurring task and cancel reminder', async () => {
+      const mockTask: any = {
+        id: taskId,
+        title: 'One-off Task',
+        completedAt: null,
+        timeRange: {
+          start: '2026-10-07T10:00:00.000Z',
+          end: '2026-10-07T11:00:00.000Z',
+        },
+        section: { project: { ownerId: userId } },
+        recurrence: null,
+      };
+
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockResolvedValue(mockTask),
+            create: jest.fn((_cls, val) => val),
+            save: jest.fn((_cls, val) => Promise.resolve(val ?? _cls)),
+          };
+          return cb(manager);
+        },
+      );
+
+      const result = await service.completeTask(userId, taskId);
+
+      expect(result.isRecurringAdvanced).toBe(false);
+      expect(result.nextDueTime).toBeNull();
+      expect(mockTask.completedAt).toBeDefined();
+      expect(mailerSchedulerService.cancelTaskReminder).toHaveBeenCalledWith(
+        taskId,
+      );
+    });
+
+    it('should advance recurring task to next occurrence and reschedule recurring reminder', async () => {
+      const mockRrule: RRule = {
+        freq: RecurrenceFrequency.DAILY,
+        interval: 1,
+      };
+
+      const mockTask: any = {
+        id: taskId,
+        title: 'Daily Recurring Task',
+        completedAt: null,
+        timeRange: {
+          start: '2026-10-07T10:00:00.000Z',
+          end: '2026-10-07T11:00:00.000Z',
+        },
+        section: { project: { ownerId: userId } },
+        recurrence: { rrule: mockRrule },
+      };
+
+      const mockUser: any = {
+        id: userId,
+        email: 'user@example.com',
+        name: 'User',
+      };
+
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockImplementation((entity) => {
+              if (entity === User || entity.name === 'User')
+                return Promise.resolve(mockUser);
+              return Promise.resolve(mockTask);
+            }),
+            create: jest.fn((_cls, val) => val),
+            save: jest.fn((_cls, val) => Promise.resolve(val ?? _cls)),
+          };
+          return cb(manager);
+        },
+      );
+
+      const result = await service.completeTask(userId, taskId);
+
+      expect(result.isRecurringAdvanced).toBe(true);
+      expect(result.nextDueTime).toBe('2026-10-08T10:00:00.000Z');
+      expect(mockTask.completedAt).toBeNull(); // Remains active!
+      expect(mockTask.timeRange.start).toBe('2026-10-08T10:00:00.000Z');
+      expect(
+        mailerSchedulerService.scheduleRecurringTaskReminder,
+      ).toHaveBeenCalledWith({
+        taskId: mockTask.id,
+        userId: mockUser.id,
+        to: mockUser.email,
+        userName: mockUser.name,
+        taskTitle: mockTask.title,
+        rruleString: 'FREQ=DAILY',
+        reminderOffsetMinutes: 15,
+      });
+    });
+
+    it('should complete recurring task when recurrence series has ended', async () => {
+      const mockRrule: RRule = {
+        freq: RecurrenceFrequency.DAILY,
+        count: 1,
+      };
+
+      const mockTask: any = {
+        id: taskId,
+        title: 'Daily Task (Ended)',
+        completedAt: null,
+        timeRange: {
+          start: '2026-10-07T10:00:00.000Z',
+          end: '2026-10-07T11:00:00.000Z',
+        },
+        section: { project: { ownerId: userId } },
+        recurrence: { rrule: mockRrule },
+      };
+
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockResolvedValue(mockTask),
+            create: jest.fn((_cls, val) => val),
+            save: jest.fn((_cls, val) => Promise.resolve(val ?? _cls)),
+          };
+          return cb(manager);
+        },
+      );
+
+      const result = await service.completeTask(userId, taskId);
+
+      expect(result.isRecurringAdvanced).toBe(false);
+      expect(result.nextDueTime).toBeNull();
+      expect(mockTask.completedAt).toBeDefined();
+      expect(
+        mailerSchedulerService.cancelRecurringTaskReminder,
+      ).toHaveBeenCalledWith(taskId);
+    });
+
+    it('should correctly advance weekly recurring task with byWeekday and no ordinal', async () => {
+      const mockRrule: RRule = {
+        freq: RecurrenceFrequency.WEEKLY,
+        byWeekday: [{ day: Weekday.WE }, { day: Weekday.FR }],
+      };
+
+      const mockTask: any = {
+        id: taskId,
+        title: 'Weekly Task',
+        completedAt: null,
+        timeRange: {
+          start: '2026-10-07T10:00:00.000Z', // Wednesday
+          end: '2026-10-07T11:00:00.000Z',
+        },
+        section: { project: { ownerId: userId } },
+        recurrence: { rrule: mockRrule },
+      };
+
+      const mockUser: any = {
+        id: userId,
+        email: 'user@example.com',
+        name: 'User',
+      };
+
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockImplementation((entity) => {
+              if (entity === User || entity.name === 'User')
+                return Promise.resolve(mockUser);
+              return Promise.resolve(mockTask);
+            }),
+            create: jest.fn((_cls, val) => val),
+            save: jest.fn((_cls, val) => Promise.resolve(val ?? _cls)),
+          };
+          return cb(manager);
+        },
+      );
+
+      const result = await service.completeTask(userId, taskId);
+
+      expect(result.isRecurringAdvanced).toBe(true);
+      expect(result.nextDueTime).toBe('2026-10-09T10:00:00.000Z'); // Next Friday
+      expect(
+        mailerSchedulerService.scheduleRecurringTaskReminder,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rruleString: 'FREQ=WEEKLY;BYDAY=WE,FR',
+        }),
+      );
+    });
+  });
+
+  describe('postponeTask', () => {
+    it('should update timeRange and reschedule reminder', async () => {
+      const userId = 'user-uuid-1';
+      const taskId = 'task-uuid-1';
+      const mockTask: any = {
+        id: taskId,
+        title: 'Postponed Task',
+        completedAt: null,
+        timeRange: {
+          start: '2026-10-07T10:00:00.000Z',
+          end: '2026-10-07T11:00:00.000Z',
+        },
+        section: { project: { ownerId: userId } },
+        recurrence: null,
+      };
+
+      taskRepository.findOne.mockResolvedValue(mockTask);
+      taskRepository.save.mockImplementation((t) => Promise.resolve(t));
+      userRepository.findOne.mockResolvedValue({
+        id: userId,
+        email: 'test@example.com',
+        name: 'Test',
+      });
+
+      const postponeTo = new Date('2026-10-08T10:00:00.000Z');
+      const updated = await service.postponeTask(userId, taskId, postponeTo);
+
+      expect(updated.timeRange?.start).toBe(postponeTo.toISOString());
+      expect(mailerSchedulerService.scheduleTaskReminder).toHaveBeenCalled();
     });
   });
 });

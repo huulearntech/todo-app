@@ -4,11 +4,10 @@ import { SectionModule } from '../sections/section.module';
 
 import { Task } from './entities/task.entity';
 import { TaskRecurrence } from './entities/task-recurrence.entity';
-import { TaskOccurence } from './entities/task-occurence.entity';
+import { TaskOccurrence } from './entities/task-occurrence.entity';
 
 import { TaskService } from './services/task.service';
 import { TaskRecurrenceService } from './services/task-recurrence.service';
-import { TaskOccurenceService } from './services/task-occurence.service';
 
 import { TasksController } from './controllers/task.controller';
 
@@ -18,12 +17,12 @@ import { User } from '../users/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, TaskRecurrence, TaskOccurence, User]),
+    TypeOrmModule.forFeature([Task, TaskRecurrence, TaskOccurrence, User]),
     SectionModule,
     MailerModule,
   ],
   controllers: [TasksController],
-  providers: [TaskService, TaskRecurrenceService, TaskOccurenceService],
-  exports: [TaskService],
+  providers: [TaskService, TaskRecurrenceService],
+  exports: [TaskService, TypeOrmModule],
 })
 export class TaskModule {}

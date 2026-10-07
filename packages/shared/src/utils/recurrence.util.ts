@@ -147,9 +147,9 @@ function formatRRuleString(rule: RRule): string {
   if (rule.byWeekday?.length) {
     parts.push(
       `BYDAY=${rule.byWeekday
-        .map((d) => (typeof d === "string" ? d : `${d.ordinal}${d.day}`))
+        .map((d) => (typeof d === "string" ? d : `${d.ordinal ?? ""}${d.day}`))
         .join(",")}`
-    )
+    );
   }
   if (rule.byMonthDay?.length)
     parts.push(`BYMONTHDAY=${rule.byMonthDay.join(",")}`)

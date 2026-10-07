@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { memo, useState, type ReactNode } from "react"
 import {
   useEventCalendarNavigation,
+  useEventCalendarNavigationActions,
   useEventCalendarSettings,
   useEventCalendarView,
   useEventCalendarViewConfig,
@@ -152,14 +153,14 @@ function EventCalendarNavToday({
   )
 }
 
-function EventCalendarNavPrev({
+const EventCalendarNavPrev = memo(function EventCalendarNavPrev({
   className,
   render,
   children,
   tooltip,
   ...props
 }: NavButtonProps) {
-  const { prev } = useEventCalendarNavigation()
+  const { prev } = useEventCalendarNavigationActions()
   const settings = useEventCalendarSettings()
   const nav = useNavButtonProps()
   return (
@@ -182,16 +183,16 @@ function EventCalendarNavPrev({
       </Button>
     </NavTooltip>
   )
-}
+})
 
-function EventCalendarNavNext({
+const EventCalendarNavNext = memo(function EventCalendarNavNext({
   className,
   render,
   children,
   tooltip,
   ...props
 }: NavButtonProps) {
-  const { next } = useEventCalendarNavigation()
+  const { next } = useEventCalendarNavigationActions()
   const settings = useEventCalendarSettings()
   const nav = useNavButtonProps()
   return (
@@ -214,7 +215,7 @@ function EventCalendarNavNext({
       </Button>
     </NavTooltip>
   )
-}
+})
 
 interface EventCalendarTitleProps extends useRender.ComponentProps<"div"> {
   format?: (ctx: { title: string }) => ReactNode

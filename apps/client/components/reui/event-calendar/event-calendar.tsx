@@ -983,11 +983,12 @@ function useEventCalendarSelector<TData = unknown, TSelected = unknown>(
     )
   }
   const isEqual = options?.isEqual ?? Object.is
+
   const lastRef = useRef<{ value: TSelected } | null>(null)
   const selectorRef = useRef(selector)
   selectorRef.current = selector
 
-  const getSnapshot = () => {
+  const getSnapshot = useCallback(() => {
     const next = selectorRef.current(
       instance.getState() as EventCalendarState<TData>
     )
@@ -996,7 +997,7 @@ function useEventCalendarSelector<TData = unknown, TSelected = unknown>(
     }
     lastRef.current = { value: next }
     return next
-  }
+  }, [instance, isEqual])
 
   return useSyncExternalStore(instance.subscribe, getSnapshot, getSnapshot)
 }
@@ -1135,6 +1136,22 @@ function useEventCalendarNavigation(): {
     today: instance.api.today,
     goTo: instance.api.goTo,
     isToday: now >= slice.activeRange.start && now < slice.activeRange.end,
+  }
+}
+
+/** Stable navigation dispatchers that do not subscribe to state/slice changes. */
+function useEventCalendarNavigationActions(): {
+  next: () => void
+  prev: () => void
+  today: () => void
+  goTo: (date: Date) => void
+} {
+  const instance = useEventCalendar()
+  return {
+    next: instance.api.next,
+    prev: instance.api.prev,
+    today: instance.api.today,
+    goTo: instance.api.goTo,
   }
 }
 
@@ -1887,6 +1904,7 @@ export {
   useEventCalendarWeek,
   useEventCalendarInteractions,
   useEventCalendarNavigation,
+  useEventCalendarNavigationActions,
   useEventCalendarOccurrences,
   useEventCalendarSelection,
   useEventCalendarSelector,

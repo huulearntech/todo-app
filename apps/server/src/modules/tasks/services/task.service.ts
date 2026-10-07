@@ -1,17 +1,24 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { Task } from '../entities/task.entity';
+import { TaskOccurrence } from '../entities/task-occurrence.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { CreateTaskDto, UpdateTaskDto } from '../dto/add-task.dto';
 import { TaskFilterDto } from '../dto/get-my-tasks.dto';
 import { Section } from '@/src/modules/sections/section.entity';
-import { TaskPriority } from '@todo/shared';
+import {
+  formatRRuleString,
+  TaskOccurrenceStatus,
+  TaskPriority,
+} from '@todo/shared';
+import { calculateNextOccurrence } from '../utils/recurrence.util';
 
 interface RawTaskRow {
   id: string;
@@ -48,6 +55,8 @@ export class TaskService {
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
+    @InjectRepository(TaskOccurrence)
+    private readonly taskOccurrenceRepository: Repository<TaskOccurrence>,
     @InjectRepository(Section)
     private readonly sectionRepository: Repository<Section>,
     @InjectRepository(User)
@@ -108,7 +117,7 @@ export class TaskService {
         timeRange: createTaskDto.timeRange ?? null,
         labels: createTaskDto.labels ?? [],
         recurrence: null,
-        occurences: [],
+        occurrences: [],
       } as unknown as Task;
 
       if (timeRangeStart) {
@@ -264,6 +273,7 @@ export class TaskService {
       })
       .leftJoin('task.labels', 'label')
       .leftJoin('task.recurrence', 'recurrence')
+      .where('task.completedAt IS NULL')
       .andWhere(
         'upper(task.timeRange) BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz',
         {
@@ -290,24 +300,30 @@ export class TaskService {
     rangeStartISO8601: string,
     rangeEndISO8601: string,
   ): Promise<Task[]> {
-    const result = await this.taskRepository
-      .createQueryBuilder('task')
-      .innerJoin('task.section', 'section')
-      .innerJoin('section.project', 'project', 'project.ownerId = :ownerId', {
-        ownerId,
+    const occurrences = await this.taskOccurrenceRepository
+      .createQueryBuilder('occurrence')
+      .innerJoinAndSelect('occurrence.task', 'task')
+      .innerJoinAndSelect('task.section', 'section')
+      .innerJoinAndSelect('section.project', 'project')
+      .where('project.ownerId = :ownerId', { ownerId })
+      .andWhere('occurrence.status = :status', {
+        status: TaskOccurrenceStatus.COMPLETED,
       })
-      .where('task.completedAt IS NOT NULL')
       .andWhere(
-        'task.completedAt BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz',
+        'occurrence.completedAt BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz',
         {
           rangeStart: rangeStartISO8601,
           rangeEnd: rangeEndISO8601,
         },
       )
-      .select(['task', 'section.id', 'project.id', 'project.name'])
+      .orderBy('occurrence.completedAt', 'DESC')
       .getMany();
 
-    return result;
+    return occurrences.map((occ) => {
+      const task = occ.task;
+      task.completedAt = occ.completedAt;
+      return task;
+    });
   }
 
   async updateTask(
@@ -397,5 +413,317 @@ export class TaskService {
     await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
     const result = await this.taskRepository.delete(id);
     return result.affected !== 0;
+  }
+
+  async completeTaskOccurrence(
+    userId: string,
+    taskId: string,
+    options?: {
+      scheduledDate?: Date;
+      completedAt?: Date;
+    },
+  ): Promise<{
+    occurrenceId: string;
+    taskId: string;
+    isRecurringAdvanced: boolean;
+    status: TaskOccurrenceStatus;
+    completedAt: string;
+    nextDueTime?: string | null;
+  }> {
+    const completedAt = options?.completedAt ?? new Date();
+
+    return this.dataSource.transaction(async (manager) => {
+      const task = await manager.findOne(Task, {
+        where: { id: taskId },
+        relations: {
+          recurrence: true,
+          section: { project: true },
+        },
+      });
+
+      if (!task) {
+        throw new NotFoundException(`Task with ID ${taskId} not found`);
+      }
+      if (task.section?.project?.ownerId !== userId) {
+        throw new ForbiddenException(
+          'You do not have permission to modify this task',
+        );
+      }
+
+      const scheduledDate =
+        options?.scheduledDate ??
+        (task.timeRange?.start ? new Date(task.timeRange.start) : null);
+
+      // Record occurrence completion
+      const occurrence = manager.create(TaskOccurrence, {
+        taskId: task.id,
+        userId,
+        scheduledDate,
+        status: TaskOccurrenceStatus.COMPLETED,
+        completedAt,
+      });
+      const savedOccurrence = await manager.save(TaskOccurrence, occurrence);
+
+      let isRecurringAdvanced = false;
+      let nextDueTime: string | null = null;
+
+      if (task.recurrence?.rrule) {
+        const anchor = scheduledDate ?? completedAt;
+        const dtstart = task.timeRange?.start
+          ? new Date(task.timeRange.start)
+          : anchor;
+        const nextOccurrence = calculateNextOccurrence(
+          task.recurrence.rrule,
+          anchor,
+          dtstart,
+        );
+
+        if (nextOccurrence) {
+          let durationMs = 0;
+          if (task.timeRange?.start && task.timeRange?.end) {
+            durationMs =
+              new Date(task.timeRange.end).getTime() -
+              new Date(task.timeRange.start).getTime();
+          }
+
+          const nextStart = nextOccurrence;
+          const nextEnd =
+            durationMs > 0
+              ? new Date(nextStart.getTime() + durationMs)
+              : nextStart;
+
+          task.timeRange = {
+            start: nextStart.toISOString(),
+            end: nextEnd.toISOString(),
+          };
+          task.completedAt = null; // Remains active for next occurrence
+          isRecurringAdvanced = true;
+          nextDueTime = nextStart.toISOString();
+
+          // Reschedule recurring email reminder
+          const user = await manager.findOne(User, { where: { id: userId } });
+          if (user && task.recurrence.rrule) {
+            const rruleStr = formatRRuleString(task.recurrence.rrule);
+            await this.mailerSchedulerService
+              .scheduleRecurringTaskReminder({
+                taskId: task.id,
+                userId: user.id,
+                to: user.email,
+                userName: user.name,
+                taskTitle: task.title,
+                rruleString: rruleStr,
+                reminderOffsetMinutes: 15,
+              })
+              .catch(() => {});
+          }
+        } else {
+          // Recurrence series finished (e.g., COUNT or UNTIL exceeded)
+          task.completedAt = completedAt;
+          await this.mailerSchedulerService.cancelRecurringTaskReminder(
+            task.id,
+          );
+        }
+      } else {
+        // Non-recurring task: terminal completion
+        task.completedAt = completedAt;
+        await this.mailerSchedulerService.cancelTaskReminder(task.id);
+      }
+
+      await manager.save(Task, task);
+
+      return {
+        occurrenceId: savedOccurrence.id,
+        taskId: task.id,
+        isRecurringAdvanced,
+        status: TaskOccurrenceStatus.COMPLETED,
+        completedAt: completedAt.toISOString(),
+        nextDueTime,
+      };
+    });
+  }
+
+  async completeTask(userId: string, taskId: string, completedAtDate?: Date) {
+    return this.completeTaskOccurrence(userId, taskId, {
+      completedAt: completedAtDate,
+    });
+  }
+
+  async uncompleteTaskOccurrence(
+    userId: string,
+    taskId: string,
+  ): Promise<Task> {
+    return this.dataSource.transaction(async (manager) => {
+      const task = await manager.findOne(Task, {
+        where: { id: taskId },
+        relations: {
+          recurrence: true,
+          section: { project: true },
+          labels: true,
+        },
+      });
+
+      if (!task) {
+        throw new NotFoundException(`Task with ID ${taskId} not found`);
+      }
+      if (task.section?.project?.ownerId !== userId) {
+        throw new ForbiddenException(
+          'You do not have permission to modify this task',
+        );
+      }
+
+      // Find and remove latest completed occurrence for this task
+      const latestOccurrence = await manager.findOne(TaskOccurrence, {
+        where: {
+          taskId: task.id,
+          userId,
+          status: TaskOccurrenceStatus.COMPLETED,
+        },
+        order: { completedAt: 'DESC' },
+      });
+
+      if (latestOccurrence) {
+        await manager.remove(TaskOccurrence, latestOccurrence);
+
+        // If recurring task had a recorded scheduledDate, roll back timeRange
+        if (task.recurrence && latestOccurrence.scheduledDate) {
+          let durationMs = 0;
+          if (task.timeRange?.start && task.timeRange?.end) {
+            durationMs =
+              new Date(task.timeRange.end).getTime() -
+              new Date(task.timeRange.start).getTime();
+          }
+
+          const revertedStart = latestOccurrence.scheduledDate;
+          const revertedEnd =
+            durationMs > 0
+              ? new Date(revertedStart.getTime() + durationMs)
+              : revertedStart;
+
+          task.timeRange = {
+            start: revertedStart.toISOString(),
+            end: revertedEnd.toISOString(),
+          };
+        }
+      }
+
+      task.completedAt = null;
+      const savedTask = await manager.save(Task, task);
+
+      // Reschedule reminder if appropriate
+      if (savedTask.timeRange?.start) {
+        const user = await manager.findOne(User, { where: { id: userId } });
+        if (user) {
+          if (savedTask.recurrence?.rrule) {
+            await this.mailerSchedulerService
+              .scheduleRecurringTaskReminder({
+                taskId: savedTask.id,
+                userId: user.id,
+                to: user.email,
+                userName: user.name,
+                taskTitle: savedTask.title,
+                rruleString: formatRRuleString(savedTask.recurrence.rrule),
+                reminderOffsetMinutes: 15,
+              })
+              .catch(() => {});
+          } else {
+            const dueTime = new Date(savedTask.timeRange.start);
+            const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
+            await this.mailerSchedulerService
+              .scheduleTaskReminder({
+                taskId: savedTask.id,
+                userId: user.id,
+                to: user.email,
+                userName: user.name,
+                taskTitle: savedTask.title,
+                dueTime,
+                reminderTime,
+              })
+              .catch(() => {});
+          }
+        }
+      }
+
+      return savedTask;
+    });
+  }
+
+  async uncompleteTask(userId: string, taskId: string): Promise<Task> {
+    return this.uncompleteTaskOccurrence(userId, taskId);
+  }
+
+  async postponeTask(
+    userId: string,
+    taskId: string,
+    postponeTo: Date,
+  ): Promise<Task> {
+    const task = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: {
+        recurrence: true,
+        section: { project: true },
+        labels: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${taskId} not found`);
+    }
+    if (task.section?.project?.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this task',
+      );
+    }
+
+    let durationMs = 0;
+    if (task.timeRange?.start && task.timeRange?.end) {
+      durationMs =
+        new Date(task.timeRange.end).getTime() -
+        new Date(task.timeRange.start).getTime();
+    }
+
+    const newStart = postponeTo;
+    const newEnd =
+      durationMs > 0 ? new Date(newStart.getTime() + durationMs) : newStart;
+
+    task.timeRange = {
+      start: newStart.toISOString(),
+      end: newEnd.toISOString(),
+    };
+    task.completedAt = null;
+
+    const savedTask = await this.taskRepository.save(task);
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (user) {
+      if (savedTask.recurrence?.rrule) {
+        await this.mailerSchedulerService
+          .scheduleRecurringTaskReminder({
+            taskId: savedTask.id,
+            userId: user.id,
+            to: user.email,
+            userName: user.name,
+            taskTitle: savedTask.title,
+            rruleString: formatRRuleString(savedTask.recurrence.rrule),
+            reminderOffsetMinutes: 15,
+          })
+          .catch(() => {});
+      } else {
+        const dueTime = newStart;
+        const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
+        await this.mailerSchedulerService
+          .scheduleTaskReminder({
+            taskId: savedTask.id,
+            userId: user.id,
+            to: user.email,
+            userName: user.name,
+            taskTitle: savedTask.title,
+            dueTime,
+            reminderTime,
+          })
+          .catch(() => {});
+      }
+    }
+
+    return savedTask;
   }
 }

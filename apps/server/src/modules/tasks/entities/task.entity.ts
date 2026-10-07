@@ -17,7 +17,7 @@ import { Section } from '../../sections/section.entity';
 
 import { TaskPriority } from '@todo/shared';
 
-import { TaskOccurence } from '../entities/task-occurence.entity';
+import { TaskOccurrence } from './task-occurrence.entity';
 import { TaskRecurrence } from '../entities/task-recurrence.entity';
 import {
   TstzRange,
@@ -95,8 +95,8 @@ export class Task {
   @Column({ type: 'varchar', length: 255, nullable: false })
   lexorank: string;
 
-  @OneToMany(() => TaskOccurence, (occurence) => occurence.task)
-  occurences: TaskOccurence[];
+  @OneToMany(() => TaskOccurrence, (occurrence) => occurrence.task)
+  occurrences: TaskOccurrence[];
 
   @OneToOne(() => TaskRecurrence, {
     cascade: ['insert', 'update'],

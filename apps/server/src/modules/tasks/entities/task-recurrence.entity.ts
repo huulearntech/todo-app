@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { Task } from '../entities/task.entity';
 import { RecurrenceTransformer } from '@/src/common/transformers/rrule_plpgsql.transformer';
-import { RRule } from 'rrule';
+import { type RRule } from '@todo/shared';
 
 @Entity('task_recurrences')
 export class TaskRecurrence {

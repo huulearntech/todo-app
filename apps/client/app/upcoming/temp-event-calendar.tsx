@@ -18,7 +18,7 @@ import type {
   EventCalendarViewSettings,
   EventCalendarWeekday,
 } from "@/components/reui/event-calendar/event-calendar-types"
-import { addDays } from "date-fns"
+import { addDays, startOfDay } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -38,19 +38,27 @@ const taskPriorityColorMap: Record<TaskPriority, string> = {
 }
 
 function mapTaskToCalendarEvent(task: Task): CalendarEvent<Task> {
-  const start = task.timeRange ? new Date(task.timeRange.start) : new Date();
+  const fallbackDate = startOfDay(new Date());
+  const start = task.timeRange ? new Date(task.timeRange.start) : fallbackDate;
   const end = task.timeRange ? new Date(task.timeRange.end) : addDays(start, 1);
 
-  const recurrence: EventCalendarRecurrenceRule | undefined = task.recurrence
+  const rawRecurrence =
+    task.recurrence && typeof task.recurrence === "object" && "rrule" in task.recurrence && (task.recurrence as { rrule?: EventCalendarRecurrenceRule }).rrule
+      ? { ...task.recurrence, ...(task.recurrence as { rrule?: EventCalendarRecurrenceRule }).rrule }
+      : task.recurrence;
+
+  const recurrence: EventCalendarRecurrenceRule | undefined = rawRecurrence
     ? {
-        ...task.recurrence,
-        until: task.recurrence.until ? new Date(task.recurrence.until) : undefined,
-        byWeekday: task.recurrence.byWeekday?.map((w) =>
-          w.ordinal !== undefined
-            ? { day: w.day as EventCalendarWeekday, ordinal: w.ordinal }
-            : (w.day as EventCalendarWeekday)
+        ...rawRecurrence,
+        until: rawRecurrence.until ? new Date(rawRecurrence.until) : undefined,
+        byWeekday: rawRecurrence.byWeekday?.map((w: any) =>
+          typeof w === "string"
+            ? (w as EventCalendarWeekday)
+            : w.ordinal !== undefined
+              ? { day: w.day as EventCalendarWeekday, ordinal: w.ordinal }
+              : (w.day as EventCalendarWeekday)
         ),
-        weekStart: task.recurrence.weekStart as EventCalendarWeekday | undefined,
+        weekStart: rawRecurrence.weekStart as EventCalendarWeekday | undefined,
       }
     : undefined;
 

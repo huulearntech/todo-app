@@ -19,7 +19,9 @@ import {
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { taskLabelService } from "@/services/task-label.service";
-import { useQuery } from "@tanstack/react-query";
+import { taskService } from "@/services/task.service";
+import { toast } from "@/components/ui/toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Checkbox } from "../ui/checkbox";
 
 import { cn } from "cn";
@@ -31,9 +33,49 @@ const priorityCheckboxStyles: Record<string, string> = {
 };
 
 function TaskCardInner({ task }: { task: Task }) {
+  const queryClient = useQueryClient();
   // TODO: aad reminder to the task entity
   const mockTask = {
     reminder: "1 hour before",
+  };
+
+  const handleCheckedChange = async (checked: boolean) => {
+    try {
+      if (checked) {
+        const scheduledDate = task.timeRange?.start ?? undefined;
+        const result = await taskService.completeTaskOccurrence(task.id, {
+          scheduledDate,
+        });
+        toast.add({
+          title: result.isRecurringAdvanced
+            ? "Occurrence completed"
+            : "Task completed",
+          description: result.isRecurringAdvanced
+            ? `Next occurrence scheduled for ${
+                result.nextDueTime
+                  ? new Date(result.nextDueTime).toLocaleDateString()
+                  : "future date"
+              }.`
+            : `"${task.title}" marked as completed.`,
+          type: "success",
+        });
+      } else {
+        await taskService.uncompleteTaskOccurrence(task.id);
+        toast.add({
+          title: "Occurrence restored",
+          description: `"${task.title}" marked as incomplete.`,
+          type: "info",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["productivity"] });
+    } catch {
+      toast.add({
+        title: "Error",
+        description: "Failed to update task status",
+        type: "error",
+      });
+    }
   };
 
   const { data: labels = [] } = useQuery({
@@ -74,7 +116,8 @@ function TaskCardInner({ task }: { task: Task }) {
 
         </div>
         <Checkbox
-          defaultChecked={!!task.completedAt}
+          checked={!!task.completedAt}
+          onCheckedChange={handleCheckedChange}
           className={cn(
             "rounded-full size-6 border-2 dark:bg-transparent transition-colors",
             "data-checked:text-white dark:data-checked:text-background",

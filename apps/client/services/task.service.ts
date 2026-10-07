@@ -1,5 +1,9 @@
 import { apiClient } from "@/lib/api-client";
-import type { TaskResponseDto as Task } from "@todo/shared";
+import type {
+  CompleteTaskOccurrenceResponseDto,
+  CompleteTaskResponseDto,
+  TaskResponseDto as Task,
+} from "@todo/shared";
 
 // TODO: may rename?
 import type { CreateTaskOutput, UpdateTaskOutput } from "@todo/shared/browser";
@@ -52,6 +56,39 @@ export const taskService = {
 
   async updateTask(taskId: string, updateTaskDto: UpdateTaskOutput) {
     const response = await apiClient.patch<Task>(`/tasks/${taskId}`, updateTaskDto);
+    return response.data;
+  },
+
+  async completeTaskOccurrence(
+    taskId: string,
+    options?: { scheduledDate?: string; completedAt?: string },
+  ) {
+    const response = await apiClient.post<CompleteTaskOccurrenceResponseDto>(
+      `/tasks/${taskId}/occurrences/complete`,
+      options ?? {},
+    );
+    return response.data;
+  },
+
+  async completeTask(taskId: string, completedAt?: string) {
+    return this.completeTaskOccurrence(taskId, { completedAt });
+  },
+
+  async uncompleteTaskOccurrence(taskId: string) {
+    const response = await apiClient.post<Task>(
+      `/tasks/${taskId}/occurrences/uncomplete`,
+    );
+    return response.data;
+  },
+
+  async uncompleteTask(taskId: string) {
+    return this.uncompleteTaskOccurrence(taskId);
+  },
+
+  async postponeTask(taskId: string, postponeTo: string) {
+    const response = await apiClient.post<Task>(`/tasks/${taskId}/postpone`, {
+      postponeTo,
+    });
     return response.data;
   },
 

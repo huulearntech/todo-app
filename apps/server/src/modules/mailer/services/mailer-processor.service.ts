@@ -20,6 +20,8 @@ import {
   getRecurringReminderEmailTemplate,
 } from '../templates/email-templates';
 import { Task } from '@/src/modules/tasks/entities/task.entity';
+import { TaskOccurrence } from '@/src/modules/tasks/entities/task-occurrence.entity';
+import { TaskOccurrenceStatus } from '@todo/shared';
 
 @Processor(EMAIL_QUEUE_NAME)
 @Injectable()
@@ -147,17 +149,34 @@ export class MailerProcessor extends WorkerHost {
       return { success: true, skipped: true, reason: 'Task deleted' };
     }
 
-    const html = getRecurringReminderEmailTemplate(
-      data.userName,
-      data.taskTitle,
-      data.occurrenceTime,
-    );
-
-    await this.mailerTransportService.sendMail({
-      to: data.to,
-      subject: `Recurring Reminder: ${data.taskTitle}`,
-      html,
+    const taskOccurrenceRepository =
+      this.dataSource.getRepository(TaskOccurrence);
+    const occurrenceDate = new Date(data.occurrenceTime);
+    const alreadyCompleted = await taskOccurrenceRepository.findOne({
+      where: {
+        taskId: data.taskId,
+        scheduledDate: occurrenceDate,
+        status: TaskOccurrenceStatus.COMPLETED,
+      },
     });
+
+    if (alreadyCompleted) {
+      this.logger.log(
+        `Recurring task occurrence ${data.taskId} on ${data.occurrenceTime} is already completed. Skipping email and chaining next occurrence.`,
+      );
+    } else {
+      const html = getRecurringReminderEmailTemplate(
+        data.userName,
+        data.taskTitle,
+        data.occurrenceTime,
+      );
+
+      await this.mailerTransportService.sendMail({
+        to: data.to,
+        subject: `Recurring Reminder: ${data.taskTitle}`,
+        html,
+      });
+    }
 
     // Next-Occurrence Chaining: Schedule the subsequent occurrence
     await this.mailerSchedulerService.scheduleRecurringTaskReminder({

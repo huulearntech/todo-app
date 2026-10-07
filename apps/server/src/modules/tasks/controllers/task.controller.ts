@@ -14,6 +14,10 @@ import { TaskService } from '../services/task.service';
 
 import { AddTaskDto, ReorderTaskDto, UpdateTaskDto } from '../dto/add-task.dto';
 import { TaskFilterDto } from '../dto/get-my-tasks.dto';
+import {
+  CompleteTaskOccurrenceDto,
+  PostponeTaskDto,
+} from '../dto/task-occurrence.dto';
 
 import { DateTime } from 'luxon';
 import {
@@ -91,8 +95,61 @@ export class TasksController {
   }
 
   @Delete(':id')
-  async deleteTask(@Param() id: string) {
+  async deleteTask(@Param('id') id: string) {
     return this.taskService.deleteTask(id);
+  }
+
+  @Post(':id/occurrences/complete')
+  async completeTaskOccurrence(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() body?: CompleteTaskOccurrenceDto,
+  ) {
+    const scheduledDate = body?.scheduledDate
+      ? new Date(body.scheduledDate)
+      : undefined;
+    const completedAt = body?.completedAt
+      ? new Date(body.completedAt)
+      : undefined;
+    return this.taskService.completeTaskOccurrence(user.id, id, {
+      scheduledDate,
+      completedAt,
+    });
+  }
+
+  @Post(':id/complete')
+  async completeTask(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() body?: CompleteTaskOccurrenceDto,
+  ) {
+    return this.completeTaskOccurrence(user, id, body);
+  }
+
+  @Post(':id/occurrences/uncomplete')
+  async uncompleteTaskOccurrence(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+  ) {
+    return this.taskService.uncompleteTaskOccurrence(user.id, id);
+  }
+
+  @Post(':id/uncomplete')
+  async uncompleteTask(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.uncompleteTaskOccurrence(user, id);
+  }
+
+  @Post(':id/postpone')
+  async postponeTask(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() body: PostponeTaskDto,
+  ) {
+    return this.taskService.postponeTask(
+      user.id,
+      id,
+      new Date(body.postponeTo),
+    );
   }
 
   @Patch(':id')

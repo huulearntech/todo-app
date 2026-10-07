@@ -162,7 +162,7 @@ function formatRRuleString(rule: EventCalendarRecurrenceRule): string {
   if (rule.byWeekday?.length) {
     parts.push(
       `BYDAY=${rule.byWeekday
-        .map((d) => (typeof d === "string" ? d : `${d.ordinal}${d.day}`))
+        .map((d) => (typeof d === "string" ? d : `${d.ordinal ?? ""}${d.day}`))
         .join(",")}`
     )
   }
@@ -226,8 +226,20 @@ function expandRecurrence<TData>(
     return []
   }
 
-  const rule = resolveRule(event.recurrence, ctx.timeZone)
-  const interval = Math.max(1, rule.interval ?? 1)
+  const rawRule = resolveRule(event.recurrence, ctx.timeZone)
+  const rawTarget =
+    rawRule && typeof rawRule === "object" && "rrule" in rawRule && (rawRule as { rrule?: EventCalendarRecurrenceRule }).rrule
+      ? { ...rawRule, ...(rawRule as { rrule?: EventCalendarRecurrenceRule }).rrule }
+      : rawRule
+  const normalizedFreq = (
+    rawTarget.freq ? String(rawTarget.freq).toLowerCase() : "daily"
+  ) as EventCalendarRecurrenceRule["freq"]
+  const rule: EventCalendarRecurrenceRule = {
+    ...rawTarget,
+    freq: PERIOD_MS[normalizedFreq] ? normalizedFreq : "daily",
+    interval: Math.max(1, Number(rawTarget.interval) || 1),
+  }
+  const interval = rule.interval ?? 1
   const durationMs = event.end.getTime() - event.start.getTime()
   const zonedStart = new TZDate(event.start.getTime(), ctx.timeZone)
   // A span of whole local days is wall time, not an absolute delta: a 3 day
@@ -258,12 +270,14 @@ function expandRecurrence<TData>(
       ? [
           ...new Set(
             rule.byWeekday.map((d) => {
-              if (typeof d !== "string") {
+              const day = typeof d === "string" ? d : d.day
+              const ordinal = typeof d === "string" ? undefined : d.ordinal
+              if (ordinal !== undefined && ordinal !== 0) {
                 throw new EventCalendarRecurrenceError(
                   "BYDAY ordinal outside monthly/yearly"
                 )
               }
-              return WEEKDAYS.indexOf(d)
+              return WEEKDAYS.indexOf(day)
             })
           ),
         ]
@@ -465,36 +479,59 @@ function expandRecurrence<TData>(
   // O(1) fast-forward: land a couple of periods before the window instead of
   // iterating from DTSTART, so years-old series still reach the visible range.
   const aheadMs = range.start.getTime() - durationMs - zonedStart.getTime()
-  const stepMs = PERIOD_MS[rule.freq] * interval
-  let startPeriod =
-    aheadMs > 0 ? Math.max(0, Math.floor(aheadMs / stepMs) - 2) : 0
+  const stepMs = Math.max(86400000, (PERIOD_MS[rule.freq] ?? 86400000) * interval)
+  const rawStartPeriod =
+    aheadMs > 0 ? Math.floor(aheadMs / stepMs) - 2 : 0
+  let startPeriod = Number.isFinite(rawStartPeriod) ? Math.max(0, rawStartPeriod) : 0
   // mean-length drift is bounded well under one period - refine forward
+  let refineSafety = 0
   while (
+    refineSafety < 500 &&
+    Number.isFinite(periodEdge(startPeriod, "last").getTime()) &&
     periodEdge(startPeriod, "last").getTime() + durationMs <=
     range.start.getTime()
   ) {
     startPeriod++
+    refineSafety++
   }
 
   // series ordinal at startPeriod, so COUNT and recurrenceIndex stay exact
   let index = 0
   if (startPeriod > 0) {
-    if (hasMonthDayParts || hasLimits) {
-      // per-period counts vary (skipped days, 4-vs-5 weekday months, a LIMIT
-      // filter that empties a whole period) - sum them
-      for (let period = 0; period < startPeriod; period++) {
-        index += candidatesFor(period).length
+    if (rule.count !== undefined) {
+      if (startPeriod >= rule.count) {
+        index = rule.count
+      } else if (hasMonthDayParts || hasLimits) {
+        // COUNT is present and startPeriod < rule.count: sum exact counts bounded by rule.count
+        for (let period = 0; period < startPeriod; period++) {
+          index += candidatesFor(period).length
+          if (index >= rule.count) break
+        }
+      } else if (weeklyDays) {
+        const anchorOffset = fromWeekStart(zonedStart.getDay())
+        const firstWeek = weeklyDays.filter(
+          (d) => fromWeekStart(d) >= anchorOffset
+        ).length
+        index = firstWeek + (startPeriod - 1) * weeklyDays.length
+      } else {
+        index = startPeriod
       }
-    } else if (weeklyDays) {
-      // week 0 only counts selected weekdays at/after DTSTART's, inside the
-      // WKST-aligned week that holds it
-      const anchorOffset = fromWeekStart(zonedStart.getDay())
-      const firstWeek = weeklyDays.filter(
-        (d) => fromWeekStart(d) >= anchorOffset
-      ).length
-      index = firstWeek + (startPeriod - 1) * weeklyDays.length
     } else {
-      index = startPeriod // one occurrence per period
+      // rule.count is undefined: series continues indefinitely.
+      // O(1) estimate for informational recurrenceIndex without iterating thousands of periods.
+      if (weeklyDays) {
+        const anchorOffset = fromWeekStart(zonedStart.getDay())
+        const firstWeek = weeklyDays.filter(
+          (d) => fromWeekStart(d) >= anchorOffset
+        ).length
+        index = firstWeek + (startPeriod - 1) * weeklyDays.length
+      } else if (limitByWeekday) {
+        index = Math.floor(startPeriod / 7) * limitByWeekday.length
+      } else if (rule.byMonthDay?.length) {
+        index = startPeriod * rule.byMonthDay.length
+      } else {
+        index = startPeriod
+      }
     }
   }
 
@@ -522,14 +559,20 @@ function expandRecurrence<TData>(
 
   let iterations = 0
   let period = startPeriod
-  while (iterations < MAX_ITERATIONS && occurrences.length < MAX_OCCURRENCES) {
+  const windowSpanMs = Math.max(1, range.end.getTime() - range.start.getTime())
+  const maxIterationsForWindow = Math.min(
+    MAX_ITERATIONS,
+    Math.max(50, Math.ceil(windowSpanMs / stepMs) + 15)
+  )
+  while (iterations < maxIterationsForWindow && occurrences.length < MAX_OCCURRENCES) {
     iterations++
     if (rule.count !== undefined && index >= rule.count) break
     // whole-period bounds: never break on a mid-period weekday/day-of-month,
     // so earlier candidates of the final period are still emitted
     const earliest = periodEdge(period, "first")
-    if (earliest.getTime() >= range.end.getTime()) break
-    if (rule.until && earliest.getTime() > rule.until.getTime()) break
+    const earliestTime = earliest.getTime()
+    if (Number.isNaN(earliestTime) || earliestTime >= range.end.getTime()) break
+    if (rule.until && earliestTime > rule.until.getTime()) break
 
     let ended = false
     for (const candidate of candidatesFor(period)) {

@@ -1,15 +1,16 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, IsNull, Repository } from 'typeorm';
 import { DateTime } from 'luxon';
 
 import { Task } from '../tasks/entities/task.entity';
+import { TaskOccurrence } from '../tasks/entities/task-occurrence.entity';
 import { UserGoal } from '../users/entities/user-goal.entity';
 import { UpdateUserGoalDto } from './dto/update-user-goal.dto';
-import type { GoalProgressResponseDto } from '@todo/shared';
+import {
+  type GoalProgressResponseDto,
+  TaskOccurrenceStatus,
+} from '@todo/shared';
 
 export interface DayGoalHistoryItem {
   date: string;
@@ -23,8 +24,8 @@ export interface DayGoalHistoryItem {
 export class ProductivityService {
   constructor(
     private readonly dataSource: DataSource,
-    @InjectRepository(Task)
-    private readonly taskRepository: Repository<Task>,
+    @InjectRepository(TaskOccurrence)
+    private readonly taskOccurrenceRepository: Repository<TaskOccurrence>,
     @InjectRepository(UserGoal)
     private readonly userGoalRepository: Repository<UserGoal>,
   ) {}
@@ -73,26 +74,34 @@ export class ProductivityService {
     const endOfWeek = nowInUserTz.endOf('week').toJSDate();
 
     const [completedToday, completedThisWeek, activeGoal] = await Promise.all([
-      this.taskRepository
-        .createQueryBuilder('task')
-        .innerJoin('task.section', 'section')
-        .innerJoin('section.project', 'project')
-        .where('project.ownerId = :userId', { userId })
-        .andWhere('task.completedAt >= :startOfDay AND task.completedAt <= :endOfDay', {
-          startOfDay,
-          endOfDay,
+      this.taskOccurrenceRepository
+        .createQueryBuilder('to')
+        .where('to.userId = :userId', { userId })
+        .andWhere('to.status = :status', {
+          status: TaskOccurrenceStatus.COMPLETED,
         })
+        .andWhere(
+          'to.completedAt >= :startOfDay AND to.completedAt <= :endOfDay',
+          {
+            startOfDay,
+            endOfDay,
+          },
+        )
         .getCount(),
 
-      this.taskRepository
-        .createQueryBuilder('task')
-        .innerJoin('task.section', 'section')
-        .innerJoin('section.project', 'project')
-        .where('project.ownerId = :userId', { userId })
-        .andWhere('task.completedAt >= :startOfWeek AND task.completedAt <= :endOfWeek', {
-          startOfWeek,
-          endOfWeek,
+      this.taskOccurrenceRepository
+        .createQueryBuilder('to')
+        .where('to.userId = :userId', { userId })
+        .andWhere('to.status = :status', {
+          status: TaskOccurrenceStatus.COMPLETED,
         })
+        .andWhere(
+          'to.completedAt >= :startOfWeek AND to.completedAt <= :endOfWeek',
+          {
+            startOfWeek,
+            endOfWeek,
+          },
+        )
         .getCount(),
 
       this.getActiveUserGoal(userId),
@@ -180,23 +189,25 @@ export class ProductivityService {
       const dateString = dayDate.toFormat('yyyy-MM-dd');
       const dayName = dayDate.toFormat('ccc');
 
-      const completedCount = await this.taskRepository
-        .createQueryBuilder('task')
-        .innerJoin('task.section', 'section')
-        .innerJoin('section.project', 'project')
-        .where('project.ownerId = :userId', { userId })
-        .andWhere('task.completedAt >= :dayStart AND task.completedAt <= :dayEnd', {
+      const completedCount = await this.taskOccurrenceRepository
+        .createQueryBuilder('to')
+        .where('to.userId = :userId', { userId })
+        .andWhere('to.status = :status', {
+          status: TaskOccurrenceStatus.COMPLETED,
+        })
+        .andWhere('to.completedAt >= :dayStart AND to.completedAt <= :dayEnd', {
           dayStart,
           dayEnd,
         })
         .getCount();
 
       // Match the goal that was active during this day
-      const matchedGoal = userGoals.find((g) => {
-        const fromOk = g.effectiveFrom <= dayEnd;
-        const toOk = !g.effectiveTo || g.effectiveTo >= dayStart;
-        return fromOk && toOk;
-      }) || userGoals[userGoals.length - 1];
+      const matchedGoal =
+        userGoals.find((g) => {
+          const fromOk = g.effectiveFrom <= dayEnd;
+          const toOk = !g.effectiveTo || g.effectiveTo >= dayStart;
+          return fromOk && toOk;
+        }) || userGoals[userGoals.length - 1];
 
       const target = matchedGoal?.dailyGoal ?? 5;
 

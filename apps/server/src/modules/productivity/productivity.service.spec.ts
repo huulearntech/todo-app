@@ -3,12 +3,12 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { ProductivityService } from './productivity.service';
-import { Task } from '../tasks/entities/task.entity';
+import { TaskOccurrence } from '../tasks/entities/task-occurrence.entity';
 import { UserGoal } from '../users/entities/user-goal.entity';
 
 describe('ProductivityService', () => {
   let service: ProductivityService;
-  let mockTaskRepo: any;
+  let mockTaskOccurrenceRepo: any;
   let mockUserGoalRepo: any;
   let mockDataSource: any;
 
@@ -20,7 +20,7 @@ describe('ProductivityService', () => {
   };
 
   beforeEach(async () => {
-    mockTaskRepo = {
+    mockTaskOccurrenceRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     };
 
@@ -28,7 +28,9 @@ describe('ProductivityService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       create: jest.fn((dto) => ({ id: 'goal-uuid', ...dto })),
-      save: jest.fn((entity) => Promise.resolve({ id: 'goal-uuid', ...entity })),
+      save: jest.fn((entity) =>
+        Promise.resolve({ id: 'goal-uuid', ...entity }),
+      ),
     };
 
     mockDataSource = {
@@ -45,8 +47,8 @@ describe('ProductivityService', () => {
       providers: [
         ProductivityService,
         {
-          provide: getRepositoryToken(Task),
-          useValue: mockTaskRepo,
+          provide: getRepositoryToken(TaskOccurrence),
+          useValue: mockTaskOccurrenceRepo,
         },
         {
           provide: getRepositoryToken(UserGoal),

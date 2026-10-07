@@ -6,6 +6,7 @@ export * from "./task-label.schema.js";
 export * from "./task.schema.js";
 export * from "./user.schema.js";
 export * from "./goal.schema.js";
+export * from "./task-occurrence.schema.js";
 
 
 // NOTE: draft, need to check this

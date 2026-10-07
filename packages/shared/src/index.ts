@@ -4,7 +4,7 @@ export * from "./schemas/backend/index.js";
 
 // Enums
 export * from "./enums/task-priority.enum.js";
-export * from "./enums/task-occurence-status.enum.js";
+export * from "./enums/task-occurrence-status.enum.js";
 
 // Utils
 export * from "./utils/index.js";
