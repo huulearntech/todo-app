@@ -118,7 +118,6 @@ export default function CreateProjectDialog() {
                   {...field}
                   id="create-project-name"
                   placeholder="e.g., Work, Personal, Shopping"
-                  className="h-9 rounded-xl border-border/70 text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/40"
                 />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -137,7 +136,6 @@ export default function CreateProjectDialog() {
                   {...field}
                   id="create-project-desc"
                   placeholder="Short description of this project..."
-                  className="h-9 rounded-xl border-border/70 text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/40"
                 />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -161,24 +159,24 @@ export default function CreateProjectDialog() {
                     value={field.value}
                     onValueChange={field.onChange}
                   >
-                    <SelectTrigger className="w-full h-9 rounded-xl border-border/70 bg-background/80 hover:bg-background transition-colors text-xs font-medium">
+                    <SelectTrigger>
                       <div className="flex items-center gap-2 w-full">
                         <span
                           className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
                           style={{ backgroundColor: field.value }}
                         />
                         <span>{selectedColor?.name || field.value || "Select color"}</span>
-                        <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                        <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
                           {field.value}
                         </span>
                       </div>
                     </SelectTrigger>
-                    <SelectContent alignItemWithTrigger={false} className="rounded-xl">
+                    <SelectContent>
                       {colors.map((color) => (
                         <SelectItem
                           key={color.hexCode}
                           value={color.hexCode}
-                          className="text-xs rounded-lg cursor-pointer"
+                          className="rounded-lg cursor-pointer"
                         >
                           <div className="flex items-center gap-2 w-full">
                             <span
@@ -186,7 +184,7 @@ export default function CreateProjectDialog() {
                               style={{ backgroundColor: color.hexCode }}
                             />
                             <span>{color.name}</span>
-                            <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                            <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
                               {color.hexCode}
                             </span>
                           </div>
@@ -204,17 +202,15 @@ export default function CreateProjectDialog() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => setDialogOpen(false)}
-              className="rounded-xl h-8 px-4 text-xs font-medium"
+              className="rounded-xl h-9 px-4 text-xs font-medium"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              size="sm"
               disabled={createProjectMutation.isPending}
-              className="rounded-xl h-8 px-4 text-xs font-semibold shadow-xs"
+              className="rounded-xl h-9 px-4 text-xs font-semibold shadow-xs"
             >
               {createProjectMutation.isPending ? (
                 <>

@@ -18,7 +18,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react"
+import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, PlusIcon } from "lucide-react"
 
 import TaskItemListView from "./task-card"
 
@@ -30,9 +30,10 @@ import { useMoveSection } from "@/hooks/sections/use-move-section"
 import { useRenameSection } from "@/hooks/sections/use-rename-section"
 import { useDeleteSection } from "@/hooks/sections/use-delete-section"
 import { AddTaskFormTrigger } from "./add-task-form"
-import AddSectionForm from "../../app/projects/add-section-form"
+import AddSectionForm, { type AddSectionFormHandle } from "../../app/projects/add-section-form"
 import { Skeleton } from "../ui/skeleton"
 import { Input } from "../ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +52,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog"
-import { toast } from "../ui/toast"
 
 interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -262,6 +262,7 @@ function TaskColumn({
 
 
 function DndKanban({ projectId }: { projectId: string }) {
+  const addSectionRef = useRef<AddSectionFormHandle>(null);
   const { data: tasks, isLoading: tasksLoading } = useProjectTasks(projectId);
   const { data: sections, isLoading: sectionsLoading } = useSections(projectId);
   const isLoading = tasksLoading || sectionsLoading;
@@ -280,6 +281,7 @@ function DndKanban({ projectId }: { projectId: string }) {
       (acc[task.sectionId] ??= []).push(task)
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumns(acc)
   }, [sections, tasks])
 
@@ -288,78 +290,108 @@ function DndKanban({ projectId }: { projectId: string }) {
   const renameSectionMutation = useRenameSection(projectId);
   const deleteSectionMutation = useDeleteSection(projectId);
 
+  const handleFloatingAddSectionClick = () => {
+    addSectionRef.current?.scrollIntoView();
+    addSectionRef.current?.focus();
+  };
+
   if (isLoading) {
     return <KanbanBoardSkeleton />
   }
 
   return (
-    <section className="flex-1 min-h-0 min-w-0 h-full w-full overflow-auto p-4 bg-secondary custom-kanban-scroll">
-      <Kanban
-        className="min-w-max min-h-full flex"
-        value={columns}
-        onValueChange={setColumns}
-        onValueCommit={(finalColumns, meta) => {
-          if (meta.kind == "column") { // Move section
-            const {
-              activeContainer: movedItemId,
-              activeIndex,
-              overIndex
-            } = meta;
-            if (activeIndex === overIndex) return;
+    <div className="relative flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden flex flex-col">
+      <section className="flex-1 min-h-0 min-w-0 h-full w-full overflow-auto p-4 bg-secondary custom-kanban-scroll">
+        <Kanban
+          className="min-w-max min-h-full flex"
+          value={columns}
+          onValueChange={setColumns}
+          onValueCommit={(finalColumns, meta) => {
+            if (meta.kind == "column") { // Move section
+              const {
+                activeContainer: movedItemId,
+                activeIndex,
+                overIndex
+              } = meta;
+              if (activeIndex === overIndex) return;
 
-            const newIndex = overIndex;
-            console.log(activeIndex, overIndex);
+              const newIndex = overIndex;
+              console.log(activeIndex, overIndex);
 
-            const payload = {
-              sectionId: movedItemId,
-              prevId: newIndex > 0
-                ? Object.keys(finalColumns)[newIndex - 1]
-                : null,
-            };
-            console.log("Moving section with payload:", payload);
-            moveSectionMutation.mutate(payload);
+              const payload = {
+                sectionId: movedItemId,
+                prevId: newIndex > 0
+                  ? Object.keys(finalColumns)[newIndex - 1]
+                  : null,
+              };
+              console.log("Moving section with payload:", payload);
+              moveSectionMutation.mutate(payload);
 
-            return;
-          }
-
-          { // Move task
-            const newIndex = meta.overIndex;
-            const targetSectionId = meta.overContainer;
-
-            const payload = {
-              sectionId: targetSectionId,
-              taskId: meta.event.active.id.toString(),
-              prevId: newIndex > 0
-                ? finalColumns[targetSectionId][newIndex - 1].id
-                : null,
+              return;
             }
-            moveTasksMutation.mutate(payload);
 
-            return;
-          }
-        }}
-        getItemValue={(item) => item.id}
-      >
-        <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4 pb-6">
-          {Object.entries(columns).map(([sectionId, tasks]) => (
-            <TaskColumn
-              key={sectionId}
-              value={sectionId}
-              title={sections?.find((s) => s.id === sectionId)?.name}
-              tasks={tasks}
-              onRename={(id, name) => renameSectionMutation.mutate({ sectionId: id, name })}
-              onDelete={(id) => deleteSectionMutation.mutate(id)}
-              isRenaming={renameSectionMutation.isPending}
-            />
-          ))}
+            { // Move task
+              const newIndex = meta.overIndex;
+              const targetSectionId = meta.overContainer;
 
-          <div data-slot="kanban-column">
-            <AddSectionForm projectId={projectId} />
-          </div>
-        </KanbanBoard>
-        <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
-      </Kanban>
-    </section>
+              const payload = {
+                sectionId: targetSectionId,
+                taskId: meta.event.active.id.toString(),
+                prevId: newIndex > 0
+                  ? finalColumns[targetSectionId][newIndex - 1].id
+                  : null,
+              }
+              moveTasksMutation.mutate(payload);
+
+              return;
+            }
+          }}
+          getItemValue={(item) => item.id}
+        >
+          <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4 pb-6">
+            {Object.entries(columns).map(([sectionId, tasks]) => (
+              <TaskColumn
+                key={sectionId}
+                value={sectionId}
+                title={sections?.find((s) => s.id === sectionId)?.name}
+                tasks={tasks}
+                onRename={(id, name) => renameSectionMutation.mutate({ sectionId: id, name })}
+                onDelete={(id) => deleteSectionMutation.mutate(id)}
+                isRenaming={renameSectionMutation.isPending}
+              />
+            ))}
+
+            <div data-slot="kanban-column">
+              <AddSectionForm ref={addSectionRef} projectId={projectId} />
+            </div>
+          </KanbanBoard>
+          <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
+        </Kanban>
+      </section>
+
+      {/* Floating Action Button */}
+      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                size="lg"
+                onClick={handleFloatingAddSectionClick}
+                className="rounded-full shadow-lg hover:shadow-xl bg-primary text-primary-foreground flex items-center gap-2 px-4 h-11 transition-all active:scale-95 cursor-pointer"
+                aria-label="Add new section"
+              >
+                <PlusIcon className="size-4.5" />
+                <span className="font-semibold text-xs sm:text-sm">New Section</span>
+              </Button>
+            }
+          />
+          <TooltipContent side="left" className="text-xs">
+            Quickly jump and add a new section
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
   )
 }
 

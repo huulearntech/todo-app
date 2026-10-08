@@ -86,8 +86,8 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
                   Full Name
                 </FieldLabel>
                 <InputGroup
+                  size="lg"
                   data-invalid={fieldState.invalid}
-                  className="h-10 rounded-lg border-border/80 bg-background transition-colors hover:border-border focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20"
                 >
                   <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
                     <UserIcon className="size-4" />
@@ -116,8 +116,8 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
                   Email Address
                 </FieldLabel>
                 <InputGroup
+                  size="lg"
                   data-invalid={fieldState.invalid}
-                  className="h-10 rounded-lg border-border/80 bg-background transition-colors hover:border-border focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20"
                 >
                   <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
                     <MailIcon className="size-4" />
@@ -146,8 +146,8 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
                   Password
                 </FieldLabel>
                 <InputGroup
+                  size="lg"
                   data-invalid={fieldState.invalid}
-                  className="h-10 rounded-lg border-border/80 bg-background transition-colors hover:border-border focus-within:border-primary/80 focus-within:ring-2 focus-within:ring-primary/20"
                 >
                   <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
                     <LockIcon className="size-4" />
@@ -167,7 +167,7 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="size-7 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? (
@@ -192,7 +192,7 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
           type="submit"
           form="sign-up-form"
           disabled={isLoading}
-          className="w-full h-10 rounded-lg font-medium shadow-xs hover:shadow-sm active:translate-y-px transition-all gap-2"
+          className="w-full h-10 rounded-xl font-medium shadow-xs hover:shadow-sm active:translate-y-px transition-all gap-2"
         >
           {isLoading ? (
             <>

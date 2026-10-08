@@ -10,9 +10,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createTaskSchema, TaskPriority, type CreateTaskDto } from "@todo/shared";
 
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 export default function AddQuickTaskForm() {
   const taskInputRef = useRef<HTMLInputElement>(null);
-  useHotkey("Mod+K", () => {
+  useHotkey("Q", () => {
     taskInputRef.current?.focus();
   });
 
@@ -31,24 +34,20 @@ export default function AddQuickTaskForm() {
     console.log(data);
   };
 
-  // NOTE: The form should be outside of user input.
-  // because it needs to parse the input first, then adds the task to the list.
-
-  // TODO: use shadcn component
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex items-center mb-4">
-      <input
+    <form onSubmit={handleSubmit(onSubmit)} className="flex items-center gap-2 mb-4">
+      <Input
         ref={taskInputRef}
         type="text"
-        placeholder="Add a quick task // TODO: may need to add a keyboard shortcut to focus on this input"
-        className="border border-input bg-transparent text-foreground placeholder:text-muted-foreground rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-ring"
+        placeholder="Add a quick task..."
+        className="w-full"
       />
-      <button
+      <Button
         type="submit"
-        className="ml-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0 cursor-pointer text-sm font-medium transition-colors"
+        className="shrink-0 rounded-xl"
       >
         Add Task
-      </button>
+      </Button>
     </form>
   );
 }

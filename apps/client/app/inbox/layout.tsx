@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Inbox page for the application",
 };
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function InboxLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden">
       <Header />

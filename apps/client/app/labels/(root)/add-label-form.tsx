@@ -20,7 +20,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 import {
@@ -37,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon, Plus } from "lucide-react";
 
-import { createTaskLabelSchema, TaskLabelResponseDto, type CreateTaskLabelDto } from "@todo/shared";
+import { createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
 
 
 export default function Dialog_AddLabel() {
@@ -136,24 +135,24 @@ export default function Dialog_AddLabel() {
                       value={field.value}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger className="w-full h-9 rounded-xl border-border/60 bg-background/80 hover:bg-background transition-colors text-xs font-medium">
+                      <SelectTrigger>
                         <div className="flex items-center gap-2 w-full">
                           <span
                             className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
                             style={{ backgroundColor: field.value }}
                           />
                           <span>{selectedColor?.name || field.value || "Select color"}</span>
-                          <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                          <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
                             {field.value}
                           </span>
                         </div>
                       </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false} className="rounded-xl">
+                      <SelectContent>
                         {colors.map((color) => (
                           <SelectItem
                             key={color.hexCode}
                             value={color.hexCode}
-                            className="text-xs rounded-lg cursor-pointer"
+                            className="rounded-lg cursor-pointer"
                           >
                             <div className="flex items-center gap-2 w-full">
                               <span
@@ -161,7 +160,7 @@ export default function Dialog_AddLabel() {
                                 style={{ backgroundColor: color.hexCode }}
                               />
                               <span>{color.name}</span>
-                              <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                              <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
                                 {color.hexCode}
                               </span>
                             </div>
@@ -176,9 +175,9 @@ export default function Dialog_AddLabel() {
             />
           </FieldGroup>
         </form>
-        <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" onClick={() => reset()} className="rounded-lg">Reset</Button>
-          <Button type="submit" form="add-task-label-form" disabled={isLoading} className="rounded-lg">
+        <DialogFooter className="gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={() => reset()} className="rounded-xl h-9 px-4 text-xs font-medium">Reset</Button>
+          <Button type="submit" form="add-task-label-form" disabled={isLoading} className="rounded-xl h-9 px-4 text-xs font-semibold shadow-xs">
             <Loader2Icon className={`mr-2 h-4 w-4 animate-spin ${isLoading ? "inline-block" : "hidden"}`} />
             {isLoading ? "Creating..." : "Create Label"}
           </Button>

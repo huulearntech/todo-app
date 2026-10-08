@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -10,7 +9,6 @@ import { toast } from "@/components/ui/toast";
 
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -21,7 +19,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 import {
@@ -31,12 +28,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 
 import { updateTaskLabelSchema, type UpdateTaskLabelDto } from "@todo/shared";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
@@ -137,24 +132,24 @@ export default function Dialog_EditLabel({
                       value={field.value}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger className="w-full h-9 rounded-xl border-border/60 bg-background/80 hover:bg-background transition-colors text-xs font-medium">
+                      <SelectTrigger>
                         <div className="flex items-center gap-2 w-full">
                           <span
                             className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
                             style={{ backgroundColor: field.value }}
                           />
                           <span>{selectedColor?.name || field.value || "Select color"}</span>
-                          <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                          <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
                             {field.value}
                           </span>
                         </div>
                       </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false} className="rounded-xl">
+                      <SelectContent>
                         {colors.map((color) => (
                           <SelectItem
                             key={color.hexCode}
                             value={color.hexCode}
-                            className="text-xs rounded-lg cursor-pointer"
+                            className="rounded-lg cursor-pointer"
                           >
                             <div className="flex items-center gap-2 w-full">
                               <span
@@ -162,7 +157,7 @@ export default function Dialog_EditLabel({
                                 style={{ backgroundColor: color.hexCode }}
                               />
                               <span>{color.name}</span>
-                              <span className="text-[10px] text-muted-foreground ml-auto uppercase font-mono">
+                              <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
                                 {color.hexCode}
                               </span>
                             </div>
@@ -177,11 +172,11 @@ export default function Dialog_EditLabel({
             />
           </FieldGroup>
         </form>
-        <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" onClick={() => setLabel(null)} className="rounded-lg">
+        <DialogFooter className="gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={() => setLabel(null)} className="rounded-xl h-9 px-4 text-xs font-medium">
             Cancel
           </Button>
-          <Button type="submit" form="edit-task-label-form" className="rounded-lg">Save Changes</Button>
+          <Button type="submit" form="edit-task-label-form" className="rounded-xl h-9 px-4 text-xs font-semibold shadow-xs">Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

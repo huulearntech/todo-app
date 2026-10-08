@@ -262,12 +262,13 @@ export default function TempRRuleForm({
                   type="number"
                   min={1}
                   max={53}
+                  size="sm"
                   value={field.value ?? 1}
                   onChange={(e) => {
                     const parsed = parseInt(e.target.value, 10);
                     field.onChange(isNaN(parsed) || parsed < 1 ? 1 : parsed);
                   }}
-                  className="h-9 w-20 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
+                  className="w-20"
                 />
               )}
             />
@@ -287,11 +288,12 @@ export default function TempRRuleForm({
                 >
                   <SelectTrigger
                     id={`${formId}-frequency`}
-                    className="h-9 w-32 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
+                    size="sm"
+                    className="w-32"
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent>
                     <SelectItem value={RecurrenceFrequency.DAILY} className="text-xs">
                       {interval > 1 ? "days" : "day"}
                     </SelectItem>
@@ -387,11 +389,12 @@ export default function TempRRuleForm({
                   >
                     <SelectTrigger
                       id={`${formId}-month`}
-                      className="h-9 w-48 rounded-xl border-border/60 bg-background/80 text-xs font-medium"
+                      size="sm"
+                      className="w-48"
                     >
                       <SelectValue placeholder="Select month" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent>
                       {MONTH_CONFIG.map((m) => (
                         <SelectItem key={m.value} value={String(m.value)} className="text-xs">
                           {m.label}
@@ -441,10 +444,10 @@ export default function TempRRuleForm({
                       disabled={isWeekdayPattern}
                       onValueChange={(val) => val && setValue("byMonthDay", [parseInt(val, 10)])}
                     >
-                      <SelectTrigger className="h-8 w-20 rounded-lg border-border/60 bg-background/80 text-xs font-medium">
+                      <SelectTrigger size="sm" className="w-20">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="max-h-48 rounded-xl">
+                      <SelectContent className="max-h-48">
                         {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                           <SelectItem key={d} value={String(d)} className="text-xs">
                             {d}
@@ -470,10 +473,10 @@ export default function TempRRuleForm({
                         val && setValue("byWeekday", [{ day: ordinalDay, ordinal: parseInt(val, 10) }])
                       }
                     >
-                      <SelectTrigger className="h-8 w-24 rounded-lg border-border/60 bg-background/80 text-xs font-medium">
+                      <SelectTrigger size="sm" className="w-24">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl">
+                      <SelectContent>
                         {ORDINAL_CONFIG.map((o) => (
                           <SelectItem key={o.value} value={String(o.value)} className="text-xs">
                             {o.label}
@@ -489,10 +492,10 @@ export default function TempRRuleForm({
                         setValue("byWeekday", [{ day: val as Weekday, ordinal }])
                       }
                     >
-                      <SelectTrigger className="h-8 w-28 rounded-lg border-border/60 bg-background/80 text-xs font-medium">
+                      <SelectTrigger size="sm" className="w-28">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl">
+                      <SelectContent>
                         {WEEKDAY_CONFIG.map((d) => (
                           <SelectItem key={d.value} value={d.value} className="text-xs">
                             {d.full}
@@ -570,7 +573,8 @@ export default function TempRRuleForm({
                         const parsed = parseInt(e.target.value, 10);
                         field.onChange(isNaN(parsed) || parsed < 1 ? 1 : parsed);
                       }}
-                      className="h-8 w-20 rounded-lg border-border/60 bg-background/80 text-xs font-medium"
+                      size="sm"
+                      className="w-20"
                     />
                   )}
                 />
@@ -651,17 +655,15 @@ export default function TempRRuleForm({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={onCancel}
-              className="rounded-xl h-8 text-xs font-medium px-4"
+              className="rounded-xl h-9 text-xs font-medium px-4"
             >
               Cancel
             </Button>
           )}
           <Button
             type="submit"
-            size="sm"
-            className="rounded-xl h-8 text-xs font-semibold px-4 shadow-sm"
+            className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs"
           >
             Apply Recurrence
           </Button>

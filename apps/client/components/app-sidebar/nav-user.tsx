@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import {
   User2Icon,
@@ -54,16 +54,16 @@ export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, isLoading, signOut } = useAuth()
   const { theme, resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-3 p-2">
+      <div className="flex items-center gap-2.5 p-0 h-8">
         <Skeleton className="size-8 rounded-lg shrink-0" />
         <div className="flex-1 space-y-1.5 group-data-[collapsible=icon]:hidden">
           <Skeleton className="h-3.5 w-20 rounded" />
@@ -104,7 +104,7 @@ export function NavUser() {
                   {...props}
                   size="lg"
                   tooltip={user.name || user.email}
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2"
+                  className="h-8 p-0 pr-2 gap-2.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!"
                 />
               )}
             >

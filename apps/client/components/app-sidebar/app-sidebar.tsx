@@ -16,7 +16,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
@@ -27,14 +26,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {...props}
       className="z-20 border-r border-sidebar-border bg-sidebar"
     >
-      <SidebarHeader className="p-3 group-data-[collapsible=icon]:p-2">
+      <SidebarHeader className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               tooltip="Todo"
               render={<Link href="/" />}
-              className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg"
+              className="h-8 p-0 pr-2 gap-2.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs shrink-0">
                 <CheckSquareIcon className="size-4.5 stroke-[2.2]" />

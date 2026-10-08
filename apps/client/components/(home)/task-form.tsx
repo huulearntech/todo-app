@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -28,30 +27,77 @@ import {
 } from "@/components/ui/field";
 import {
   Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
+  ComboboxInput,
   ComboboxContent,
   ComboboxEmpty,
-  ComboboxItem,
   ComboboxList,
-  ComboboxValue,
-  useComboboxAnchor,
 } from "@/components/ui/combobox";
+import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { DateTimePicker } from "@/components/date-time-picker";
 
 import { priorityItems } from "@/lib/constants";
 import { useLabels } from "@/hooks/labels/use-labels";
 import { format, setHours, setMinutes } from "date-fns";
 import {
-  CalendarRangeIcon,
+  CheckIcon,
   ClockIcon,
   FlagIcon,
   Loader2Icon,
-  SparklesIcon,
   TagIcon,
+  XIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface LabelComboboxItemProps extends ComboboxPrimitive.Item.Props {
+  label: {
+    id: string;
+    name: string;
+    colorHexCode?: string | null;
+  };
+  isSelected: boolean;
+}
+
+function LabelComboboxItem({
+  label,
+  isSelected,
+  className,
+  ...props
+}: LabelComboboxItemProps) {
+  return (
+    <ComboboxPrimitive.Item
+      value={label.id}
+      className={cn(
+        "group/item relative flex w-full cursor-pointer items-center gap-2.5 rounded-lg py-1.5 px-2.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        className
+      )}
+      {...props}
+    >
+      {/* 1. Leading Checkbox */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+          isSelected
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-input bg-transparent group-hover/item:border-input/80 dark:bg-input/30"
+        )}
+      >
+        {isSelected && <CheckIcon className="size-3.5 stroke-[2.5]" />}
+      </span>
+
+      {/* 2. Label Name in Middle */}
+      <span className="flex-1 truncate font-normal text-foreground">
+        {label.name}
+      </span>
+
+      {/* 3. Trailing Tag Icon (Replaces Check Icon) */}
+      <TagIcon
+        className="size-3.5 shrink-0 ml-auto"
+        style={{ color: label.colorHexCode || undefined }}
+      />
+    </ComboboxPrimitive.Item>
+  );
+}
 
 // TODO: move to constants
 export const priorityConfig = {
@@ -91,11 +137,10 @@ export function TaskForm({
   submittingLabel = "Saving...",
   autoFocusTitle = true,
 }: TaskFormProps) {
-  const anchor = useComboboxAnchor();
-
   const { data: labels = [] } = useLabels({
     select: (data) => data.map((label) => ({ id: label.id, name: label.name, colorHexCode: label.colorHexCode })),
   });
+  const labelsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const {
     control,
@@ -125,7 +170,7 @@ export function TaskForm({
                   {...field}
                   id="task-title-input"
                   placeholder="Task title or what needs to be done..."
-                  className="text-lg md:text-xl font-semibold placeholder:text-muted-foreground/40 border-0 p-0 focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent h-auto text-foreground"
+                  className="text-lg md:text-xl font-semibold placeholder:text-muted-foreground/40 border-0 px-2 py-1.5 rounded-none focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent h-auto text-foreground"
                   autoFocus={autoFocusTitle}
                 />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -142,7 +187,7 @@ export function TaskForm({
                   {...field}
                   id="task-description-input"
                   placeholder="Add description, notes, or details..."
-                  className="min-h-[120px] md:min-h-[160px] text-sm text-muted-foreground placeholder:text-muted-foreground/40 border-0 p-0 focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent resize-none leading-relaxed flex-1"
+                  className="min-h-[120px] md:min-h-[160px] text-sm text-muted-foreground placeholder:text-muted-foreground/40 border-0 px-2 py-1.5 rounded-none focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent resize-none leading-relaxed flex-1"
                 />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </div>
@@ -174,10 +219,10 @@ export function TaskForm({
                     onValueChange={field.onChange}
                     value={field.value}
                   >
-                    <SelectTrigger className="w-full h-9 rounded-xl border-border/60 bg-background/80 hover:bg-background transition-colors text-xs font-medium">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent alignItemWithTrigger={false} className="rounded-xl">
+                    <SelectContent>
                       {priorityItems.map((item) => {
                         const config =
                           priorityConfig[item.value as keyof typeof priorityConfig];
@@ -185,7 +230,7 @@ export function TaskForm({
                           <SelectItem
                             key={item.value}
                             value={item.value}
-                            className="text-xs rounded-lg cursor-pointer"
+                            className="rounded-lg cursor-pointer"
                           >
                             <div className="flex items-center gap-2">
                               <FlagIcon className={cn("size-3.5", config?.color)} />
@@ -215,60 +260,96 @@ export function TaskForm({
                     Labels
                   </FieldLabel>
 
-                  <Combobox
-                    id="labels-combobox"
-                    multiple
-                    items={labels}
-                    value={field.value.map((label) => label.id)}
-                    onValueChange={(labelIds) => {
-                      field.onChange(labelIds.map((id) => ({ id })));
-                    }}
-                  >
-                    <ComboboxChips
-                      ref={anchor}
-                      className="min-h-9 rounded-xl border-border/60 bg-background/80 p-1 text-xs"
+                  <div ref={labelsContainerRef} className="w-full">
+                    <Combobox
+                      id="labels-combobox"
+                      multiple
+                      items={labels}
+                      itemToStringLabel={(item: unknown) => {
+                        if (typeof item === "string") {
+                          return labels.find((l) => l.id === item)?.name ?? item;
+                        }
+                        if (item && typeof item === "object" && "name" in item) {
+                          return String((item as { name: string }).name);
+                        }
+                        return "";
+                      }}
+                      filter={(item: unknown, query: string) => {
+                        const name =
+                          typeof item === "string"
+                            ? (labels.find((l) => l.id === item)?.name ?? "")
+                            : item && typeof item === "object" && "name" in item
+                              ? String((item as { name: string }).name)
+                              : "";
+                        return name.toLowerCase().includes(query.trim().toLowerCase());
+                      }}
+                      value={field.value.map((label) => label.id)}
+                      onValueChange={(labelIds) => {
+                        field.onChange(labelIds.map((id) => ({ id })));
+                      }}
                     >
-                      <ComboboxValue>
-                        {field.value.map((fieldItem) => {
-                          const label = labels.find((l) => l.id === fieldItem.id);
-                          return label && (
-                            <ComboboxChip
-                              key={fieldItem.id}
-                              className="text-xs rounded-md py-0.5 px-2"
-                              style={{ backgroundColor: `color-mix(in srgb, ${label.colorHexCode} 10%, transparent` }}
-                            >
-                              {label.name}
-                            </ComboboxChip>
-                          );
-                        })}
-                        <ComboboxChipsInput
-                          placeholder="Add labels..."
-                          className="text-xs placeholder:text-muted-foreground/60"
-                        />
-                      </ComboboxValue>
-                    </ComboboxChips>
+                      <ComboboxInput
+                        placeholder="Add labels..."
+                        className="w-full text-sm [&_input]:pl-3 [&_input]:pr-2"
+                      />
 
-                    <ComboboxEmpty className="text-xs p-2 text-muted-foreground">
-                      No labels found
-                    </ComboboxEmpty>
+                      <ComboboxContent anchor={labelsContainerRef} sideOffset={6}>
+                        <ComboboxEmpty className="text-sm p-2 text-muted-foreground">
+                          No labels found
+                        </ComboboxEmpty>
 
-                    <ComboboxContent anchor={anchor} className="rounded-xl">
-                      <ComboboxList>
-                        {labels.map((label) => (
-                          <ComboboxItem
-                            key={label.id}
-                            value={label.id}
-                            className="text-xs rounded-lg cursor-pointer"
+                        <ComboboxList>
+                          {(label: (typeof labels)[number]) => (
+                            <LabelComboboxItem
+                              key={label.id}
+                              label={label}
+                              isSelected={field.value.some((f) => f.id === label.id)}
+                            />
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+
+                  {/* Selected Label Chips outside the input */}
+                  {field.value.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {field.value.map((fieldItem) => {
+                        const label = labels.find((l) => l.id === fieldItem.id);
+                        if (!label) return null;
+                        return (
+                          <span
+                            key={fieldItem.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium border border-border/70 bg-background/80 transition-colors hover:bg-background"
+                            style={{
+                              backgroundColor: label.colorHexCode
+                                ? `color-mix(in srgb, ${label.colorHexCode} 12%, transparent)`
+                                : undefined,
+                              borderColor: label.colorHexCode
+                                ? `color-mix(in srgb, ${label.colorHexCode} 35%, transparent)`
+                                : undefined,
+                            }}
                           >
-                            <div className="flex items-center gap-2">
-                              <TagIcon className="size-3.5" style={{ color: label?.colorHexCode || undefined }} />
-                              <span>{label.name}</span>
-                            </div>
-                          </ComboboxItem>
-                        ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                            <TagIcon
+                              className="size-3.5 shrink-0"
+                              style={{ color: label.colorHexCode || undefined }}
+                            />
+                            <span>{label.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                field.onChange(field.value.filter((l) => l.id !== fieldItem.id));
+                              }}
+                              className="ml-0.5 rounded-md p-0.5 text-muted-foreground hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                              aria-label={`Remove ${label.name}`}
+                            >
+                              <XIcon className="size-3.5" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
                 </Field>
@@ -317,24 +398,24 @@ export function TaskForm({
                       { value: "custom", label: "Schedule time range" },
                     ]}
                   >
-                    <SelectTrigger className="w-full h-9 rounded-xl border-border/60 bg-background/80 text-xs font-medium">
+                    <SelectTrigger>
                       <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="none" className="text-xs rounded-lg">
+                    <SelectContent>
+                      <SelectItem value="none" className="rounded-lg">
                         No time scheduled
                       </SelectItem>
-                      <SelectItem value="custom" className="text-xs rounded-lg">
+                      <SelectItem value="custom" className="rounded-lg">
                         Schedule time range
                       </SelectItem>
                     </SelectContent>
                   </Select>
 
                   {field.value && (
-                    <div className="pt-2 space-y-2.5 rounded-xl border border-border/50 bg-background/60 p-2.5">
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                          <ClockIcon className="size-3 text-emerald-500" /> Start Time
+                    <div className="space-y-3 pt-2">
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                          <ClockIcon className="size-3.5 text-emerald-500" /> Start Time
                         </span>
                         <DateTimePicker
                           value={field.value.start}
@@ -347,9 +428,9 @@ export function TaskForm({
                         />
                       </div>
 
-                      <div className="space-y-1 pt-1 border-t border-border/30">
-                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                          <ClockIcon className="size-3 text-amber-500" /> End Time
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                          <ClockIcon className="size-3.5 text-amber-500" /> End Time
                         </span>
                         <DateTimePicker
                           value={field.value.end}
@@ -378,8 +459,7 @@ export function TaskForm({
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="rounded-xl h-8 text-xs font-medium px-4"
+            className="rounded-xl h-9 text-xs font-medium px-4"
             onClick={onCancel}
           >
             Cancel
@@ -387,9 +467,8 @@ export function TaskForm({
           <Button
             type="submit"
             form="task-form"
-            size="sm"
             disabled={isSubmitting || isPending}
-            className="rounded-xl h-8 text-xs font-semibold px-4 shadow-sm"
+            className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs"
           >
             {isPending ? (
               <>

@@ -110,10 +110,11 @@ export default function ProjectsPage() {
             <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
             <Input
               type="text"
+              size="lg"
               placeholder="Search projects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 rounded-xl bg-card border-border/70 text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="pl-10"
             />
           </div>
 

@@ -170,7 +170,13 @@ export default function GlobalSearchBar() {
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>
-          <AutocompleteInput render={<Input data-slot="input-group-control" />}
+          <AutocompleteInput
+            render={
+              <Input
+                data-slot="input-group-control"
+                className="border-0 rounded-none shadow-none ring-0 focus-visible:ring-0 bg-transparent"
+              />
+            }
             ref={inputRef}
             placeholder="Search"
             showClear

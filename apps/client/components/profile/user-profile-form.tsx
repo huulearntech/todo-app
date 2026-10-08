@@ -144,9 +144,9 @@ export default function UserProfileForm({
                     <Input
                       {...field}
                       id="name"
+                      size="lg"
                       placeholder="e.g. Alex Morgan"
                       disabled={isSubmitting}
-                      className="h-10 rounded-xl border-border/70 bg-background/80 px-3.5 text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-primary/40"
                     />
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-normal">
@@ -171,11 +171,12 @@ export default function UserProfileForm({
                 <Input
                   id="email"
                   type="email"
+                  size="lg"
                   value={user.email}
                   readOnly
                   disabled
                   aria-readonly="true"
-                  className="h-10 rounded-xl border-border/50 bg-muted/40 font-mono text-xs cursor-not-allowed opacity-80"
+                  className="font-mono text-xs cursor-not-allowed opacity-80"
                 />
               </div>
               <p className="text-[11px] text-muted-foreground leading-normal flex items-center gap-1.5">
@@ -185,16 +186,14 @@ export default function UserProfileForm({
           </FieldGroup>
         </CardContent>
 
-        <CardFooter className="justify-end gap-2">
-          {/* <div className="flex items-center gap-2 ml-auto"> */}
+        <CardFooter className="justify-end gap-2 pt-2">
           {isDirty && (
             <Button
               type="button"
               variant="outline"
-              // size="sm"
               onClick={handleDiscard}
               disabled={isSubmitting}
-            // className="rounded-xl h-9 text-xs font-medium px-3 text-muted-foreground hover:text-foreground gap-1.5"
+              className="rounded-xl h-9 text-xs font-medium px-3 text-muted-foreground hover:text-foreground gap-1.5"
             >
               <RotateCcwIcon className="size-3.5" />
               Discard
@@ -203,9 +202,8 @@ export default function UserProfileForm({
 
           <Button
             type="submit"
-            // size="sm"
             disabled={!isDirty || isSubmitting}
-          // className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs gap-1.5 transition-all"
+            className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs gap-1.5 transition-all"
           >
             {isSubmitting ? (
               <>

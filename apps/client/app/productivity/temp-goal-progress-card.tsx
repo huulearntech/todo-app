@@ -29,7 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { TempCircularProgress } from "./temp-circular-progress-indicator";
@@ -112,44 +112,51 @@ export default function TempGoalProgressCard() {
             </DialogHeader>
 
             <form onSubmit={handleSaveGoals} className="flex flex-col gap-4 py-3">
-              <div className="grid gap-2">
-                <Label htmlFor="daily-goal-input">Daily Goal (tasks / day)</Label>
-                <Input
-                  id="daily-goal-input"
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={dailyInput}
-                  onChange={(e) => setDailyInput(parseInt(e.target.value, 10) || 1)}
-                  required
-                />
-              </div>
+              <FieldGroup className="gap-3.5">
+                <Field className="space-y-1.5">
+                  <FieldLabel htmlFor="daily-goal-input" className="text-xs font-semibold text-foreground">
+                    Daily Goal (tasks / day)
+                  </FieldLabel>
+                  <Input
+                    id="daily-goal-input"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={dailyInput}
+                    onChange={(e) => setDailyInput(parseInt(e.target.value, 10) || 1)}
+                    required
+                  />
+                </Field>
 
-              <div className="grid gap-2">
-                <Label htmlFor="weekly-goal-input">Weekly Goal (tasks / week)</Label>
-                <Input
-                  id="weekly-goal-input"
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={weeklyInput}
-                  onChange={(e) => setWeeklyInput(parseInt(e.target.value, 10) || 1)}
-                  required
-                />
-              </div>
+                <Field className="space-y-1.5">
+                  <FieldLabel htmlFor="weekly-goal-input" className="text-xs font-semibold text-foreground">
+                    Weekly Goal (tasks / week)
+                  </FieldLabel>
+                  <Input
+                    id="weekly-goal-input"
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={weeklyInput}
+                    onChange={(e) => setWeeklyInput(parseInt(e.target.value, 10) || 1)}
+                    required
+                  />
+                </Field>
+              </FieldGroup>
 
-              <DialogFooter className="mt-2">
+              <DialogFooter className="mt-2 pt-3 border-t border-border/40 gap-2">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => setIsDialogOpen(false)}
+                  className="rounded-xl h-9 px-4 text-xs font-medium"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={updateGoalMutation.isPending}
-                  className="gap-1.5"
+                  className="rounded-xl h-9 px-4 text-xs font-semibold shadow-xs"
                 >
                   {updateGoalMutation.isPending ? "Saving..." : "Save Goals"}
                 </Button>
