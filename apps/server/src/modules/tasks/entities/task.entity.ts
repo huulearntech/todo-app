@@ -63,8 +63,8 @@ export class Task {
   })
   timeRange: TstzRange | null;
 
-  @Column({ type: 'text', nullable: true })
-  description: string | null;
+  @Column({ type: 'text', default: '' })
+  description: string;
 
   @Column({ type: 'enum', enum: TaskPriority, default: TaskPriority.HIGH })
   priority: TaskPriority;

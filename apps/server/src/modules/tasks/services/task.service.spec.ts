@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { TaskService } from './task.service';
 import { Task } from '../entities/task.entity';
 import { TaskOccurrence } from '../entities/task-occurrence.entity';
@@ -25,6 +30,13 @@ describe('TaskService', () => {
     save: jest.Mock;
     delete: jest.Mock;
   };
+  let taskOccurrenceRepository: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
   let sectionRepository: { exists: jest.Mock };
   let userRepository: { findOne: jest.Mock };
   let mailerSchedulerService: {
@@ -44,6 +56,13 @@ describe('TaskService', () => {
       findOne: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
+    };
+    taskOccurrenceRepository = {
+      create: jest.fn().mockImplementation((dto) => dto),
+      save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      findOne: jest.fn(),
+      remove: jest.fn(),
+      createQueryBuilder: jest.fn(),
     };
     sectionRepository = {
       exists: jest.fn(),
@@ -71,14 +90,7 @@ describe('TaskService', () => {
         },
         {
           provide: getRepositoryToken(TaskOccurrence),
-          useValue: {
-            create: jest.fn().mockImplementation((dto) => dto),
-            save: jest
-              .fn()
-              .mockImplementation((entity) => Promise.resolve(entity)),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
+          useValue: taskOccurrenceRepository,
         },
         {
           provide: getRepositoryToken(Section),
@@ -151,6 +163,7 @@ describe('TaskService', () => {
       await expect(
         service.createTask(ownerId, {
           title: 'New Task',
+          description: '',
           sectionId,
           priority: TaskPriority.HIGH,
           labels: [],
@@ -167,6 +180,7 @@ describe('TaskService', () => {
       await expect(
         service.createTask(ownerId, {
           title: 'New Task',
+          description: '',
           sectionId,
           priority: TaskPriority.HIGH,
           labels: [],
@@ -512,4 +526,122 @@ describe('TaskService', () => {
       expect(mailerSchedulerService.scheduleTaskReminder).toHaveBeenCalled();
     });
   });
+
+  describe('uncompleteOccurrenceById', () => {
+    const userId = 'user-uuid-1';
+    const taskId = 'task-uuid-1';
+    const occurrenceId = 'occ-uuid-1';
+
+    it('should uncomplete a one-off task occurrence and reset completedAt', async () => {
+      const mockTask: any = {
+        id: taskId,
+        title: 'One-off Task',
+        completedAt: new Date('2026-10-08T10:00:00.000Z'),
+        timeRange: { start: '2026-10-08T10:00:00.000Z', end: '2026-10-08T11:00:00.000Z' },
+        section: { project: { ownerId: userId } },
+        recurrence: null,
+      };
+
+      const mockOccurrence: any = {
+        id: occurrenceId,
+        taskId,
+        userId,
+        status: 'completed',
+        completedAt: new Date('2026-10-08T10:00:00.000Z'),
+        task: mockTask,
+      };
+
+      dataSource.transaction.mockImplementation((cb: (manager: any) => Promise<any>) => {
+        const manager = {
+          findOne: jest.fn().mockImplementation((entity) => {
+            if (entity === TaskOccurrence) return Promise.resolve(mockOccurrence);
+            return Promise.resolve(mockTask);
+          }),
+          remove: jest.fn().mockResolvedValue(mockOccurrence),
+          save: jest.fn().mockImplementation((_cls, val) => Promise.resolve(val ?? _cls)),
+        };
+        return cb(manager);
+      });
+
+      const result = await service.uncompleteOccurrenceById(userId, occurrenceId);
+
+      expect(result.completedAt).toBeNull();
+    });
+
+    it('should throw ConflictException when trying to uncomplete non-latest occurrence of recurring task', async () => {
+      const mockTask: any = {
+        id: taskId,
+        title: 'Recurring Task',
+        completedAt: null,
+        timeRange: { start: '2026-10-09T10:00:00.000Z', end: '2026-10-09T11:00:00.000Z' },
+        section: { project: { ownerId: userId } },
+        recurrence: { rrule: { freq: 3 } },
+      };
+
+      const olderOccurrence: any = {
+        id: occurrenceId,
+        taskId,
+        userId,
+        status: 'completed',
+        scheduledDate: new Date('2026-10-07T10:00:00.000Z'),
+        completedAt: new Date('2026-10-07T10:05:00.000Z'),
+        task: mockTask,
+      };
+
+      const latestOccurrence: any = {
+        id: 'newer-occ-uuid',
+        taskId,
+        userId,
+        status: 'completed',
+        scheduledDate: new Date('2026-10-08T10:00:00.000Z'),
+        completedAt: new Date('2026-10-08T10:05:00.000Z'),
+      };
+
+      dataSource.transaction.mockImplementation((cb: (manager: any) => Promise<any>) => {
+        const manager = {
+          findOne: jest.fn().mockImplementation((entity, opts) => {
+            if (entity === TaskOccurrence && opts?.where?.id === occurrenceId) {
+              return Promise.resolve(olderOccurrence);
+            }
+            if (entity === TaskOccurrence && opts?.order?.completedAt === 'DESC') {
+              return Promise.resolve(latestOccurrence);
+            }
+            return Promise.resolve(mockTask);
+          }),
+          remove: jest.fn(),
+          save: jest.fn(),
+        };
+        return cb(manager);
+      });
+
+      await expect(
+        service.uncompleteOccurrenceById(userId, occurrenceId),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      const mockTask: any = {
+        id: taskId,
+        section: { project: { ownerId: 'other-user' } },
+      };
+
+      const mockOccurrence: any = {
+        id: occurrenceId,
+        userId: 'other-user',
+        task: mockTask,
+      };
+
+      dataSource.transaction.mockImplementation((cb: (manager: any) => Promise<any>) => {
+        const manager = {
+          findOne: jest.fn().mockResolvedValue(mockOccurrence),
+        };
+        return cb(manager);
+      });
+
+      await expect(
+        service.uncompleteOccurrenceById(userId, occurrenceId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });
+

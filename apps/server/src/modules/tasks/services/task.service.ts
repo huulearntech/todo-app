@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -14,6 +15,7 @@ import { CreateTaskDto, UpdateTaskDto } from '../dto/add-task.dto';
 import { TaskFilterDto } from '../dto/get-my-tasks.dto';
 import { Section } from '@/src/modules/sections/section.entity';
 import {
+  CompletedOccurrenceResponseDto,
   formatRRuleString,
   TaskOccurrenceStatus,
   TaskPriority,
@@ -23,7 +25,7 @@ import { calculateNextOccurrence } from '../utils/recurrence.util';
 interface RawTaskRow {
   id: string;
   title: string;
-  description: string | null;
+  description: string;
   priority: TaskPriority;
   section_id: string;
   lexorank: string;
@@ -96,7 +98,7 @@ export class TaskService {
           taskId,
           createTaskDto.sectionId,
           createTaskDto.title,
-          createTaskDto.description ?? null,
+          createTaskDto.description ?? '',
           createTaskDto.priority ?? 'high',
           timeRangeStart,
           timeRangeEnd,
@@ -107,7 +109,7 @@ export class TaskService {
       const createdTask = {
         id: rawTask.id,
         title: rawTask.title,
-        description: rawTask.description,
+        description: rawTask.description ?? '',
         priority: rawTask.priority,
         sectionId: rawTask.section_id,
         lexorank: rawTask.lexorank,
@@ -175,7 +177,8 @@ export class TaskService {
           'project.id = :projectId AND project.ownerId = :ownerId',
           { projectId, ownerId },
         )
-        .leftJoin('task.recurrence', 'recurrence');
+        .leftJoin('task.recurrence', 'recurrence')
+        .where('task.completedAt IS NULL');
 
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title });
@@ -225,7 +228,8 @@ export class TaskService {
         .innerJoin('task.section', 'section')
         .innerJoin('section.project', 'project')
         .andWhere('project.ownerId = :ownerId', { ownerId })
-        .leftJoin('task.recurrence', 'recurrence');
+        .leftJoin('task.recurrence', 'recurrence')
+        .andWhere('task.completedAt IS NULL');
 
       if (filter.title) {
         queryBuilder.andWhere('task.title % :title', { title: filter.title });
@@ -257,6 +261,87 @@ export class TaskService {
       ]);
 
       return queryBuilder.getMany();
+    });
+  }
+
+  async getCompletedOccurrencesByOwnerIdAndFilter(
+    ownerId: string,
+    filter: TaskFilterDto,
+  ): Promise<CompletedOccurrenceResponseDto[]> {
+    const queryBuilder = this.taskOccurrenceRepository
+      .createQueryBuilder('occurrence')
+      .innerJoinAndSelect('occurrence.task', 'task')
+      .innerJoinAndSelect('task.section', 'section')
+      .innerJoinAndSelect('section.project', 'project')
+      .leftJoinAndSelect('task.labels', 'label')
+      .leftJoinAndSelect('task.recurrence', 'recurrence')
+      .where('occurrence.userId = :ownerId', { ownerId })
+      .andWhere('occurrence.status = :status', {
+        status: TaskOccurrenceStatus.COMPLETED,
+      });
+
+    if (filter.projectId) {
+      queryBuilder.andWhere('project.id = :projectId', {
+        projectId: filter.projectId,
+      });
+    }
+
+    if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
+      queryBuilder.andWhere('label.id IN (:...taskLabelIds)', {
+        taskLabelIds: filter.taskLabelIds,
+      });
+    }
+
+    if (filter.title) {
+      queryBuilder.andWhere('task.title ILIKE :title', {
+        title: `%${filter.title}%`,
+      });
+    }
+
+    queryBuilder
+      .orderBy('occurrence.completedAt', 'DESC')
+      .take(100);
+
+    const occurrences = await queryBuilder.getMany();
+
+    const latestOccurrencesByTask = new Map<string, string>();
+    for (const occ of occurrences) {
+      if (!latestOccurrencesByTask.has(occ.taskId)) {
+        latestOccurrencesByTask.set(occ.taskId, occ.id);
+      }
+    }
+
+    return occurrences.map((occ) => {
+      const task = occ.task;
+      const isLatest =
+        !task.recurrence || latestOccurrencesByTask.get(task.id) === occ.id;
+
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description ?? '',
+        priority: task.priority,
+        sectionId: task.sectionId,
+        section: {
+          id: task.section.id,
+          name: task.section.name,
+          project: {
+            id: task.section.project.id,
+            name: task.section.project.name,
+          },
+        },
+        labels: (task.labels ?? []).map((l) => ({ id: l.id })),
+        timeRange: task.timeRange,
+        completedAt: occ.completedAt
+          ? occ.completedAt.toISOString()
+          : new Date().toISOString(),
+        recurrence: task.recurrence?.rrule ?? null,
+        occurrenceId: occ.id,
+        scheduledDate: occ.scheduledDate
+          ? occ.scheduledDate.toISOString()
+          : null,
+        isLatestOccurrence: isLatest,
+      };
     });
   }
 
@@ -299,13 +384,15 @@ export class TaskService {
     ownerId: string,
     rangeStartISO8601: string,
     rangeEndISO8601: string,
-  ): Promise<Task[]> {
+  ): Promise<CompletedOccurrenceResponseDto[]> {
     const occurrences = await this.taskOccurrenceRepository
       .createQueryBuilder('occurrence')
       .innerJoinAndSelect('occurrence.task', 'task')
       .innerJoinAndSelect('task.section', 'section')
       .innerJoinAndSelect('section.project', 'project')
-      .where('project.ownerId = :ownerId', { ownerId })
+      .leftJoinAndSelect('task.labels', 'label')
+      .leftJoinAndSelect('task.recurrence', 'recurrence')
+      .where('occurrence.userId = :ownerId', { ownerId })
       .andWhere('occurrence.status = :status', {
         status: TaskOccurrenceStatus.COMPLETED,
       })
@@ -319,10 +406,44 @@ export class TaskService {
       .orderBy('occurrence.completedAt', 'DESC')
       .getMany();
 
+    const latestOccurrencesByTask = new Map<string, string>();
+    for (const occ of occurrences) {
+      if (!latestOccurrencesByTask.has(occ.taskId)) {
+        latestOccurrencesByTask.set(occ.taskId, occ.id);
+      }
+    }
+
     return occurrences.map((occ) => {
       const task = occ.task;
-      task.completedAt = occ.completedAt;
-      return task;
+      const isLatest =
+        !task.recurrence || latestOccurrencesByTask.get(task.id) === occ.id;
+
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description ?? '',
+        priority: task.priority,
+        sectionId: task.sectionId,
+        section: {
+          id: task.section.id,
+          name: task.section.name,
+          project: {
+            id: task.section.project.id,
+            name: task.section.project.name,
+          },
+        },
+        labels: (task.labels ?? []).map((l) => ({ id: l.id })),
+        timeRange: task.timeRange,
+        completedAt: occ.completedAt
+          ? occ.completedAt.toISOString()
+          : new Date().toISOString(),
+        recurrence: task.recurrence?.rrule ?? null,
+        occurrenceId: occ.id,
+        scheduledDate: occ.scheduledDate
+          ? occ.scheduledDate.toISOString()
+          : null,
+        isLatestOccurrence: isLatest,
+      };
     });
   }
 
@@ -548,44 +669,63 @@ export class TaskService {
     });
   }
 
-  async uncompleteTaskOccurrence(
+  async uncompleteOccurrenceById(
     userId: string,
-    taskId: string,
+    occurrenceId: string,
   ): Promise<Task> {
     return this.dataSource.transaction(async (manager) => {
-      const task = await manager.findOne(Task, {
-        where: { id: taskId },
+      const occurrence = await manager.findOne(TaskOccurrence, {
+        where: { id: occurrenceId },
         relations: {
-          recurrence: true,
-          section: { project: true },
-          labels: true,
+          task: {
+            recurrence: true,
+            section: { project: true },
+            labels: true,
+          },
         },
       });
 
-      if (!task) {
-        throw new NotFoundException(`Task with ID ${taskId} not found`);
+      if (!occurrence) {
+        throw new NotFoundException(
+          `Task occurrence with ID ${occurrenceId} not found`,
+        );
       }
-      if (task.section?.project?.ownerId !== userId) {
+
+      const task = occurrence.task;
+      if (!task) {
+        throw new NotFoundException(
+          `Task associated with occurrence ${occurrenceId} not found`,
+        );
+      }
+
+      if (
+        occurrence.userId !== userId &&
+        task.section?.project?.ownerId !== userId
+      ) {
         throw new ForbiddenException(
           'You do not have permission to modify this task',
         );
       }
 
-      // Find and remove latest completed occurrence for this task
-      const latestOccurrence = await manager.findOne(TaskOccurrence, {
-        where: {
-          taskId: task.id,
-          userId,
-          status: TaskOccurrenceStatus.COMPLETED,
-        },
-        order: { completedAt: 'DESC' },
-      });
+      if (task.recurrence?.rrule) {
+        const latestOccurrence = await manager.findOne(TaskOccurrence, {
+          where: {
+            taskId: task.id,
+            userId,
+            status: TaskOccurrenceStatus.COMPLETED,
+          },
+          order: { completedAt: 'DESC' },
+        });
 
-      if (latestOccurrence) {
-        await manager.remove(TaskOccurrence, latestOccurrence);
+        if (latestOccurrence && latestOccurrence.id !== occurrence.id) {
+          throw new ConflictException(
+            'Only the latest completed occurrence of a recurring task can be uncompleted',
+          );
+        }
 
-        // If recurring task had a recorded scheduledDate, roll back timeRange
-        if (task.recurrence && latestOccurrence.scheduledDate) {
+        await manager.remove(TaskOccurrence, occurrence);
+
+        if (occurrence.scheduledDate) {
           let durationMs = 0;
           if (task.timeRange?.start && task.timeRange?.end) {
             durationMs =
@@ -593,7 +733,7 @@ export class TaskService {
               new Date(task.timeRange.start).getTime();
           }
 
-          const revertedStart = latestOccurrence.scheduledDate;
+          const revertedStart = occurrence.scheduledDate;
           const revertedEnd =
             durationMs > 0
               ? new Date(revertedStart.getTime() + durationMs)
@@ -604,12 +744,13 @@ export class TaskService {
             end: revertedEnd.toISOString(),
           };
         }
+      } else {
+        await manager.remove(TaskOccurrence, occurrence);
+        task.completedAt = null;
       }
 
-      task.completedAt = null;
       const savedTask = await manager.save(Task, task);
 
-      // Reschedule reminder if appropriate
       if (savedTask.timeRange?.start) {
         const user = await manager.findOne(User, { where: { id: userId } });
         if (user) {
@@ -645,6 +786,43 @@ export class TaskService {
 
       return savedTask;
     });
+  }
+
+  async uncompleteTaskOccurrence(
+    userId: string,
+    taskId: string,
+  ): Promise<Task> {
+    const latestOccurrence = await this.taskOccurrenceRepository.findOne({
+      where: {
+        taskId,
+        userId,
+        status: TaskOccurrenceStatus.COMPLETED,
+      },
+      order: { completedAt: 'DESC' },
+    });
+
+    if (latestOccurrence) {
+      return this.uncompleteOccurrenceById(userId, latestOccurrence.id);
+    }
+
+    const task = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: {
+        recurrence: true,
+        section: { project: true },
+        labels: true,
+      },
+    });
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${taskId} not found`);
+    }
+    if (task.section?.project?.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this task',
+      );
+    }
+    task.completedAt = null;
+    return this.taskRepository.save(task);
   }
 
   async uncompleteTask(userId: string, taskId: string): Promise<Task> {

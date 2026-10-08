@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   CompleteTaskOccurrenceResponseDto,
   CompleteTaskResponseDto,
+  CompletedOccurrenceResponseDto,
   TaskResponseDto as Task,
 } from "@todo/shared";
 
@@ -29,10 +30,31 @@ export const taskService = {
     return response.data;
   },
 
+  async getMyCompletedOccurrences(filter?: TaskFilterDto) {
+    const response = await apiClient.get<CompletedOccurrenceResponseDto[]>("/tasks/me", {
+      params: { ...filter, status: "completed" },
+      paramsSerializer: { indexes: null }
+    });
+    return response.data;
+  },
+
   async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterDto, "projectId">) {
     const response = await apiClient.get<Task[]>(`/projects/${projectId}/tasks`, {
       params: filter,
     });
+    return response.data;
+  },
+
+  async getCompletedOccurrencesByProjectId(
+    projectId: string,
+    filter?: Omit<TaskFilterDto, "projectId">,
+  ) {
+    const response = await apiClient.get<CompletedOccurrenceResponseDto[]>(
+      `/projects/${projectId}/tasks`,
+      {
+        params: { ...filter, status: "completed" },
+      },
+    );
     return response.data;
   },
 
@@ -45,8 +67,20 @@ export const taskService = {
     return response.data;
   },
 
+  async getMyCompletedOccurrencesDueToday() {
+    const response = await apiClient.get<CompletedOccurrenceResponseDto[]>(
+      "/tasks/me/due-today?status=completed",
+      {
+        headers: {
+          "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+      },
+    );
+    return response.data;
+  },
+
   async getMyTasksCompletedInLast7Days() {
-    const response = await apiClient.get<Task[]>("/tasks/me/completed-last-7-days", {
+    const response = await apiClient.get<CompletedOccurrenceResponseDto[]>("/tasks/me/completed-last-7-days", {
       headers: {
         "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone, // Send the user's timezone to the server 
       },
@@ -77,6 +111,13 @@ export const taskService = {
   async uncompleteTaskOccurrence(taskId: string) {
     const response = await apiClient.post<Task>(
       `/tasks/${taskId}/occurrences/uncomplete`,
+    );
+    return response.data;
+  },
+
+  async uncompleteOccurrenceById(occurrenceId: string) {
+    const response = await apiClient.post<Task>(
+      `/tasks/occurrences/${occurrenceId}/uncomplete`,
     );
     return response.data;
   },

@@ -69,6 +69,12 @@ export class ProjectController {
     @Param('id') projectId: string,
     @Query() filter: TaskFilterDto = {},
   ) {
+    if (filter.status === 'completed') {
+      return this.taskService.getCompletedOccurrencesByOwnerIdAndFilter(
+        user.id,
+        { ...filter, projectId },
+      );
+    }
     return this.taskService.getTasksByOwnerIdProjectIdAndFilter(
       user.id,
       projectId,

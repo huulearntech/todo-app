@@ -7,11 +7,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { TaskLabelService } from './task-label.service';
 import { CreateTaskLabelDto, UpdateTaskLabelDto } from './task-label.dto';
 import { TaskService } from '../tasks/services/task.service';
+import { TaskFilterDto } from '../tasks/dto/get-my-tasks.dto';
 import {
   CurrentUser,
   type JwtUser,
@@ -51,10 +53,19 @@ export class TaskLabelController {
   async getTasksByTaskLabelId(
     @CurrentUser() user: JwtUser,
     @Param('id') labelId: string,
+    @Query() filter: TaskFilterDto = {},
   ) {
-    return this.taskService.getTasksByOwnerIdAndFilter(user.id, {
-      taskLabelIds: [labelId],
-    });
+    const combinedFilter = { ...filter, taskLabelIds: [labelId] };
+    if (filter.status === 'completed') {
+      return this.taskService.getCompletedOccurrencesByOwnerIdAndFilter(
+        user.id,
+        combinedFilter,
+      );
+    }
+    return this.taskService.getTasksByOwnerIdAndFilter(
+      user.id,
+      combinedFilter,
+    );
   }
 
   @Patch(':id')

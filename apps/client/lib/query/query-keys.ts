@@ -17,11 +17,16 @@ export const sectionQueryKeys = {
   detail: (id: string) => ["sections", id] as const,
 };
 
+export type TaskStatusFilter = "pending" | "completed";
+
 export const taskQueryKeys = {
   all: ["tasks"] as const,
-  byProject: (projectId: string) => ["tasks", { projectId }] as const,
-  dueToday: () => ["tasks", "due-today"] as const,
-  byLabel: (labelId: string) => ["tasks", { labelId }] as const,
+  byProject: (projectId: string, status: TaskStatusFilter = "pending") =>
+    ["tasks", { projectId, status }] as const,
+  dueToday: (status: TaskStatusFilter = "pending") =>
+    ["tasks", "due-today", { status }] as const,
+  byLabel: (labelId: string, status: TaskStatusFilter = "pending") =>
+    ["tasks", { labelId, status }] as const,
   search: (query: string) => ["search-tasks", query] as const,
 };
 

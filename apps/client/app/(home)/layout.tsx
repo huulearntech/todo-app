@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
+import AddQuickTaskForm from "@/components/(home)/add-quick-task-form";
 
 export const metadata: Metadata = {
   title: "Todo App",
@@ -17,6 +18,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
         {children}
       </main>
       {/* <Footer /> */}
+      <AddQuickTaskForm />
     </div>
   );
 }

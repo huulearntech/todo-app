@@ -3,7 +3,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { ComponentProps, useState, Fragment, useEffect, useRef } from "react"
+import { ComponentProps, useState, Fragment, useEffect, useRef, useMemo } from "react"
 import { Badge } from "@/components/reui/badge"
 import {
   Kanban,
@@ -21,8 +21,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, PlusIcon } from "lucide-react"
 
 import TaskItemListView from "./task-card"
+import { ShowCompletedToggle } from "./show-completed-toggle"
+import { useShowCompleted } from "@/hooks/use-show-completed"
 
-import type { TaskResponseDto as Task } from "@todo/shared"
+import type { CompletedOccurrenceResponseDto, TaskResponseDto as Task } from "@todo/shared"
 import { useProjectTasks } from "@/hooks/tasks/use-project-tasks"
 import { useSections } from "@/hooks/sections/use-sections"
 import { useMoveTasks } from "@/hooks/tasks/use-move-tasks"
@@ -79,6 +81,7 @@ interface TaskColumnProps extends Omit<
   "children"
 > {
   tasks: Task[]
+  completedOccurrences?: CompletedOccurrenceResponseDto[]
   isOverlay?: boolean
   onRename: (sectionId: string, newName: string) => void
   onDelete: (sectionId: string) => void
@@ -89,6 +92,7 @@ function TaskColumn({
   value,
   title,
   tasks,
+  completedOccurrences,
   isOverlay,
   onRename,
   onDelete,
@@ -166,7 +170,12 @@ function TaskColumn({
                 >
                   {title || "Untitled section"}
                 </button>
-                <Badge variant="outline" className="shrink-0">{tasks.length}</Badge>
+                <Badge variant="outline" className="shrink-0">
+                  {tasks.length}
+                  {completedOccurrences && completedOccurrences.length > 0 && (
+                    <span className="opacity-60 ml-1">+{completedOccurrences.length}</span>
+                  )}
+                </Badge>
               </div>
             )}
 
@@ -222,6 +231,18 @@ function TaskColumn({
                   isOverlay={isOverlay}
                 />
               ))}
+              {completedOccurrences && completedOccurrences.length > 0 && (
+                <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
+                  <span className="text-[11px] font-semibold text-muted-foreground/70 px-1 uppercase tracking-wider">
+                    Completed ({completedOccurrences.length})
+                  </span>
+                  {completedOccurrences.map((occ) => (
+                    <div key={occ.occurrenceId}>
+                      <TaskItemListView task={occ} occurrence={occ} />
+                    </div>
+                  ))}
+                </div>
+              )}
               <AddTaskFormTrigger sectionId={value} />
             </KanbanColumnContent>
           </CardContent>
@@ -263,27 +284,41 @@ function TaskColumn({
 
 function DndKanban({ projectId }: { projectId: string }) {
   const addSectionRef = useRef<AddSectionFormHandle>(null);
-  const { data: tasks, isLoading: tasksLoading } = useProjectTasks(projectId);
+  const [showCompleted, setShowCompleted] = useShowCompleted(`project:${projectId}`);
+  const {
+    pendingTasks,
+    completedOccurrences,
+    isLoading: tasksLoading,
+  } = useProjectTasks(projectId, { includeCompleted: showCompleted });
   const { data: sections, isLoading: sectionsLoading } = useSections(projectId);
   const isLoading = tasksLoading || sectionsLoading;
 
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
 
   useEffect(() => {
-    const acc: Record<string, Task[]> = {}
-    if (!sections || !tasks) return;
+    const acc: Record<string, Task[]> = {};
+    if (!sections || !pendingTasks) return;
 
     for (const section of sections) {
-      acc[section.id] = []
+      acc[section.id] = [];
     }
 
-    for (const task of tasks) {
-      (acc[task.sectionId] ??= []).push(task)
+    for (const task of pendingTasks) {
+      (acc[task.sectionId] ??= []).push(task);
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setColumns(acc)
-  }, [sections, tasks])
+    setColumns(acc);
+  }, [sections, pendingTasks]);
+
+  const completedBySection = useMemo(() => {
+    const map: Record<string, CompletedOccurrenceResponseDto[]> = {};
+    if (showCompleted && completedOccurrences) {
+      for (const occ of completedOccurrences) {
+        (map[occ.sectionId] ??= []).push(occ);
+      }
+    }
+    return map;
+  }, [showCompleted, completedOccurrences]);
 
   const moveTasksMutation = useMoveTasks(projectId);
   const moveSectionMutation = useMoveSection(projectId);
@@ -296,11 +331,23 @@ function DndKanban({ projectId }: { projectId: string }) {
   };
 
   if (isLoading) {
-    return <KanbanBoardSkeleton />
+    return <KanbanBoardSkeleton />;
   }
 
   return (
     <div className="relative flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-background/50 backdrop-blur-xs shrink-0">
+        <div className="text-xs text-muted-foreground font-medium">
+          {pendingTasks.length} {pendingTasks.length === 1 ? "task" : "tasks"}
+        </div>
+        <ShowCompletedToggle
+          id={`toggle-completed-${projectId}`}
+          checked={showCompleted}
+          onCheckedChange={setShowCompleted}
+          count={completedOccurrences.length}
+        />
+      </div>
+
       <section className="flex-1 min-h-0 min-w-0 h-full w-full overflow-auto p-4 bg-secondary custom-kanban-scroll">
         <Kanban
           className="min-w-max min-h-full flex"
@@ -355,6 +402,7 @@ function DndKanban({ projectId }: { projectId: string }) {
                 value={sectionId}
                 title={sections?.find((s) => s.id === sectionId)?.name}
                 tasks={tasks}
+                completedOccurrences={completedBySection[sectionId]}
                 onRename={(id, name) => renameSectionMutation.mutate({ sectionId: id, name })}
                 onDelete={(id) => deleteSectionMutation.mutate(id)}
                 isRenaming={renameSectionMutation.isPending}

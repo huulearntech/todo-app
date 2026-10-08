@@ -6,6 +6,8 @@ import { useDueTodayTasks } from "@/hooks/tasks/use-due-today-tasks";
 import { usePostponeTask } from "@/hooks/tasks/use-postpone-task";
 import { useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import TaskCard from "@/components/(home)/task-card";
+import { ShowCompletedToggle } from "@/components/(home)/show-completed-toggle";
+import { useShowCompleted } from "@/hooks/use-show-completed";
 import {
   Sortable,
   SortableItem,
@@ -66,7 +68,12 @@ function PostponeDropZone() {
 }
 
 export default function TaskList() {
-  const { data: initialTasks, isLoading } = useDueTodayTasks();
+  const [showCompleted, setShowCompleted] = useShowCompleted("due-today");
+  const {
+    data: initialTasks,
+    completedOccurrences,
+    isLoading,
+  } = useDueTodayTasks({ includeCompleted: showCompleted });
   const postponeTaskMutation = usePostponeTask();
 
   // Local state for drag-and-drop sortable items
@@ -160,16 +167,7 @@ export default function TaskList() {
       previousValue: Task[];
     }
   ) => {
-    // TODO: [SERVER CALL] Implement server call here to persist the reordered tasks.
-    // Example:
-    // const movedTask = newItems[meta.overIndex];
-    // const prevTask = meta.overIndex > 0 ? newItems[meta.overIndex - 1] : null;
-    // await taskService.updateTaskOrder({
-    //   taskId: movedTask.id,
-    //   sectionId: movedTask.sectionId,
-    //   prevId: prevTask ? prevTask.id : null,
-    // });
-    // queryClient.invalidateQueries({ queryKey: ["tasks", "due-today"] });
+    // Persist reordering if implemented
   };
 
   if (isLoading && items.length === 0) {
@@ -184,6 +182,18 @@ export default function TaskList() {
 
   return (
     <div className="flex flex-col gap-4 w-full">
+      <div className="flex items-center justify-between pb-1 border-b border-border/40">
+        <span className="text-xs text-muted-foreground font-medium">
+          {items.length} due today
+        </span>
+        <ShowCompletedToggle
+          id="toggle-completed-due-today"
+          checked={showCompleted}
+          onCheckedChange={setShowCompleted}
+          count={completedOccurrences.length}
+        />
+      </div>
+
       <Sortable
         value={items}
         onValueChange={setItems}
@@ -201,7 +211,9 @@ export default function TaskList() {
               All caught up for today!
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              No tasks due today. Enjoy your day or add a new task.
+              {showCompleted && completedOccurrences.length > 0
+                ? "All pending tasks for today are completed."
+                : "No tasks due today. Enjoy your day or add a new task."}
             </p>
           </div>
         ) : (
@@ -221,6 +233,19 @@ export default function TaskList() {
         {/* Droppable section at the bottom for postponing tasks to tomorrow */}
         <PostponeDropZone />
       </Sortable>
+
+      {showCompleted && completedOccurrences.length > 0 && (
+        <div className="flex flex-col gap-2.5 pt-3 border-t border-border/40">
+          <span className="text-xs font-semibold text-muted-foreground px-1 uppercase tracking-wider">
+            Completed Today ({completedOccurrences.length})
+          </span>
+          <div className="flex flex-col gap-2.5">
+            {completedOccurrences.map((occ) => (
+              <TaskCard key={occ.occurrenceId} task={occ} occurrence={occ} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

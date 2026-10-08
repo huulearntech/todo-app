@@ -5,7 +5,7 @@ import { rruleSchema } from "./rrule.schema.js";
 
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  description: z.string(),
 
   timeRange: z
     .object({
@@ -41,6 +41,7 @@ export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
 export const taskFilterSchema = z.object({
   title: z.string(),
   projectId: z.string(),
+  status: z.enum(["pending", "completed"]),
   taskLabelIds: z.preprocess((value) => {
     // Nếu không truyền gì, trả về undefined
     if (value === undefined || value === null) return undefined;
@@ -59,7 +60,7 @@ export type TaskFilterDto = z.infer<typeof taskFilterSchema>;
 export const taskResponseSchema = z.object({
   id: z.string(),
   title: z.string(),
-  description: z.string().optional(),
+  description: z.string().default(""),
   timeRange: z.object({
     start: z.iso.datetime(),
     end: z.iso.datetime(),
@@ -83,3 +84,12 @@ export const taskResponseSchema = z.object({
 });
 
 export type TaskResponseDto = z.infer<typeof taskResponseSchema>;
+
+export const completedOccurrenceResponseSchema = taskResponseSchema.extend({
+  occurrenceId: z.uuid(),
+  scheduledDate: z.iso.datetime().nullable(),
+  completedAt: z.iso.datetime(),
+  isLatestOccurrence: z.boolean().default(true),
+});
+
+export type CompletedOccurrenceResponseDto = z.infer<typeof completedOccurrenceResponseSchema>;

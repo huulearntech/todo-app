@@ -42,6 +42,12 @@ export class TasksController {
     @CurrentUser() user: JwtUser,
     @Query() filter: TaskFilterDto = {},
   ) {
+    if (filter.status === 'completed') {
+      return this.taskService.getCompletedOccurrencesByOwnerIdAndFilter(
+        user.id,
+        filter,
+      );
+    }
     return this.taskService.getTasksByOwnerIdAndFilter(user.id, filter);
   }
 
@@ -51,6 +57,7 @@ export class TasksController {
   async getMyTasksDueToday(
     @CurrentUser() user: JwtUser,
     @Headers('x-timezone') timezone: string,
+    @Query('status') status?: 'pending' | 'completed',
   ) {
     const nowInUserTimezone = DateTime.now().setZone(timezone);
     if (!nowInUserTimezone.isValid) {
@@ -62,11 +69,27 @@ export class TasksController {
     const startOfDay = nowInUserTimezone.startOf('day').toISO();
     const endOfDay = nowInUserTimezone.endOf('day').toISO();
 
+    if (status === 'completed') {
+      return this.taskService.getTasksByOwnerIdThatCompletedInTimeRange(
+        user.id,
+        startOfDay,
+        endOfDay,
+      );
+    }
+
     return this.taskService.getTasksByOwnerIdThatDueInTimeRange(
       user.id,
       startOfDay,
       endOfDay,
     );
+  }
+
+  @Post('occurrences/:occurrenceId/uncomplete')
+  async uncompleteOccurrence(
+    @CurrentUser() user: JwtUser,
+    @Param('occurrenceId') occurrenceId: string,
+  ) {
+    return this.taskService.uncompleteOccurrenceById(user.id, occurrenceId);
   }
 
   @Get('me/completed-last-7-days')

@@ -9,13 +9,18 @@ import type { TaskResponseDto as Task } from "@todo/shared";
 interface ToggleTaskCompleteVariables {
   task: Task;
   checked: boolean;
+  occurrenceId?: string;
 }
 
 export function useToggleTaskComplete() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ task, checked }: ToggleTaskCompleteVariables) => {
+    mutationFn: async ({
+      task,
+      checked,
+      occurrenceId,
+    }: ToggleTaskCompleteVariables) => {
       if (checked) {
         const scheduledDate = task.timeRange?.start ?? undefined;
         return {
@@ -25,6 +30,12 @@ export function useToggleTaskComplete() {
           }),
         };
       } else {
+        if (occurrenceId) {
+          return {
+            isComplete: false,
+            result: await taskService.uncompleteOccurrenceById(occurrenceId),
+          };
+        }
         return {
           isComplete: false,
           result: await taskService.uncompleteTaskOccurrence(task.id),
@@ -33,7 +44,10 @@ export function useToggleTaskComplete() {
     },
     onSuccess: (data, { task }) => {
       if (data.isComplete) {
-        const result = data.result as { isRecurringAdvanced?: boolean; nextDueTime?: string | null };
+        const result = data.result as {
+          isRecurringAdvanced?: boolean;
+          nextDueTime?: string | null;
+        };
         toast.add({
           title: result?.isRecurringAdvanced
             ? "Occurrence completed"
@@ -50,15 +64,19 @@ export function useToggleTaskComplete() {
       } else {
         toast.add({
           title: "Occurrence restored",
-          description: `"${task.title}" marked as incomplete.`,
+          description: `"${task.title}" restored as incomplete.`,
           type: "info",
         });
       }
     },
-    onError: () => {
+    onError: (err: any) => {
+      const message =
+        err?.response?.data?.message ??
+        err?.message ??
+        "Failed to update task status";
       toast.add({
         title: "Error",
-        description: "Failed to update task status",
+        description: message,
         type: "error",
       });
     },
