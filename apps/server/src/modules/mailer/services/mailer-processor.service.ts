@@ -21,6 +21,7 @@ import {
 } from '../templates/email-templates';
 import { Task } from '@/src/modules/tasks/entities/task.entity';
 import { TaskOccurrence } from '@/src/modules/tasks/entities/task-occurrence.entity';
+import { TaskReminder } from '@/src/modules/tasks/entities/task-reminder.entity';
 import { TaskOccurrenceStatus } from '@todo/shared';
 
 @Processor(EMAIL_QUEUE_NAME)
@@ -39,7 +40,7 @@ export class MailerProcessor extends WorkerHost {
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type '${job.name}'`);
 
-    switch (job.name) {
+    switch (job.name as EmailJobType) {
       case EmailJobType.IMMEDIATE:
         return this.handleImmediateEmail(job.data as ImmediateEmailData);
 
@@ -118,11 +119,26 @@ export class MailerProcessor extends WorkerHost {
       return { success: true, skipped: true, reason: 'Task completed' };
     }
 
+    // Verify reminder still exists if reminderId was provided
+    if (data.reminderId) {
+      const reminderRepo = this.dataSource.getRepository(TaskReminder);
+      const reminder = await reminderRepo.findOne({
+        where: { id: data.reminderId },
+      });
+      if (!reminder) {
+        this.logger.log(
+          `Reminder ${data.reminderId} was deleted. Skipping reminder email.`,
+        );
+        return { success: true, skipped: true, reason: 'Reminder deleted' };
+      }
+    }
+
     const html = getTaskReminderEmailTemplate(
       data.userName,
       data.taskTitle,
       data.dueTime,
       data.projectName,
+      data.reminderOffsetMinutes,
     );
 
     await this.mailerTransportService.sendMail({
@@ -149,6 +165,20 @@ export class MailerProcessor extends WorkerHost {
       return { success: true, skipped: true, reason: 'Task deleted' };
     }
 
+    // Verify reminder still exists if reminderId was provided
+    if (data.reminderId) {
+      const reminderRepo = this.dataSource.getRepository(TaskReminder);
+      const reminder = await reminderRepo.findOne({
+        where: { id: data.reminderId },
+      });
+      if (!reminder) {
+        this.logger.log(
+          `Recurring reminder ${data.reminderId} was deleted. Discarding recurrence chain.`,
+        );
+        return { success: true, skipped: true, reason: 'Reminder deleted' };
+      }
+    }
+
     const taskOccurrenceRepository =
       this.dataSource.getRepository(TaskOccurrence);
     const occurrenceDate = new Date(data.occurrenceTime);
@@ -169,6 +199,7 @@ export class MailerProcessor extends WorkerHost {
         data.userName,
         data.taskTitle,
         data.occurrenceTime,
+        data.reminderOffsetMinutes,
       );
 
       await this.mailerTransportService.sendMail({
@@ -181,6 +212,7 @@ export class MailerProcessor extends WorkerHost {
     // Next-Occurrence Chaining: Schedule the subsequent occurrence
     await this.mailerSchedulerService.scheduleRecurringTaskReminder({
       taskId: data.taskId,
+      reminderId: data.reminderId,
       userId: data.userId,
       to: data.to,
       userName: data.userName,

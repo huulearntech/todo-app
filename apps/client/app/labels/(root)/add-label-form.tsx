@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useColors } from "@/hooks/colors/use-colors";
 import { useCreateLabel } from "@/hooks/labels/use-create-label";
 import { toast } from "@/components/ui/toast";
+import { getColorConfig } from "@/lib/color-palette";
 
 import {
   Field,
@@ -49,7 +50,7 @@ export default function Dialog_AddLabel() {
     defaultValues: {
       name: '',
       description: '',
-      colorHexCode: '#E0E0E0',
+      colorKey: 'slate',
     },
   });
 
@@ -121,12 +122,14 @@ export default function Dialog_AddLabel() {
               )}
             />
             <Controller
-              name="colorHexCode"
+              name="colorKey"
               control={control}
               render={({ field, fieldState }) => {
                 const selectedColor = colors.find(
-                  (c) => c.hexCode.toUpperCase() === field.value?.toUpperCase(),
+                  (c) => c.key === field.value,
                 );
+                const selectedConfig = getColorConfig(field.value);
+
                 return (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor="add-label-color">Color</FieldLabel>
@@ -138,34 +141,35 @@ export default function Dialog_AddLabel() {
                       <SelectTrigger>
                         <div className="flex items-center gap-2 w-full">
                           <span
-                            className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
-                            style={{ backgroundColor: field.value }}
+                            className={`size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10 ${selectedConfig.dotClass}`}
                           />
-                          <span>{selectedColor?.name || field.value || "Select color"}</span>
-                          <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
+                          <span>{selectedColor?.name || selectedConfig.label}</span>
+                          <span className="text-xs text-muted-foreground ml-auto font-mono">
                             {field.value}
                           </span>
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        {colors.map((color) => (
-                          <SelectItem
-                            key={color.hexCode}
-                            value={color.hexCode}
-                            className="rounded-lg cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2 w-full">
-                              <span
-                                className="size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10"
-                                style={{ backgroundColor: color.hexCode }}
-                              />
-                              <span>{color.name}</span>
-                              <span className="text-xs text-muted-foreground ml-auto uppercase font-mono">
-                                {color.hexCode}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {colors.map((color) => {
+                          const config = getColorConfig(color.key);
+                          return (
+                            <SelectItem
+                              key={color.key}
+                              value={color.key}
+                              className="rounded-lg cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2 w-full">
+                                <span
+                                  className={`size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10 ${config.dotClass}`}
+                                />
+                                <span>{color.name}</span>
+                                <span className="text-xs text-muted-foreground ml-auto font-mono">
+                                  {color.key}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

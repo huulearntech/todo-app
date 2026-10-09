@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useProjects } from "@/hooks/projects/use-projects"
+import { getColorConfig } from "@/lib/color-palette"
 
 import {
   HashIcon,
@@ -70,6 +71,7 @@ export function NavProjects() {
         {projects.map((item) => {
           const projectUrl = `/projects/${item.id}`
           const isActive = pathname === projectUrl
+          const config = getColorConfig(item.colorKey)
 
           return (
             <SidebarMenuItem key={item.id}>
@@ -79,8 +81,7 @@ export function NavProjects() {
                 render={<Link href={projectUrl} />}
               >
                 <HashIcon
-                  className="size-4 shrink-0"
-                  style={{ color: item.colorHexCode || undefined }}
+                  className={`size-4 shrink-0 ${config.badgeTextClass}`}
                 />
                 <span className="truncate">{item.name}</span>
               </SidebarMenuButton>

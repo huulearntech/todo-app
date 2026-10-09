@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import argon2 from 'argon2';
 
 import { AuthService } from './auth.service';
 import { User } from '@/src/modules/users/user.entity';
@@ -323,6 +324,61 @@ describe('AuthService - Magic Link & Sign Up', () => {
       await expect(service.validateMagicLinkToken(rawToken)).rejects.toThrow(
         'Magic link token has expired',
       );
+    });
+  });
+
+  describe('signIn', () => {
+    it('should throw UnauthorizedException if email is not verified', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue({
+        ...mockUser,
+        isEmailVerified: false,
+      });
+      jest.spyOn(argon2, 'verify').mockResolvedValue(true);
+
+      await expect(
+        service.signIn({
+          email: 'test@example.com',
+          password: 'password123',
+        }),
+      ).rejects.toThrow(
+        'Please verify your email address before signing in. Check your inbox for the verification link.',
+      );
+    });
+
+    it('should return user and tokens when credentials are valid and email is verified', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue({
+        ...mockUser,
+        isEmailVerified: true,
+      });
+      jest.spyOn(argon2, 'verify').mockResolvedValue(true);
+      refreshTokenServiceMock.generatePairOfTokens!.mockResolvedValue({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      });
+
+      const result = await service.signIn({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      expect(result.user.email).toBe(mockUser.email);
+      expect(result.accessToken).toBe('access-token');
+      expect(result.refreshToken).toBe('refresh-token');
+    });
+
+    it('should throw UnauthorizedException if password does not match', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue({
+        ...mockUser,
+        isEmailVerified: true,
+      });
+      jest.spyOn(argon2, 'verify').mockResolvedValue(false);
+
+      await expect(
+        service.signIn({
+          email: 'test@example.com',
+          password: 'wrong-password',
+        }),
+      ).rejects.toThrow('Invalid credentials');
     });
   });
 });

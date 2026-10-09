@@ -7,7 +7,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { User } from '../users/user.entity';
 import { ProjectFilterDto } from './dto/project-filter.dto';
-import { ColorService, normalizeHexCode } from '../colors/color.service';
+import { ColorService } from '../colors/color.service';
 import { Color } from '../colors/color.entity';
 
 @Injectable()
@@ -22,27 +22,23 @@ export class ProjectService {
     ownerId: string,
     createProjectDto: CreateProjectDto,
   ): Promise<Project> {
-    const { name, description, colorHexCode } = createProjectDto;
-    const hexCode = colorHexCode || '#E0E0E0';
-    const normalizedHex = normalizeHexCode(hexCode);
+    const { name, description, colorKey } = createProjectDto;
+    const key = (colorKey || 'slate').toLowerCase().trim();
 
     let targetColor: Color | undefined;
-    if (normalizedHex === '#E0E0E0') {
+    if (key === 'slate') {
       const defaultColors =
         await this.colorService.ensureDefaultColors(ownerId);
-      targetColor = defaultColors.find((c) => c.hexCode === '#E0E0E0');
+      targetColor = defaultColors.find((c) => c.key === 'slate');
     } else {
-      targetColor = await this.colorService.getColorByHexCode(
-        ownerId,
-        normalizedHex,
-      );
+      targetColor = await this.colorService.getColorByKey(ownerId, key);
     }
 
     const project = this.projectRepository.create({
       ownerId,
       name: name.trim(),
       description: description?.trim(),
-      colorHexCode: normalizedHex,
+      colorKey: key,
       ...(targetColor ? { color: targetColor } : {}),
     });
 
@@ -116,21 +112,21 @@ export class ProjectService {
       project.description = updatedProject.description?.trim();
     }
 
-    if (updatedProject.colorHexCode !== undefined) {
-      const normalizedHex = normalizeHexCode(updatedProject.colorHexCode);
+    if (updatedProject.colorKey !== undefined) {
+      const key = updatedProject.colorKey.toLowerCase().trim();
       let targetColor: Color | undefined;
-      if (normalizedHex === '#E0E0E0') {
+      if (key === 'slate') {
         const defaultColors = await this.colorService.ensureDefaultColors(
           project.ownerId,
         );
-        targetColor = defaultColors.find((c) => c.hexCode === '#E0E0E0');
+        targetColor = defaultColors.find((c) => c.key === 'slate');
       } else {
-        targetColor = await this.colorService.getColorByHexCode(
+        targetColor = await this.colorService.getColorByKey(
           project.ownerId,
-          normalizedHex,
+          key,
         );
       }
-      project.colorHexCode = normalizedHex;
+      project.colorKey = key;
       if (targetColor) {
         project.color = targetColor;
       }

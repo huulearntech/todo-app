@@ -30,7 +30,24 @@ export function useUpdateTask(options?: UseUpdateTaskOptions) {
       const previousTasks = queryClient.getQueryData<Task[]>(taskQueryKeys.all);
 
       queryClient.setQueryData<Task[]>(taskQueryKeys.all, (old) =>
-        old?.map((t) => (t.id === taskId ? { ...t, ...data } : t)) ?? []
+        old?.map((t) => {
+          if (t.id !== taskId) return t;
+          const updatedReminders = (data.reminders ?? t.reminders ?? []).map(
+            (r, idx) => ({
+              id: r.id ?? t.reminders?.[idx]?.id ?? `temp-reminder-${idx}`,
+              taskId: t.id,
+              type: r.type,
+              minuteOffset: r.minuteOffset,
+              channel: r.channel,
+              remindAt: r.remindAt ?? null,
+            })
+          );
+          return {
+            ...t,
+            ...data,
+            reminders: updatedReminders,
+          };
+        }) ?? []
       );
 
       return { previousTasks };

@@ -5,12 +5,13 @@ import { TagIcon, CheckIcon, SearchIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getColorConfig } from "@/lib/color-palette";
 import { cn } from "@/lib/utils";
 
 export interface LabelItem {
   id: string;
   name: string;
-  colorHexCode?: string;
+  colorKey?: string;
 }
 
 export interface LabelsPopoverProps {
@@ -94,6 +95,7 @@ export function LabelsPopover({
           ) : (
             filteredLabels.map((label) => {
               const isSelected = selectedIds.has(label.id);
+              const labelConfig = getColorConfig(label.colorKey);
               return (
                 <button
                   type="button"
@@ -108,8 +110,7 @@ export function LabelsPopover({
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span
-                      className="size-2 rounded-full shrink-0 border border-black/10 dark:border-white/10"
-                      style={{ backgroundColor: label.colorHexCode || "#888888" }}
+                      className={`size-2 rounded-full shrink-0 ${labelConfig.dotClass}`}
                     />
                     <span className="truncate">{label.name}</span>
                   </div>

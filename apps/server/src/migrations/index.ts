@@ -5,6 +5,8 @@ import { CreateTrigramSearchIndexes1728300000000 } from './1728300000000-CreateT
 import { FixTimeRangeAndStandardizeDescription1728400000000 } from './1728400000000-FixTimeRangeAndStandardizeDescription';
 import { FixCreateTaskPriorityEnum1728400001000 } from './1728400001000-FixCreateTaskPriorityEnum';
 import { CreateTaskOccurrencesAndBackfill1728500000000 } from './1728500000000-CreateTaskOccurrencesAndBackfill';
+import { CreateTaskReminders1728600000000 } from './1728600000000-CreateTaskReminders';
+import { MigrateColorHexCodeToColorKey1728700000000 } from './1728700000000-MigrateColorHexCodeToColorKey';
 
 export const migrations = [
   SeedDefaultColorsForUsers1728100000000,
@@ -14,6 +16,8 @@ export const migrations = [
   FixTimeRangeAndStandardizeDescription1728400000000,
   FixCreateTaskPriorityEnum1728400001000,
   CreateTaskOccurrencesAndBackfill1728500000000,
+  CreateTaskReminders1728600000000,
+  MigrateColorHexCodeToColorKey1728700000000,
 ];
 export {
   CreateLexorankTaskFunctions1727860000000,
@@ -23,4 +27,6 @@ export {
   FixTimeRangeAndStandardizeDescription1728400000000,
   FixCreateTaskPriorityEnum1728400001000,
   CreateTaskOccurrencesAndBackfill1728500000000,
+  CreateTaskReminders1728600000000,
+  MigrateColorHexCodeToColorKey1728700000000,
 };

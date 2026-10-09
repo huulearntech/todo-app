@@ -1,16 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { FolderIcon, TagIcon, LayersIcon } from "lucide-react";
+import { FolderIcon, TagIcon, LayersIcon, AlarmClockIcon } from "lucide-react";
 import { AutocompleteItem } from "@/components/ui/autocomplete";
+import { getColorConfig } from "@/lib/color-palette";
 
 export interface SuggestionItemData {
   id: string;
   name: string;
-  kind: "project" | "section" | "label";
-  colorHexCode?: string;
+  kind: "project" | "section" | "label" | "reminder";
+  colorKey?: string;
   secondaryText?: string;
   isDefault?: boolean;
+  minuteOffset?: number;
+  token?: string;
 }
 
 interface QuickTaskSuggestionItemProps {
@@ -57,10 +60,9 @@ export function QuickTaskSuggestionItem({
         {item.kind === "project" && (
           <div className="flex items-center gap-1.5 shrink-0">
             <FolderIcon className="size-3.5 text-muted-foreground" />
-            {item.colorHexCode && (
+            {item.colorKey && (
               <span
-                className="size-2 rounded-full shrink-0"
-                style={{ backgroundColor: item.colorHexCode }}
+                className={`size-2 rounded-full shrink-0 ${getColorConfig(item.colorKey).dotClass}`}
               />
             )}
           </div>
@@ -75,12 +77,17 @@ export function QuickTaskSuggestionItem({
         {item.kind === "label" && (
           <div className="flex items-center gap-1.5 shrink-0">
             <TagIcon className="size-3.5 text-muted-foreground" />
-            {item.colorHexCode && (
+            {item.colorKey && (
               <span
-                className="size-2 rounded-full shrink-0"
-                style={{ backgroundColor: item.colorHexCode }}
+                className={`size-2 rounded-full shrink-0 ${getColorConfig(item.colorKey).dotClass}`}
               />
             )}
+          </div>
+        )}
+
+        {item.kind === "reminder" && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <AlarmClockIcon className="size-3.5 text-amber-500" />
           </div>
         )}
 

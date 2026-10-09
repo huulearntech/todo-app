@@ -39,11 +39,11 @@ export class TaskLabel {
 
   @Column({
     type: 'varchar',
-    length: 7,
-    name: 'color_hex_code',
-    default: '#E0E0E0',
+    length: 50,
+    name: 'color_key',
+    default: 'slate',
   })
-  colorHexCode!: string;
+  colorKey!: string;
 
   @ManyToOne(() => User, (owner) => owner.taskLabels, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
@@ -55,7 +55,7 @@ export class TaskLabel {
   })
   @JoinColumn([
     { name: 'owner_id', referencedColumnName: 'ownerId' },
-    { name: 'color_hex_code', referencedColumnName: 'hexCode' },
+    { name: 'color_key', referencedColumnName: 'key' },
   ])
   color!: Color;
 }

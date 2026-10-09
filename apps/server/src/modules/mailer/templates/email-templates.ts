@@ -130,10 +130,18 @@ export function getTaskReminderEmailTemplate(
   taskTitle: string,
   dueTime: string,
   projectName?: string,
+  reminderOffsetMinutes?: number,
 ): string {
   const projectInfo = projectName
-    ? `<p><strong>Project:</strong> ${projectName}</p>`
+    ? `<p style="margin: 6px 0;"><strong>Project:</strong> ${projectName}</p>`
     : '';
+
+  const timingNote =
+    reminderOffsetMinutes !== undefined
+      ? reminderOffsetMinutes === 0
+        ? `<p style="margin: 6px 0; color: #d97706; font-weight: 600;">⏰ Due now</p>`
+        : `<p style="margin: 6px 0; color: #d97706; font-weight: 600;">⏰ Starting in ${reminderOffsetMinutes} minute${reminderOffsetMinutes === 1 ? '' : 's'}</p>`
+      : '';
 
   return baseEmailTemplate({
     title: `Task Reminder: ${taskTitle}`,
@@ -142,11 +150,13 @@ export function getTaskReminderEmailTemplate(
       <p>Hi ${userName},</p>
       <p>This is a reminder for your upcoming task:</p>
       <div class="highlight-box">
-        <h3 style="margin-top:0;">${taskTitle}</h3>
-        <p><strong>Scheduled Time:</strong> ${dueTime}</p>
+        <h3 style="margin-top:0; color: #1e1b4b;">${taskTitle}</h3>
+        ${timingNote}
+        <p style="margin: 6px 0;"><strong>Scheduled Time:</strong> ${dueTime}</p>
         ${projectInfo}
       </div>
-      <p>Stay productive!</p>
+      <a href="/" class="button">Open Task in App</a>
+      <p style="margin-top: 16px;">Stay productive!</p>
     `,
   });
 }
@@ -155,18 +165,28 @@ export function getRecurringReminderEmailTemplate(
   userName: string,
   taskTitle: string,
   occurrenceTime: string,
+  reminderOffsetMinutes?: number,
 ): string {
+  const timingNote =
+    reminderOffsetMinutes !== undefined
+      ? reminderOffsetMinutes === 0
+        ? `<p style="margin: 6px 0; color: #d97706; font-weight: 600;">⏰ Due now</p>`
+        : `<p style="margin: 6px 0; color: #d97706; font-weight: 600;">⏰ Starting in ${reminderOffsetMinutes} minute${reminderOffsetMinutes === 1 ? '' : 's'}</p>`
+      : '';
+
   return baseEmailTemplate({
     title: `Recurring Task Reminder: ${taskTitle}`,
     contentHtml: `
       <h2>Recurring Task Reminder</h2>
       <p>Hi ${userName},</p>
-      <p>You have an occurrence of your recurring task coming up:</p>
+      <p>You have an upcoming occurrence of your recurring task:</p>
       <div class="highlight-box">
-        <h3 style="margin-top:0;">${taskTitle}</h3>
-        <p><strong>Occurrence Time:</strong> ${occurrenceTime}</p>
+        <h3 style="margin-top:0; color: #1e1b4b;">${taskTitle}</h3>
+        ${timingNote}
+        <p style="margin: 6px 0;"><strong>Occurrence Time:</strong> ${occurrenceTime}</p>
       </div>
-      <p>Keep up the momentum!</p>
+      <a href="/" class="button">Open Task in App</a>
+      <p style="margin-top: 16px;">Keep up the momentum!</p>
     `,
   });
 }

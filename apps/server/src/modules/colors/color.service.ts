@@ -9,20 +9,15 @@ import { Color } from './color.entity';
 import { CreateColorDto } from './dto/create-color.dto';
 import { UpdateColorDto } from './dto/update-color.dto';
 
-export const DEFAULT_COLORS = [
-  { hexCode: '#E0E0E0', name: 'Grey' },
-  { hexCode: '#EF4444', name: 'Red' },
-  { hexCode: '#F59E0B', name: 'Amber' },
-  { hexCode: '#10B981', name: 'Emerald' },
-  { hexCode: '#3B82F6', name: 'Blue' },
-  { hexCode: '#8B5CF6', name: 'Purple' },
+export const DEFAULT_PALETTE_COLORS = [
+  { key: 'slate', name: 'Slate' },
+  { key: 'red', name: 'Red' },
+  { key: 'amber', name: 'Amber' },
+  { key: 'emerald', name: 'Emerald' },
+  { key: 'sky', name: 'Sky Blue' },
+  { key: 'indigo', name: 'Indigo' },
+  { key: 'violet', name: 'Violet' },
 ] as const;
-
-export function normalizeHexCode(rawHex: string): string {
-  const decoded = decodeURIComponent(rawHex).trim();
-  const prefixed = decoded.startsWith('#') ? decoded : `#${decoded}`;
-  return prefixed.toUpperCase();
-}
 
 @Injectable()
 export class ColorService {
@@ -33,14 +28,14 @@ export class ColorService {
 
   async ensureDefaultColors(ownerId: string): Promise<Color[]> {
     const existing = await this.colorRepository.find({ where: { ownerId } });
-    const existingHexes = new Set(existing.map((c) => c.hexCode));
+    const existingKeys = new Set(existing.map((c) => c.key));
 
-    const toCreate = DEFAULT_COLORS.filter(
-      (dc) => !existingHexes.has(dc.hexCode),
+    const toCreate = DEFAULT_PALETTE_COLORS.filter(
+      (dc) => !existingKeys.has(dc.key),
     ).map((dc) =>
       this.colorRepository.create({
         ownerId,
-        hexCode: dc.hexCode,
+        key: dc.key,
         name: dc.name,
       }),
     );
@@ -59,20 +54,20 @@ export class ColorService {
     ownerId: string,
     createColorDto: CreateColorDto,
   ): Promise<Color> {
-    const hexCode = normalizeHexCode(createColorDto.hexCode);
+    const key = createColorDto.key.toLowerCase().trim();
     const existing = await this.colorRepository.findOne({
-      where: { ownerId, hexCode },
+      where: { ownerId, key },
     });
 
     if (existing) {
       throw new ConflictException(
-        `Color with hex code ${hexCode} already exists`,
+        `Color with palette key '${key}' already exists`,
       );
     }
 
     const color = this.colorRepository.create({
       ownerId,
-      hexCode,
+      key,
       name: createColorDto.name.trim(),
     });
 
@@ -92,14 +87,14 @@ export class ColorService {
     return colors;
   }
 
-  async getColorByHexCode(ownerId: string, rawHex: string): Promise<Color> {
-    const hexCode = normalizeHexCode(rawHex);
+  async getColorByKey(ownerId: string, rawKey: string): Promise<Color> {
+    const key = rawKey.toLowerCase().trim();
     const color = await this.colorRepository.findOne({
-      where: { ownerId, hexCode },
+      where: { ownerId, key },
     });
 
     if (!color) {
-      throw new NotFoundException(`Color with hex code ${hexCode} not found`);
+      throw new NotFoundException(`Color with palette key '${key}' not found`);
     }
 
     return color;
@@ -107,20 +102,20 @@ export class ColorService {
 
   async updateColor(
     ownerId: string,
-    rawHex: string,
+    rawKey: string,
     updateColorDto: UpdateColorDto,
   ): Promise<Color> {
-    const color = await this.getColorByHexCode(ownerId, rawHex);
+    const color = await this.getColorByKey(ownerId, rawKey);
     color.name = updateColorDto.name.trim();
     return this.colorRepository.save(color);
   }
 
-  async deleteColor(ownerId: string, rawHex: string): Promise<void> {
-    const hexCode = normalizeHexCode(rawHex);
-    const result = await this.colorRepository.delete({ ownerId, hexCode });
+  async deleteColor(ownerId: string, rawKey: string): Promise<void> {
+    const key = rawKey.toLowerCase().trim();
+    const result = await this.colorRepository.delete({ ownerId, key });
 
     if (result.affected === 0) {
-      throw new NotFoundException(`Color with hex code ${hexCode} not found`);
+      throw new NotFoundException(`Color with palette key '${key}' not found`);
     }
   }
 }

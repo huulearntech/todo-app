@@ -9,7 +9,7 @@ import { SignUpDto } from '../auth/dto/sign-up.dto';
 import { User } from './user.entity';
 import { Project } from '../projects/project.entity';
 import { Color } from '../colors/color.entity';
-import { DEFAULT_COLORS } from '../colors/color.service';
+import { DEFAULT_PALETTE_COLORS } from '../colors/color.service';
 
 @Injectable()
 export class UserService {
@@ -34,11 +34,10 @@ export class UserService {
       async (transactionalEntityManager) => {
         const savedUser = await transactionalEntityManager.save(User, user);
 
-        // TODO: Consider redesign this
-        const defaultColors = DEFAULT_COLORS.map((dc) =>
+        const defaultColors = DEFAULT_PALETTE_COLORS.map((dc) =>
           transactionalEntityManager.create(Color, {
             ownerId: savedUser.id,
-            hexCode: dc.hexCode,
+            key: dc.key,
             name: dc.name,
           }),
         );
@@ -48,7 +47,7 @@ export class UserService {
           id: defaultProjectId,
           name: 'Inbox',
           owner: savedUser,
-          colorHexCode: '#E0E0E0',
+          colorKey: 'slate',
         });
 
         return {
@@ -64,10 +63,6 @@ export class UserService {
 
     return userResponse;
   }
-
-  // async getAllUsers(): Promise<User[]> {
-  //   return this.userRepository.find();
-  // }
 
   async deleteUser(id: string): Promise<boolean> {
     const result = await this.userRepository.delete(id);

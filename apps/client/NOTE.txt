@@ -14,3 +14,5 @@ the problem is, how to know which browser they request verification, and what if
 NOTE: (8 Oct 2026): 1. flicker in the add task dialog's project + section selection when changing project, due to loading the section names of that project.
 2. The highlight in the quick add task input make its caret misaligned
 3. The kanban again reduces performance when moving task. This AI likes to fuck that up.
+
+NOTE: (9 Oct 2026): User who not yet verify email still be able to sign in. Prohibit that

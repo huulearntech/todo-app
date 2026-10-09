@@ -41,35 +41,35 @@ describe('ColorService', () => {
   });
 
   describe('createColor', () => {
-    it('should create and return a new color normalized to uppercase hex', async () => {
+    it('should create and return a new color with valid palette key', async () => {
       repository.findOne.mockResolvedValue(null);
 
-      const dto = { hexCode: '#3b82f6', name: 'Sky Blue' };
+      const dto = { key: 'sky' as const, name: 'Sky Blue' };
       const result = await service.createColor(ownerId, dto);
 
       expect(repository.findOne).toHaveBeenCalledWith({
-        where: { ownerId, hexCode: '#3B82F6' },
+        where: { ownerId, key: 'sky' },
       });
       expect(repository.create).toHaveBeenCalledWith({
         ownerId,
-        hexCode: '#3B82F6',
+        key: 'sky',
         name: 'Sky Blue',
       });
       expect(result).toEqual({
         ownerId,
-        hexCode: '#3B82F6',
+        key: 'sky',
         name: 'Sky Blue',
       });
     });
 
-    it('should throw ConflictException if color hex code already exists for user', async () => {
+    it('should throw ConflictException if palette key already exists for user', async () => {
       repository.findOne.mockResolvedValue({
         ownerId,
-        hexCode: '#3B82F6',
-        name: 'Existing Blue',
+        key: 'sky',
+        name: 'Existing Sky Blue',
       });
 
-      const dto = { hexCode: '#3b82f6', name: 'Duplicate Blue' };
+      const dto = { key: 'sky' as const, name: 'Duplicate Sky' };
       await expect(service.createColor(ownerId, dto)).rejects.toThrow(
         ConflictException,
       );
@@ -79,8 +79,8 @@ describe('ColorService', () => {
   describe('getMyColors', () => {
     it('should return all colors for ownerId ordered by name', async () => {
       const mockColors = [
-        { ownerId, hexCode: '#000000', name: 'Black' },
-        { ownerId, hexCode: '#FFFFFF', name: 'White' },
+        { ownerId, key: 'emerald', name: 'Emerald' },
+        { ownerId, key: 'sky', name: 'Sky Blue' },
       ];
       repository.find.mockResolvedValue(mockColors);
 
@@ -97,25 +97,25 @@ describe('ColorService', () => {
       repository.find
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ ownerId, hexCode: '#E0E0E0', name: 'Grey' }]);
+        .mockResolvedValueOnce([{ ownerId, key: 'slate', name: 'Slate' }]);
       repository.save.mockResolvedValue([]);
 
       const result = await service.getMyColors(ownerId);
 
       expect(repository.create).toHaveBeenCalled();
-      expect(result).toEqual([{ ownerId, hexCode: '#E0E0E0', name: 'Grey' }]);
+      expect(result).toEqual([{ ownerId, key: 'slate', name: 'Slate' }]);
     });
   });
 
-  describe('getColorByHexCode', () => {
+  describe('getColorByKey', () => {
     it('should return the color if found', async () => {
-      const mockColor = { ownerId, hexCode: '#FF0000', name: 'Red' };
+      const mockColor = { ownerId, key: 'red', name: 'Red' };
       repository.findOne.mockResolvedValue(mockColor);
 
-      const result = await service.getColorByHexCode(ownerId, '%23FF0000');
+      const result = await service.getColorByKey(ownerId, 'RED');
 
       expect(repository.findOne).toHaveBeenCalledWith({
-        where: { ownerId, hexCode: '#FF0000' },
+        where: { ownerId, key: 'red' },
       });
       expect(result).toEqual(mockColor);
     });
@@ -123,18 +123,18 @@ describe('ColorService', () => {
     it('should throw NotFoundException if color is not found', async () => {
       repository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.getColorByHexCode(ownerId, '#123456'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getColorByKey(ownerId, 'unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('updateColor', () => {
     it('should update color name and return saved entity', async () => {
-      const mockColor = { ownerId, hexCode: '#FF0000', name: 'Red' };
+      const mockColor = { ownerId, key: 'red', name: 'Red' };
       repository.findOne.mockResolvedValue(mockColor);
 
-      const result = await service.updateColor(ownerId, '#ff0000', {
+      const result = await service.updateColor(ownerId, 'red', {
         name: 'Crimson',
       });
 
@@ -149,18 +149,18 @@ describe('ColorService', () => {
     it('should delete color when exists', async () => {
       repository.delete.mockResolvedValue({ affected: 1, raw: [] });
 
-      await service.deleteColor(ownerId, 'ff0000');
+      await service.deleteColor(ownerId, 'red');
 
       expect(repository.delete).toHaveBeenCalledWith({
         ownerId,
-        hexCode: '#FF0000',
+        key: 'red',
       });
     });
 
     it('should throw NotFoundException when no row was deleted', async () => {
       repository.delete.mockResolvedValue({ affected: 0, raw: [] });
 
-      await expect(service.deleteColor(ownerId, '#ff0000')).rejects.toThrow(
+      await expect(service.deleteColor(ownerId, 'red')).rejects.toThrow(
         NotFoundException,
       );
     });

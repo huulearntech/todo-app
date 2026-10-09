@@ -39,14 +39,34 @@ interface TaskCardProps {
   occurrence?: CompletedOccurrenceResponseDto;
 }
 
-function TaskCardInner({ task, occurrence }: TaskCardProps) {
-  // TODO: add reminder to the task entity
-  const mockTask = {
-    reminder: "1 hour before",
-  };
+function formatReminderTooltip(
+  reminders?: Array<{ minuteOffset?: number | null; type?: string }>
+): string {
+  if (!reminders || reminders.length === 0) return "";
+  return reminders
+    .map((r) => {
+      if (r.minuteOffset === null || r.minuteOffset === undefined) return "";
+      if (r.minuteOffset === 0) return "At time of task";
+      if (r.minuteOffset % 1440 === 0) {
+        const d = r.minuteOffset / 1440;
+        return `${d} ${d === 1 ? "day" : "days"} before`;
+      }
+      if (r.minuteOffset % 60 === 0) {
+        const h = r.minuteOffset / 60;
+        return `${h} ${h === 1 ? "hour" : "hours"} before`;
+      }
+      return `${r.minuteOffset}m before`;
+    })
+    .filter(Boolean)
+    .join(", ");
+}
 
+function TaskCardInner({ task, occurrence }: TaskCardProps) {
   const isCompleted = Boolean(occurrence || task.completedAt);
   const isLatestOccurrence = occurrence?.isLatestOccurrence ?? true;
+
+  const hasReminders = Boolean(task.reminders && task.reminders.length > 0);
+  const reminderText = hasReminders ? formatReminderTooltip(task.reminders) : "";
 
   const toggleCompleteMutation = useToggleTaskComplete();
   const { data: labels = [] } = useTaskLabels(task);
@@ -175,13 +195,22 @@ function TaskCardInner({ task, occurrence }: TaskCardProps) {
             </div>
           )}
 
-          {mockTask.reminder && !isCompleted && (
-            <div
-              className="flex items-center gap-1 text-muted-foreground p-1 rounded-md"
-              title="Reminder set"
-            >
-              <AlarmClockIcon />
-            </div>
+          {hasReminders && !isCompleted && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <div
+                    className="flex items-center gap-1 text-amber-600 dark:text-amber-400 p-1 rounded-md"
+                    title={`Email reminder: ${reminderText}`}
+                  >
+                    <AlarmClockIcon className="size-3.5" />
+                  </div>
+                }
+              />
+              <TooltipContent className="rounded-lg text-xs">
+                <span>Email reminder: {reminderText}</span>
+              </TooltipContent>
+            </Tooltip>
           )}
 
           {labels.length > 0 && (

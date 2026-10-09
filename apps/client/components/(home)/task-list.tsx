@@ -6,8 +6,6 @@ import { useDueTodayTasks } from "@/hooks/tasks/use-due-today-tasks";
 import { usePostponeTask } from "@/hooks/tasks/use-postpone-task";
 import { useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import TaskCard from "@/components/(home)/task-card";
-import { ShowCompletedToggle } from "@/components/(home)/show-completed-toggle";
-import { useShowCompleted } from "@/hooks/use-show-completed";
 import {
   Sortable,
   SortableItem,
@@ -93,12 +91,7 @@ export function calculatePostponedDate(task: Pick<Task, "timeRange">): string {
 }
 
 export default function TaskList() {
-  const [showCompleted, setShowCompleted] = useShowCompleted("due-today");
-  const {
-    data: initialTasks,
-    completedOccurrences,
-    isLoading,
-  } = useDueTodayTasks({ includeCompleted: showCompleted });
+  const { data: initialTasks, isLoading } = useDueTodayTasks();
   const postponeTaskMutation = usePostponeTask();
 
   // Local state for drag-and-drop sortable items
@@ -209,12 +202,6 @@ export default function TaskList() {
         <span className="text-xs text-muted-foreground font-medium">
           {items.length} due today
         </span>
-        <ShowCompletedToggle
-          id="toggle-completed-due-today"
-          checked={showCompleted}
-          onCheckedChange={setShowCompleted}
-          count={completedOccurrences.length}
-        />
       </div>
 
       <Sortable
@@ -234,9 +221,7 @@ export default function TaskList() {
               All caught up for today!
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {showCompleted && completedOccurrences.length > 0
-                ? "All pending tasks for today are completed."
-                : "No tasks due today. Enjoy your day or add a new task."}
+              No tasks due today. Enjoy your day or add a new task.
             </p>
           </div>
         ) : (
@@ -256,19 +241,6 @@ export default function TaskList() {
         {/* Droppable section at the bottom for postponing tasks to tomorrow */}
         <PostponeDropZone />
       </Sortable>
-
-      {showCompleted && completedOccurrences.length > 0 && (
-        <div className="flex flex-col gap-2.5 pt-3 border-t border-border/40">
-          <span className="text-xs font-semibold text-muted-foreground px-1 uppercase tracking-wider">
-            Completed Today ({completedOccurrences.length})
-          </span>
-          <div className="flex flex-col gap-2.5">
-            {completedOccurrences.map((occ) => (
-              <TaskCard key={occ.occurrenceId} task={occ} occurrence={occ} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

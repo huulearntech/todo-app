@@ -39,6 +39,7 @@ import { priorityItems } from "@/lib/constants";
 import { useLabels } from "@/hooks/labels/use-labels";
 import { format, setHours, setMinutes } from "date-fns";
 import {
+  AlarmClockIcon,
   CheckIcon,
   ClockIcon,
   FlagIcon,
@@ -46,13 +47,14 @@ import {
   TagIcon,
   XIcon,
 } from "lucide-react";
+import { getColorConfig } from "@/lib/color-palette";
 import { cn } from "@/lib/utils";
 
 interface LabelComboboxItemProps extends ComboboxPrimitive.Item.Props {
   label: {
     id: string;
     name: string;
-    colorHexCode?: string | null;
+    colorKey?: string | null;
   };
   isSelected: boolean;
 }
@@ -91,10 +93,14 @@ function LabelComboboxItem({
       </span>
 
       {/* 3. Trailing Tag Icon (Replaces Check Icon) */}
-      <TagIcon
-        className="size-3.5 shrink-0 ml-auto"
-        style={{ color: label.colorHexCode || undefined }}
-      />
+      {(() => {
+        const labelConfig = getColorConfig(label.colorKey);
+        return (
+          <TagIcon
+            className={`size-3.5 shrink-0 ml-auto ${labelConfig.badgeTextClass}`}
+          />
+        );
+      })()}
     </ComboboxPrimitive.Item>
   );
 }
@@ -138,13 +144,14 @@ export function TaskForm({
   autoFocusTitle = true,
 }: TaskFormProps) {
   const { data: labels = [] } = useLabels({
-    select: (data) => data.map((label) => ({ id: label.id, name: label.name, colorHexCode: label.colorHexCode })),
+    select: (data) => data.map((label) => ({ id: label.id, name: label.name, colorKey: label.colorKey })),
   });
   const labelsContainerRef = React.useRef<HTMLDivElement>(null);
 
   const {
     control,
     handleSubmit,
+    watch,
     formState: { isSubmitting },
   } = useForm<CreateTaskInput, unknown, CreateTaskOutput>({
     resolver: zodResolver(createTaskSchema),
@@ -317,23 +324,13 @@ export function TaskForm({
                       {field.value.map((fieldItem) => {
                         const label = labels.find((l) => l.id === fieldItem.id);
                         if (!label) return null;
+                        const labelConfig = getColorConfig(label.colorKey);
                         return (
                           <span
                             key={fieldItem.id}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium border border-border/70 bg-background/80 transition-colors hover:bg-background"
-                            style={{
-                              backgroundColor: label.colorHexCode
-                                ? `color-mix(in srgb, ${label.colorHexCode} 12%, transparent)`
-                                : undefined,
-                              borderColor: label.colorHexCode
-                                ? `color-mix(in srgb, ${label.colorHexCode} 35%, transparent)`
-                                : undefined,
-                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium border ${labelConfig.badgeBgClass} ${labelConfig.badgeBorderClass} ${labelConfig.badgeTextClass} transition-colors`}
                           >
-                            <TagIcon
-                              className="size-3.5 shrink-0"
-                              style={{ color: label.colorHexCode || undefined }}
-                            />
+                            <TagIcon className="size-3.5 shrink-0" />
                             <span>{label.name}</span>
                             <button
                               type="button"
@@ -448,6 +445,102 @@ export function TaskForm({
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
+            />
+
+            {/* Email Reminder Selector */}
+            <Controller
+              name="reminders"
+              control={control}
+              render={({ field, fieldState }) => {
+                const currentReminder = field.value?.[0];
+                const minuteOffset = currentReminder?.minuteOffset;
+                const selectValue =
+                  minuteOffset !== undefined ? String(minuteOffset) : "none";
+                const currentTimeRange = watch("timeRange");
+                const currentRecurrence = watch("recurrence" as any);
+                const hasDueDateOrRecurrence = Boolean(
+                  currentTimeRange?.start || currentRecurrence
+                );
+
+                return (
+                  <Field className="space-y-1.5">
+                    <FieldLabel
+                      htmlFor="reminders-select"
+                      className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+                    >
+                      <AlarmClockIcon className="size-3.5 text-amber-500" />
+                      Email Reminder
+                    </FieldLabel>
+                    {!hasDueDateOrRecurrence && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                        Set a due date or recurrence to enable email reminders.
+                      </p>
+                    )}
+                    <Select
+                      id="reminders-select"
+                      disabled={!hasDueDateOrRecurrence}
+                      value={hasDueDateOrRecurrence ? selectValue : "none"}
+                      onValueChange={(val) => {
+                        if (!val || val === "none") {
+                          field.onChange([]);
+                        } else {
+                          const offset = parseInt(val, 10);
+                          field.onChange([
+                            {
+                              type: "relative",
+                              minuteOffset: offset,
+                              channel: "email",
+                            },
+                          ]);
+                        }
+                      }}
+                      items={[
+                        { value: "none", label: "No reminder" },
+                        { value: "0", label: "At time of task" },
+                        { value: "10", label: "10 minutes before" },
+                        { value: "15", label: "15 minutes before" },
+                        { value: "30", label: "30 minutes before" },
+                        { value: "60", label: "1 hour before" },
+                        { value: "120", label: "2 hours before" },
+                        { value: "1440", label: "1 day before" },
+                      ]}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select reminder" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="rounded-lg">
+                          No reminder
+                        </SelectItem>
+                        <SelectItem value="0" className="rounded-lg">
+                          At time of task
+                        </SelectItem>
+                        <SelectItem value="10" className="rounded-lg">
+                          10 minutes before
+                        </SelectItem>
+                        <SelectItem value="15" className="rounded-lg">
+                          15 minutes before
+                        </SelectItem>
+                        <SelectItem value="30" className="rounded-lg">
+                          30 minutes before
+                        </SelectItem>
+                        <SelectItem value="60" className="rounded-lg">
+                          1 hour before
+                        </SelectItem>
+                        <SelectItem value="120" className="rounded-lg">
+                          2 hours before
+                        </SelectItem>
+                        <SelectItem value="1440" className="rounded-lg">
+                          1 day before
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldState.error && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                );
+              }}
             />
           </FieldGroup>
         </aside>

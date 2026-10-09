@@ -5,6 +5,7 @@ import { SectionModule } from '../sections/section.module';
 import { Task } from './entities/task.entity';
 import { TaskRecurrence } from './entities/task-recurrence.entity';
 import { TaskOccurrence } from './entities/task-occurrence.entity';
+import { TaskReminder } from './entities/task-reminder.entity';
 
 import { TaskService } from './services/task.service';
 import { TaskRecurrenceService } from './services/task-recurrence.service';
@@ -17,7 +18,13 @@ import { User } from '../users/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, TaskRecurrence, TaskOccurrence, User]),
+    TypeOrmModule.forFeature([
+      Task,
+      TaskRecurrence,
+      TaskOccurrence,
+      TaskReminder,
+      User,
+    ]),
     SectionModule,
     MailerModule,
   ],

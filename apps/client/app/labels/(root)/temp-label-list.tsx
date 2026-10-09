@@ -40,6 +40,7 @@ import {
 import Dialog_AddLabel from "./add-label-form";
 import Dialog_EditLabel from "./temp-edit-label-form";
 import { useLabels } from "@/hooks/labels/use-labels";
+import { getColorConfig } from "@/lib/color-palette";
 
 export default function TempTaskLabelList() {
   const queryClient = useQueryClient();
@@ -214,24 +215,21 @@ export default function TempTaskLabelList() {
       ) : ( */}
         <ul className="flex flex-col gap-2.5">
           {/* {filteredLabels.map((label) => ( */}
-          {labels.map((label) => (
-            <li key={label.id} className="group relative">
-              <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-xs">
-                {/* Clickable card area leading to /labels/[id] */}
-                <Link
-                  href={`/labels/${label.id}`}
-                  className="flex flex-1 items-center gap-3.5 min-w-0 pr-2 focus-visible:outline-none"
-                >
-                  <div
-                    className="flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border"
-                    style={{
-                      backgroundColor: `${label.colorHexCode || '#E0E0E0'}20`,
-                      borderColor: `${label.colorHexCode || '#E0E0E0'}40`,
-                      color: label.colorHexCode || '#E0E0E0',
-                    }}
+          {labels.map((label) => {
+            const config = getColorConfig(label.colorKey);
+            return (
+              <li key={label.id} className="group relative">
+                <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-xs">
+                  {/* Clickable card area leading to /labels/[id] */}
+                  <Link
+                    href={`/labels/${label.id}`}
+                    className="flex flex-1 items-center gap-3.5 min-w-0 pr-2 focus-visible:outline-none"
                   >
-                    <TagIcon className="size-4.5" />
-                  </div>
+                    <div
+                      className={`flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border ${config.badgeBgClass} ${config.badgeBorderClass} ${config.badgeTextClass}`}
+                    >
+                      <TagIcon className="size-4.5" />
+                    </div>
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-foreground text-sm tracking-tight truncate group-hover:text-primary transition-colors">
                       {label.name}
@@ -252,14 +250,13 @@ export default function TempTaskLabelList() {
                 <div className="flex items-center gap-1 shrink-0">
                   <DropdownMenu>
                     <DropdownMenuTrigger
-                      render={(props) => (
+                      render={
                         <Button
-                          {...props}
                           variant="ghost"
                           size="icon-sm"
                           className="text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg"
                         />
-                      )}
+                      }
                     >
                       <MoreHorizontalIcon className="size-4" />
                       <span className="sr-only">Actions for {label.name}</span>
@@ -290,7 +287,8 @@ export default function TempTaskLabelList() {
                 </div>
               </div>
             </li>
-          ))}
+          );
+        })}
         </ul>
       {/* )} */}
 

@@ -8,7 +8,7 @@ describe('ColorController', () => {
   let service: {
     createColor: jest.Mock;
     getMyColors: jest.Mock;
-    getColorByHexCode: jest.Mock;
+    getColorByKey: jest.Mock;
     updateColor: jest.Mock;
     deleteColor: jest.Mock;
   };
@@ -23,7 +23,7 @@ describe('ColorController', () => {
     service = {
       createColor: jest.fn(),
       getMyColors: jest.fn(),
-      getColorByHexCode: jest.fn(),
+      getColorByKey: jest.fn(),
       updateColor: jest.fn(),
       deleteColor: jest.fn(),
     };
@@ -42,7 +42,7 @@ describe('ColorController', () => {
   });
 
   it('createColor should call service.createColor', async () => {
-    const dto = { hexCode: '#1a2b3c', name: 'Navy' };
+    const dto = { key: 'sky' as const, name: 'Sky Blue' };
     const expected = { ownerId: user.id, ...dto };
     service.createColor.mockResolvedValue(expected);
 
@@ -53,7 +53,7 @@ describe('ColorController', () => {
   });
 
   it('getMyColors should call service.getMyColors', async () => {
-    const expected = [{ ownerId: user.id, hexCode: '#1a2b3c', name: 'Navy' }];
+    const expected = [{ ownerId: user.id, key: 'sky', name: 'Sky Blue' }];
     service.getMyColors.mockResolvedValue(expected);
 
     const res = await controller.getMyColors(user);
@@ -62,36 +62,36 @@ describe('ColorController', () => {
     expect(res).toEqual(expected);
   });
 
-  it('getColorByHexCode should call service.getColorByHexCode', async () => {
-    const expected = { ownerId: user.id, hexCode: '#1a2b3c', name: 'Navy' };
-    service.getColorByHexCode.mockResolvedValue(expected);
+  it('getColorByKey should call service.getColorByKey', async () => {
+    const expected = { ownerId: user.id, key: 'sky', name: 'Sky Blue' };
+    service.getColorByKey.mockResolvedValue(expected);
 
-    const res = await controller.getColorByHexCode(user, '#1a2b3c');
+    const res = await controller.getColorByKey(user, 'sky');
 
-    expect(service.getColorByHexCode).toHaveBeenCalledWith(user.id, '#1a2b3c');
+    expect(service.getColorByKey).toHaveBeenCalledWith(user.id, 'sky');
     expect(res).toEqual(expected);
   });
 
   it('updateColor should call service.updateColor', async () => {
-    const dto = { name: 'Dark Navy' };
+    const dto = { name: 'Deep Sky Blue' };
     const expected = {
       ownerId: user.id,
-      hexCode: '#1a2b3c',
-      name: 'Dark Navy',
+      key: 'sky',
+      name: 'Deep Sky Blue',
     };
     service.updateColor.mockResolvedValue(expected);
 
-    const res = await controller.updateColor(user, '#1a2b3c', dto);
+    const res = await controller.updateColor(user, 'sky', dto);
 
-    expect(service.updateColor).toHaveBeenCalledWith(user.id, '#1a2b3c', dto);
+    expect(service.updateColor).toHaveBeenCalledWith(user.id, 'sky', dto);
     expect(res).toEqual(expected);
   });
 
   it('deleteColor should call service.deleteColor', async () => {
     service.deleteColor.mockResolvedValue(undefined);
 
-    await controller.deleteColor(user, '#1a2b3c');
+    await controller.deleteColor(user, 'sky');
 
-    expect(service.deleteColor).toHaveBeenCalledWith(user.id, '#1a2b3c');
+    expect(service.deleteColor).toHaveBeenCalledWith(user.id, 'sky');
   });
 });

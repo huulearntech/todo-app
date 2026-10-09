@@ -53,6 +53,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email address before signing in. Check your inbox for the verification link.',
+      );
+    }
+
     const { passwordHashed: _passwordHashed, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }

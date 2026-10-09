@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { Task } from '../entities/task.entity';
 import { TaskOccurrence } from '../entities/task-occurrence.entity';
@@ -50,6 +50,7 @@ function handleDatabaseOrderingError(error: unknown): never {
 }
 
 import { User } from '@/src/modules/users/user.entity';
+import { TaskReminder } from '../entities/task-reminder.entity';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
 
 @Injectable()
@@ -59,6 +60,8 @@ export class TaskService {
     @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
     @InjectRepository(TaskOccurrence)
     private readonly taskOccurrenceRepository: Repository<TaskOccurrence>,
+    @InjectRepository(TaskReminder)
+    private readonly taskReminderRepository: Repository<TaskReminder>,
     @InjectRepository(Section)
     private readonly sectionRepository: Repository<Section>,
     @InjectRepository(User)
@@ -76,6 +79,15 @@ export class TaskService {
     const labelIds = createTaskDto.labels?.length
       ? createTaskDto.labels.map((l) => l.id)
       : null;
+
+    const hasRelativeReminder = createTaskDto.reminders?.some(
+      (r) => r.type === 'relative',
+    );
+    if (hasRelativeReminder && !timeRangeStart) {
+      throw new BadRequestException(
+        'Relative reminders require a task start date/time or recurrence pattern.',
+      );
+    }
 
     try {
       const [rawTask] = await this.dataSource.query<[RawTaskRow]>(
@@ -106,6 +118,21 @@ export class TaskService {
         ],
       );
 
+      const savedReminders: TaskReminder[] = [];
+      if (createTaskDto.reminders && createTaskDto.reminders.length > 0) {
+        for (const remDto of createTaskDto.reminders) {
+          const rem = this.taskReminderRepository.create({
+            taskId: rawTask.id,
+            userId: ownerId,
+            type: remDto.type,
+            minuteOffset: remDto.minuteOffset ?? 30,
+            remindAt: remDto.remindAt ? new Date(remDto.remindAt) : null,
+            channel: remDto.channel,
+          });
+          savedReminders.push(await this.taskReminderRepository.save(rem));
+        }
+      }
+
       const createdTask = {
         id: rawTask.id,
         title: rawTask.title,
@@ -120,24 +147,34 @@ export class TaskService {
         labels: createTaskDto.labels ?? [],
         recurrence: null,
         occurrences: [],
+        reminders: savedReminders,
       } as unknown as Task;
 
-      if (timeRangeStart) {
+      if (timeRangeStart && savedReminders.length > 0) {
         this.userRepository
           .findOne({ where: { id: ownerId } })
           .then((user) => {
             if (user) {
               const dueTime = new Date(timeRangeStart);
-              const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
-              return this.mailerSchedulerService.scheduleTaskReminder({
-                taskId: createdTask.id,
-                userId: ownerId,
-                to: user.email,
-                userName: user.name,
-                taskTitle: createdTask.title,
-                dueTime,
-                reminderTime,
-              });
+              for (const rem of savedReminders) {
+                const offset = rem.minuteOffset ?? 30;
+                const reminderTime = new Date(
+                  dueTime.getTime() - offset * 60 * 1000,
+                );
+                this.mailerSchedulerService
+                  .scheduleTaskReminder({
+                    taskId: createdTask.id,
+                    reminderId: rem.id,
+                    userId: ownerId,
+                    to: user.email,
+                    userName: user.name,
+                    taskTitle: createdTask.title,
+                    dueTime,
+                    reminderTime,
+                    reminderOffsetMinutes: offset,
+                  })
+                  .catch(() => {});
+              }
             }
           })
           .catch(() => {});
@@ -154,7 +191,17 @@ export class TaskService {
   }
 
   async getTaskById(id: string): Promise<Task | null> {
-    return this.taskRepository.findOne({ where: { id } });
+    return this.taskRepository.findOne({
+      where: { id },
+      relations: {
+        section: {
+          project: true,
+        },
+        labels: true,
+        recurrence: true,
+        reminders: true,
+      },
+    });
   }
 
   async getTasksByOwnerIdProjectIdAndFilter(
@@ -178,6 +225,7 @@ export class TaskService {
           { projectId, ownerId },
         )
         .leftJoin('task.recurrence', 'recurrence')
+        .leftJoin('task.reminders', 'reminder')
         .where('task.completedAt IS NULL');
 
       if (filter.title) {
@@ -207,6 +255,11 @@ export class TaskService {
         'label.id',
         'recurrence.id',
         'recurrence.rrule',
+        'reminder.id',
+        'reminder.type',
+        'reminder.minuteOffset',
+        'reminder.remindAt',
+        'reminder.channel',
       ]);
 
       return queryBuilder.getMany();
@@ -229,6 +282,7 @@ export class TaskService {
         .innerJoin('section.project', 'project')
         .andWhere('project.ownerId = :ownerId', { ownerId })
         .leftJoin('task.recurrence', 'recurrence')
+        .leftJoin('task.reminders', 'reminder')
         .andWhere('task.completedAt IS NULL');
 
       if (filter.title) {
@@ -258,6 +312,11 @@ export class TaskService {
         'label.name',
         'recurrence.id',
         'recurrence.rrule',
+        'reminder.id',
+        'reminder.type',
+        'reminder.minuteOffset',
+        'reminder.remindAt',
+        'reminder.channel',
       ]);
 
       return queryBuilder.getMany();
@@ -275,6 +334,7 @@ export class TaskService {
       .innerJoinAndSelect('section.project', 'project')
       .leftJoinAndSelect('task.labels', 'label')
       .leftJoinAndSelect('task.recurrence', 'recurrence')
+      .leftJoinAndSelect('task.reminders', 'reminder')
       .where('occurrence.userId = :ownerId', { ownerId })
       .andWhere('occurrence.status = :status', {
         status: TaskOccurrenceStatus.COMPLETED,
@@ -298,9 +358,7 @@ export class TaskService {
       });
     }
 
-    queryBuilder
-      .orderBy('occurrence.completedAt', 'DESC')
-      .take(100);
+    queryBuilder.orderBy('occurrence.completedAt', 'DESC').take(100);
 
     const occurrences = await queryBuilder.getMany();
 
@@ -341,6 +399,13 @@ export class TaskService {
           ? occ.scheduledDate.toISOString()
           : null,
         isLatestOccurrence: isLatest,
+        reminders: (task.reminders ?? []).map((r) => ({
+          id: r.id,
+          type: r.type,
+          minuteOffset: r.minuteOffset,
+          remindAt: r.remindAt ? r.remindAt.toISOString() : null,
+          channel: r.channel,
+        })),
       };
     });
   }
@@ -358,6 +423,7 @@ export class TaskService {
       })
       .leftJoin('task.labels', 'label')
       .leftJoin('task.recurrence', 'recurrence')
+      .leftJoin('task.reminders', 'reminder')
       .where('task.completedAt IS NULL')
       .andWhere(
         'upper(task.timeRange) BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz',
@@ -375,6 +441,11 @@ export class TaskService {
         'label.name',
         'recurrence.id',
         'recurrence.rrule',
+        'reminder.id',
+        'reminder.type',
+        'reminder.minuteOffset',
+        'reminder.remindAt',
+        'reminder.channel',
       ])
       .orderBy('task.lexorank', 'ASC')
       .getMany();
@@ -392,6 +463,7 @@ export class TaskService {
       .innerJoinAndSelect('section.project', 'project')
       .leftJoinAndSelect('task.labels', 'label')
       .leftJoinAndSelect('task.recurrence', 'recurrence')
+      .leftJoinAndSelect('task.reminders', 'reminder')
       .where('occurrence.userId = :ownerId', { ownerId })
       .andWhere('occurrence.status = :status', {
         status: TaskOccurrenceStatus.COMPLETED,
@@ -443,6 +515,13 @@ export class TaskService {
           ? occ.scheduledDate.toISOString()
           : null,
         isLatestOccurrence: isLatest,
+        reminders: (task.reminders ?? []).map((r) => ({
+          id: r.id,
+          type: r.type,
+          minuteOffset: r.minuteOffset,
+          remindAt: r.remindAt ? r.remindAt.toISOString() : null,
+          channel: r.channel,
+        })),
       };
     });
   }
@@ -455,50 +534,64 @@ export class TaskService {
     if (!task) {
       return null;
     }
-    Object.assign(task, updatedTask);
-    const savedTask = await this.taskRepository.save(task);
 
-    if (savedTask.completedAt !== null) {
-      await this.mailerSchedulerService.cancelTaskReminder(id);
-      await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
-    } else if (updatedTask.timeRange?.start) {
-      const section = await this.sectionRepository.findOne({
-        where: { id: savedTask.sectionId },
-        relations: { project: true },
-      });
+    const section = await this.sectionRepository.findOne({
+      where: { id: task.sectionId },
+      relations: { project: true },
+    });
+    const ownerId = section?.project?.ownerId;
 
-      if (section?.project?.ownerId) {
-        const user = await this.userRepository.findOne({
-          where: { id: section.project.ownerId },
-        });
-        if (user) {
-          const dueTime = new Date(updatedTask.timeRange.start);
-          const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
-          this.mailerSchedulerService
-            .scheduleTaskReminder({
-              taskId: savedTask.id,
-              userId: user.id,
-              to: user.email,
-              userName: user.name,
-              taskTitle: savedTask.title,
-              dueTime,
-              reminderTime,
-            })
-            .catch(() => {});
-        }
+    const existingReminders = await this.taskReminderRepository.find({
+      where: { taskId: id },
+    });
+
+    const willHaveRelativeReminder =
+      updatedTask.reminders !== undefined
+        ? updatedTask.reminders.some((r) => r.type === 'relative')
+        : existingReminders.some((r) => r.type === 'relative');
+
+    if (willHaveRelativeReminder) {
+      const effectiveTimeRange =
+        updatedTask.timeRange !== undefined
+          ? updatedTask.timeRange
+          : task.timeRange;
+
+      if (!effectiveTimeRange?.start && !task.recurrence?.rrule) {
+        throw new BadRequestException(
+          'Relative reminders require a task start date/time or recurrence pattern.',
+        );
       }
     }
 
-    return this.taskRepository.findOne({
-      where: { id: savedTask.id },
-      relations: {
-        section: {
-          project: true,
-        },
-        labels: true,
-        recurrence: true,
-      },
-    });
+    if (updatedTask.reminders !== undefined && ownerId) {
+      const oldReminders = existingReminders;
+      for (const old of oldReminders) {
+        await this.mailerSchedulerService.cancelTaskReminder(old.id);
+        await this.mailerSchedulerService.cancelRecurringTaskReminder(old.id);
+      }
+      await this.taskReminderRepository.delete({ taskId: id });
+
+      for (const remDto of updatedTask.reminders) {
+        const rem = this.taskReminderRepository.create({
+          taskId: id,
+          userId: ownerId,
+          type: remDto.type,
+          minuteOffset: remDto.minuteOffset ?? 30,
+          remindAt: remDto.remindAt ? new Date(remDto.remindAt) : null,
+          channel: remDto.channel,
+        });
+        await this.taskReminderRepository.save(rem);
+      }
+    }
+
+    Object.assign(task, updatedTask);
+    const savedTask = await this.taskRepository.save(task);
+
+    if (ownerId) {
+      await this.rescheduleTaskReminders(savedTask, ownerId);
+    }
+
+    return this.getTaskById(savedTask.id);
   }
 
   async updateTaskOrder({
@@ -530,6 +623,13 @@ export class TaskService {
   }
 
   async deleteTask(id: string): Promise<boolean> {
+    const reminders = await this.taskReminderRepository.find({
+      where: { taskId: id },
+    });
+    for (const rem of reminders) {
+      await this.mailerSchedulerService.cancelTaskReminder(rem.id);
+      await this.mailerSchedulerService.cancelRecurringTaskReminder(rem.id);
+    }
     await this.mailerSchedulerService.cancelTaskReminder(id);
     await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
     const result = await this.taskRepository.delete(id);
@@ -621,33 +721,16 @@ export class TaskService {
           isRecurringAdvanced = true;
           nextDueTime = nextStart.toISOString();
 
-          // Reschedule recurring email reminder
-          const user = await manager.findOne(User, { where: { id: userId } });
-          if (user && task.recurrence.rrule) {
-            const rruleStr = formatRRuleString(task.recurrence.rrule);
-            await this.mailerSchedulerService
-              .scheduleRecurringTaskReminder({
-                taskId: task.id,
-                userId: user.id,
-                to: user.email,
-                userName: user.name,
-                taskTitle: task.title,
-                rruleString: rruleStr,
-                reminderOffsetMinutes: 15,
-              })
-              .catch(() => {});
-          }
+          await this.rescheduleTaskReminders(task, userId, manager);
         } else {
           // Recurrence series finished (e.g., COUNT or UNTIL exceeded)
           task.completedAt = completedAt;
-          await this.mailerSchedulerService.cancelRecurringTaskReminder(
-            task.id,
-          );
+          await this.rescheduleTaskReminders(task, userId, manager);
         }
       } else {
         // Non-recurring task: terminal completion
         task.completedAt = completedAt;
-        await this.mailerSchedulerService.cancelTaskReminder(task.id);
+        await this.rescheduleTaskReminders(task, userId, manager);
       }
 
       await manager.save(Task, task);
@@ -751,41 +834,43 @@ export class TaskService {
 
       const savedTask = await manager.save(Task, task);
 
-      if (savedTask.timeRange?.start) {
-        const user = await manager.findOne(User, { where: { id: userId } });
-        if (user) {
-          if (savedTask.recurrence?.rrule) {
-            await this.mailerSchedulerService
-              .scheduleRecurringTaskReminder({
-                taskId: savedTask.id,
-                userId: user.id,
-                to: user.email,
-                userName: user.name,
-                taskTitle: savedTask.title,
-                rruleString: formatRRuleString(savedTask.recurrence.rrule),
-                reminderOffsetMinutes: 15,
-              })
-              .catch(() => {});
-          } else {
-            const dueTime = new Date(savedTask.timeRange.start);
-            const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
-            await this.mailerSchedulerService
-              .scheduleTaskReminder({
-                taskId: savedTask.id,
-                userId: user.id,
-                to: user.email,
-                userName: user.name,
-                taskTitle: savedTask.title,
-                dueTime,
-                reminderTime,
-              })
-              .catch(() => {});
-          }
-        }
-      }
+      await this.rescheduleTaskReminders(savedTask, userId, manager);
 
       return savedTask;
     });
+  }
+
+  async deleteOccurrenceById(
+    userId: string,
+    occurrenceId: string,
+  ): Promise<boolean> {
+    const occurrence = await this.taskOccurrenceRepository.findOne({
+      where: { id: occurrenceId },
+      relations: {
+        task: {
+          section: { project: true },
+        },
+      },
+    });
+
+    if (!occurrence) {
+      throw new NotFoundException(
+        `Task occurrence with ID ${occurrenceId} not found`,
+      );
+    }
+
+    const task = occurrence.task;
+    if (
+      occurrence.userId !== userId &&
+      task?.section?.project?.ownerId !== userId
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this occurrence',
+      );
+    }
+
+    const result = await this.taskOccurrenceRepository.delete(occurrenceId);
+    return result.affected !== 0;
   }
 
   async uncompleteTaskOccurrence(
@@ -822,7 +907,9 @@ export class TaskService {
       );
     }
     task.completedAt = null;
-    return this.taskRepository.save(task);
+    const saved = await this.taskRepository.save(task);
+    await this.rescheduleTaskReminders(saved, userId);
+    return saved;
   }
 
   async uncompleteTask(userId: string, taskId: string): Promise<Task> {
@@ -870,38 +957,86 @@ export class TaskService {
     task.completedAt = null;
 
     const savedTask = await this.taskRepository.save(task);
+    await this.rescheduleTaskReminders(savedTask, userId);
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (user) {
-      if (savedTask.recurrence?.rrule) {
+    return savedTask;
+  }
+
+  private async rescheduleTaskReminders(
+    task: Task,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repo =
+      manager && typeof manager.getRepository === 'function'
+        ? manager.getRepository(TaskReminder)
+        : this.taskReminderRepository;
+    const reminders = await repo.find({ where: { taskId: task.id } });
+
+    if (task.completedAt !== null) {
+      await this.mailerSchedulerService.cancelTaskReminder(task.id);
+      await this.mailerSchedulerService.cancelRecurringTaskReminder(task.id);
+      for (const rem of reminders) {
+        await this.mailerSchedulerService.cancelTaskReminder(rem.id);
+        await this.mailerSchedulerService.cancelRecurringTaskReminder(rem.id);
+      }
+      return;
+    }
+
+    if (!reminders.length) return;
+
+    if (!task.recurrence?.rrule && !task.timeRange?.start) {
+      await this.mailerSchedulerService.cancelTaskReminder(task.id);
+      await this.mailerSchedulerService.cancelRecurringTaskReminder(task.id);
+      for (const rem of reminders) {
+        await this.mailerSchedulerService.cancelTaskReminder(rem.id);
+        await this.mailerSchedulerService.cancelRecurringTaskReminder(rem.id);
+      }
+      return;
+    }
+
+    const userRepo =
+      manager && typeof manager.getRepository === 'function'
+        ? manager.getRepository(User)
+        : this.userRepository;
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) return;
+
+    if (task.recurrence?.rrule) {
+      const rruleStr = formatRRuleString(task.recurrence.rrule);
+      for (const rem of reminders) {
         await this.mailerSchedulerService
           .scheduleRecurringTaskReminder({
-            taskId: savedTask.id,
+            taskId: task.id,
+            reminderId: rem.id,
             userId: user.id,
             to: user.email,
             userName: user.name,
-            taskTitle: savedTask.title,
-            rruleString: formatRRuleString(savedTask.recurrence.rrule),
-            reminderOffsetMinutes: 15,
+            taskTitle: task.title,
+            rruleString: rruleStr,
+            reminderOffsetMinutes: rem.minuteOffset ?? 30,
           })
           .catch(() => {});
-      } else {
-        const dueTime = newStart;
-        const reminderTime = new Date(dueTime.getTime() - 15 * 60 * 1000);
+      }
+    } else if (task.timeRange?.start) {
+      const dueTime = new Date(task.timeRange.start);
+      for (const rem of reminders) {
+        const offset = rem.minuteOffset ?? 30;
+        const reminderTime = new Date(dueTime.getTime() - offset * 60 * 1000);
         await this.mailerSchedulerService
           .scheduleTaskReminder({
-            taskId: savedTask.id,
+            taskId: task.id,
+            reminderId: rem.id,
             userId: user.id,
             to: user.email,
             userName: user.name,
-            taskTitle: savedTask.title,
+            taskTitle: task.title,
             dueTime,
             reminderTime,
+            reminderOffsetMinutes: offset,
           })
           .catch(() => {});
       }
     }
-
-    return savedTask;
   }
 }

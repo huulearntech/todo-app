@@ -35,7 +35,7 @@ export class SearchService {
             SELECT
               p.id,
               p.name,
-              p.color_hex_code AS "colorHexCode",
+              p.color_key AS "colorKey",
               similarity(p.name, $1) AS score
             FROM projects p
             WHERE p.owner_id = $2
@@ -47,7 +47,7 @@ export class SearchService {
             SELECT
               l.id,
               l.name,
-              l.color_hex_code AS "colorHexCode",
+              l.color_key AS "colorKey",
               similarity(l.name, $1) AS score
             FROM task_labels l
             WHERE l.owner_id = $2
@@ -65,7 +65,7 @@ export class SearchService {
               s.name AS "sectionName",
               p.id AS "projectId",
               p.name AS "projectName",
-              p.color_hex_code AS "projectColorHexCode",
+              p.color_key AS "projectColorKey",
               similarity(t.title, $1) AS score
             FROM tasks t
             INNER JOIN sections s ON s.id = t.section_id

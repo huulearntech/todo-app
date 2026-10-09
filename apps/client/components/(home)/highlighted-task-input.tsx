@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils";
 
 export interface HighlightedTaskInputProps
   extends React.ComponentProps<typeof Input> {
-  projects?: Array<{ id: string; name: string; colorHexCode?: string }>;
+  projects?: Array<{ id: string; name: string; colorKey?: string }>;
   sections?: Array<{ id: string; name: string; projectId: string }>;
-  labels?: Array<{ id: string; name: string; colorHexCode?: string }>;
+  labels?: Array<{ id: string; name: string; colorKey?: string }>;
 }
 
 export const HighlightedTaskInput = forwardRef<

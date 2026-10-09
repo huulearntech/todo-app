@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useLabels } from "@/hooks/labels/use-labels";
-import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
+import { getColorConfig } from "@/lib/color-palette";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -48,16 +48,12 @@ export default function Header() {
 
   const currentLabel = labels.find((l) => l.id === labelId);
   const labelName = currentLabel?.name || "Label";
+  const labelConfig = getColorConfig(currentLabel?.colorKey);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteConfirm = () => {
-    // TODO: [SERVER CALL] Implement server call here to delete the label.
-    // Example:
-    // await taskLabelService.deleteTaskLabel(labelId);
-    // queryClient.invalidateQueries({ queryKey: ["task-labels"] });
-
     toast.add({
       title: "Label deleted",
       description: `"${labelName}" was deleted successfully.`,
@@ -88,8 +84,7 @@ export default function Header() {
               <BreadcrumbItem className="min-w-0">
                 <BreadcrumbPage className="flex items-center gap-1.5 font-semibold text-foreground text-xs sm:text-sm truncate">
                   <TagIcon
-                    className="size-3.5 shrink-0"
-                    style={{ color: currentLabel?.colorHexCode || undefined }}
+                    className={`size-3.5 shrink-0 ${labelConfig.badgeTextClass}`}
                   />
                   <span className="truncate">{labelName}</span>
                 </BreadcrumbPage>

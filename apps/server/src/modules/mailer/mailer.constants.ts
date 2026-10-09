@@ -19,16 +19,19 @@ export interface ImmediateEmailData {
 
 export interface TaskReminderEmailData {
   taskId: string;
+  reminderId?: string;
   userId: string;
   to: string;
   userName: string;
   taskTitle: string;
   dueTime: string;
   projectName?: string;
+  reminderOffsetMinutes?: number;
 }
 
 export interface RecurringTaskReminderEmailData {
   taskId: string;
+  reminderId?: string;
   userId: string;
   to: string;
   userName: string;

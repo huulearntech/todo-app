@@ -23,6 +23,7 @@ export interface SendImmediateEmailParams {
 
 export interface ScheduleTaskReminderParams {
   taskId: string;
+  reminderId?: string;
   userId: string;
   to: string;
   userName: string;
@@ -30,10 +31,12 @@ export interface ScheduleTaskReminderParams {
   dueTime: Date;
   reminderTime: Date;
   projectName?: string;
+  reminderOffsetMinutes?: number;
 }
 
 export interface ScheduleRecurringTaskReminderParams {
   taskId: string;
+  reminderId?: string;
   userId: string;
   to: string;
   userName: string;
@@ -81,26 +84,29 @@ export class MailerSchedulerService {
     params: ScheduleTaskReminderParams,
   ): Promise<void> {
     const delay = params.reminderTime.getTime() - Date.now();
-    const jobId = `task-reminder:${params.taskId}`;
+    const identifier = params.reminderId || params.taskId;
+    const jobId = `task-reminder:${identifier}`;
 
     // Cancel existing reminder if present
-    await this.cancelTaskReminder(params.taskId);
+    await this.cancelTaskReminder(identifier);
 
     if (delay <= 0) {
       this.logger.log(
-        `Reminder time for task ${params.taskId} is in the past. Skipping.`,
+        `Reminder time for task ${params.taskId} (${identifier}) is in the past. Skipping.`,
       );
       return;
     }
 
     const data: TaskReminderEmailData = {
       taskId: params.taskId,
+      reminderId: params.reminderId,
       userId: params.userId,
       to: params.to,
       userName: params.userName,
       taskTitle: params.taskTitle,
       dueTime: params.dueTime.toISOString(),
       projectName: params.projectName,
+      reminderOffsetMinutes: params.reminderOffsetMinutes,
     };
 
     await this.emailQueue.add(EmailJobType.TASK_REMINDER, data, {
@@ -118,8 +124,8 @@ export class MailerSchedulerService {
   /**
    * Cancel a scheduled one-time task reminder.
    */
-  async cancelTaskReminder(taskId: string): Promise<void> {
-    const jobId = `task-reminder:${taskId}`;
+  async cancelTaskReminder(identifier: string): Promise<void> {
+    const jobId = `task-reminder:${identifier}`;
     try {
       const job = await this.emailQueue.getJob(jobId);
       if (job) {
@@ -137,10 +143,11 @@ export class MailerSchedulerService {
   async scheduleRecurringTaskReminder(
     params: ScheduleRecurringTaskReminderParams,
   ): Promise<void> {
-    const jobId = `task-recurring-reminder:${params.taskId}`;
+    const identifier = params.reminderId || params.taskId;
+    const jobId = `task-recurring-reminder:${identifier}`;
 
     // Cancel existing recurrence job if present
-    await this.cancelRecurringTaskReminder(params.taskId);
+    await this.cancelRecurringTaskReminder(identifier);
 
     try {
       const rule = RRule.fromString(params.rruleString);
@@ -168,6 +175,7 @@ export class MailerSchedulerService {
 
       const data: RecurringTaskReminderEmailData = {
         taskId: params.taskId,
+        reminderId: params.reminderId,
         userId: params.userId,
         to: params.to,
         userName: params.userName,
@@ -197,8 +205,8 @@ export class MailerSchedulerService {
   /**
    * Cancel a scheduled recurring task reminder.
    */
-  async cancelRecurringTaskReminder(taskId: string): Promise<void> {
-    const jobId = `task-recurring-reminder:${taskId}`;
+  async cancelRecurringTaskReminder(identifier: string): Promise<void> {
+    const jobId = `task-recurring-reminder:${identifier}`;
     try {
       const job = await this.emailQueue.getJob(jobId);
       if (job) {

@@ -36,6 +36,7 @@ export function useUpdateCalendarEvent(
         priority: data.priority,
         sectionId: data.sectionId,
         labels: data.labels,
+        reminders: data.reminders ?? [],
       };
 
       return taskService.updateTask(updated.event.id, taskToUpdate);

@@ -92,6 +92,14 @@ export class TasksController {
     return this.taskService.uncompleteOccurrenceById(user.id, occurrenceId);
   }
 
+  @Delete('occurrences/:occurrenceId')
+  async deleteOccurrence(
+    @CurrentUser() user: JwtUser,
+    @Param('occurrenceId') occurrenceId: string,
+  ) {
+    return this.taskService.deleteOccurrenceById(user.id, occurrenceId);
+  }
+
   @Get('me/completed-last-7-days')
   async getMyCompletedTasksInTheLast7Days(
     @CurrentUser() user: JwtUser,

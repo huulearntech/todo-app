@@ -21,10 +21,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, PlusIcon } from "lucide-react"
 
 import TaskItemListView from "./task-card"
-import { ShowCompletedToggle } from "./show-completed-toggle"
-import { useShowCompleted } from "@/hooks/use-show-completed"
 
-import type { CompletedOccurrenceResponseDto, TaskResponseDto as Task } from "@todo/shared"
+import type { TaskResponseDto as Task } from "@todo/shared"
 import { useProjectTasks } from "@/hooks/tasks/use-project-tasks"
 import { useSections } from "@/hooks/sections/use-sections"
 import { useMoveTasks } from "@/hooks/tasks/use-move-tasks"
@@ -82,7 +80,6 @@ interface TaskColumnProps extends Omit<
 > {
   projectId: string
   tasks: Task[]
-  completedOccurrences?: CompletedOccurrenceResponseDto[]
   isOverlay?: boolean
   onRename: (sectionId: string, newName: string) => void
   onDelete: (sectionId: string) => void
@@ -94,7 +91,6 @@ function TaskColumn({
   value,
   title,
   tasks,
-  completedOccurrences,
   isOverlay,
   onRename,
   onDelete,
@@ -174,9 +170,6 @@ function TaskColumn({
                 </button>
                 <Badge variant="outline" className="shrink-0">
                   {tasks.length}
-                  {completedOccurrences && completedOccurrences.length > 0 && (
-                    <span className="opacity-60 ml-1">+{completedOccurrences.length}</span>
-                  )}
                 </Badge>
               </div>
             )}
@@ -233,18 +226,6 @@ function TaskColumn({
                   isOverlay={isOverlay}
                 />
               ))}
-              {completedOccurrences && completedOccurrences.length > 0 && (
-                <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
-                  <span className="text-[11px] font-semibold text-muted-foreground/70 px-1 uppercase tracking-wider">
-                    Completed ({completedOccurrences.length})
-                  </span>
-                  {completedOccurrences.map((occ) => (
-                    <div key={occ.occurrenceId}>
-                      <TaskItemListView task={occ} occurrence={occ} />
-                    </div>
-                  ))}
-                </div>
-              )}
               <AddTaskFormTrigger sectionId={value} projectId={projectId} />
             </KanbanColumnContent>
           </CardContent>
@@ -286,12 +267,10 @@ function TaskColumn({
 
 function DndKanban({ projectId }: { projectId: string }) {
   const addSectionRef = useRef<AddSectionFormHandle>(null);
-  const [showCompleted, setShowCompleted] = useShowCompleted(`project:${projectId}`);
   const {
     pendingTasks,
-    completedOccurrences,
     isLoading: tasksLoading,
-  } = useProjectTasks(projectId, { includeCompleted: showCompleted });
+  } = useProjectTasks(projectId);
   const { data: sections, isLoading: sectionsLoading } = useSections(projectId);
   const isLoading = tasksLoading || sectionsLoading;
 
@@ -311,16 +290,6 @@ function DndKanban({ projectId }: { projectId: string }) {
 
     setColumns(acc);
   }, [sections, pendingTasks]);
-
-  const completedBySection = useMemo(() => {
-    const map: Record<string, CompletedOccurrenceResponseDto[]> = {};
-    if (showCompleted && completedOccurrences) {
-      for (const occ of completedOccurrences) {
-        (map[occ.sectionId] ??= []).push(occ);
-      }
-    }
-    return map;
-  }, [showCompleted, completedOccurrences]);
 
   const moveTasksMutation = useMoveTasks(projectId);
   const moveSectionMutation = useMoveSection(projectId);
@@ -342,12 +311,6 @@ function DndKanban({ projectId }: { projectId: string }) {
         <div className="text-xs text-muted-foreground font-medium">
           {pendingTasks.length} {pendingTasks.length === 1 ? "task" : "tasks"}
         </div>
-        <ShowCompletedToggle
-          id={`toggle-completed-${projectId}`}
-          checked={showCompleted}
-          onCheckedChange={setShowCompleted}
-          count={completedOccurrences.length}
-        />
       </div>
 
       <section className="flex-1 min-h-0 min-w-0 h-full w-full overflow-auto p-4 bg-secondary custom-kanban-scroll">
@@ -405,7 +368,6 @@ function DndKanban({ projectId }: { projectId: string }) {
                 value={sectionId}
                 title={sections?.find((s) => s.id === sectionId)?.name}
                 tasks={tasks}
-                completedOccurrences={completedBySection[sectionId]}
                 onRename={(id, name) => renameSectionMutation.mutate({ sectionId: id, name })}
                 onDelete={(id) => deleteSectionMutation.mutate(id)}
                 isRenaming={renameSectionMutation.isPending}

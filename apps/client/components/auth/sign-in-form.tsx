@@ -7,7 +7,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInSchema, type SignInDto } from "@todo/shared";
 import { useAuth } from "@/providers/AuthProvider";
-import { signInServerAction } from "@/lib/actions/auth.actions";
+import { signInServerAction, resendVerificationEmailAction } from "@/lib/actions/auth.actions";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -40,6 +40,8 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
   const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   const { handleSubmit, control } = useForm<SignInDto>({
     resolver: zodResolver(signInSchema),
@@ -49,12 +51,40 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
     },
   });
 
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    try {
+      setIsResending(true);
+      const res = await resendVerificationEmailAction(unverifiedEmail);
+      if (res.success) {
+        toast.add({
+          title: "Verification email sent",
+          description: res.message,
+          type: "success",
+        });
+      } else {
+        toast.add({
+          title: "Failed to resend",
+          description: res.message,
+          type: "error",
+        });
+      }
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const onSubmit = async (data: SignInDto) => {
     try {
       setIsLoading(true);
       const result = await signInServerAction(data);
 
       if (!result.success) {
+        if (result.error.toLowerCase().includes("verify your email")) {
+          setUnverifiedEmail(data.email);
+        } else {
+          setUnverifiedEmail(null);
+        }
         toast.add({
           title: "Error signing in",
           description: result.error,
@@ -62,6 +92,8 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
         });
         return;
       }
+
+      setUnverifiedEmail(null);
 
       // 1. Update AuthProvider user state
       setUser(result.user);
@@ -193,6 +225,24 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
           )}
         </Button>
       </form>
+
+      {unverifiedEmail && (
+        <div className="mt-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-700 dark:text-amber-300 flex flex-col gap-2">
+          <p className="font-medium leading-relaxed">
+            Your email has not been verified yet. Please check your inbox for the verification link before signing in.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isResending}
+            onClick={handleResendVerification}
+            className="self-start h-7 text-xs border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15"
+          >
+            {isResending ? "Sending..." : "Resend verification email"}
+          </Button>
+        </div>
+      )}
 
       <div className="pt-6 mt-6 border-t border-border/50 text-center">
         <p className="text-xs text-muted-foreground">

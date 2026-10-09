@@ -10,6 +10,7 @@ import {
 import { TaskService } from './task.service';
 import { Task } from '../entities/task.entity';
 import { TaskOccurrence } from '../entities/task-occurrence.entity';
+import { TaskReminder } from '../entities/task-reminder.entity';
 import { Section } from '@/src/modules/sections/section.entity';
 import {
   RecurrenceFrequency,
@@ -35,9 +36,16 @@ describe('TaskService', () => {
     save: jest.Mock;
     findOne: jest.Mock;
     remove: jest.Mock;
+    delete: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
-  let sectionRepository: { exists: jest.Mock };
+  let taskReminderRepository: {
+    create: jest.Mock;
+    save: jest.Mock;
+    find: jest.Mock;
+    delete: jest.Mock;
+  };
+  let sectionRepository: { exists: jest.Mock; findOne: jest.Mock };
   let userRepository: { findOne: jest.Mock };
   let mailerSchedulerService: {
     scheduleTaskReminder: jest.Mock;
@@ -62,13 +70,31 @@ describe('TaskService', () => {
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
       findOne: jest.fn(),
       remove: jest.fn(),
+      delete: jest.fn(),
       createQueryBuilder: jest.fn(),
+    };
+    taskReminderRepository = {
+      create: jest.fn().mockImplementation((dto) => dto),
+      save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      find: jest.fn().mockResolvedValue([]),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     sectionRepository = {
       exists: jest.fn(),
+      findOne: jest.fn().mockResolvedValue({
+        id: 'section-1',
+        project: {
+          id: 'project-1',
+          ownerId: '11111111-1111-1111-1111-111111111111',
+        },
+      }),
     };
     userRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
+      findOne: jest.fn().mockResolvedValue({
+        id: 'user-uuid-1',
+        email: 'user@example.com',
+        name: 'User',
+      }),
     };
     mailerSchedulerService = {
       scheduleTaskReminder: jest.fn().mockResolvedValue(undefined),
@@ -91,6 +117,10 @@ describe('TaskService', () => {
         {
           provide: getRepositoryToken(TaskOccurrence),
           useValue: taskOccurrenceRepository,
+        },
+        {
+          provide: getRepositoryToken(TaskReminder),
+          useValue: taskReminderRepository,
         },
         {
           provide: getRepositoryToken(Section),
@@ -135,6 +165,7 @@ describe('TaskService', () => {
         description: 'Task description',
         priority: TaskPriority.HIGH,
         labels: [],
+        reminders: [],
         timeRange: null,
       });
 
@@ -167,6 +198,7 @@ describe('TaskService', () => {
           sectionId,
           priority: TaskPriority.HIGH,
           labels: [],
+          reminders: [],
           timeRange: null,
         }),
       ).rejects.toThrow(NotFoundException);
@@ -184,6 +216,27 @@ describe('TaskService', () => {
           sectionId,
           priority: TaskPriority.HIGH,
           labels: [],
+          reminders: [],
+          timeRange: null,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when relative reminder is provided without timeRange', async () => {
+      await expect(
+        service.createTask(ownerId, {
+          title: 'Task with reminder but no date',
+          description: '',
+          sectionId,
+          priority: TaskPriority.HIGH,
+          labels: [],
+          reminders: [
+            {
+              type: 'relative',
+              minuteOffset: 30,
+              channel: 'email',
+            },
+          ],
           timeRange: null,
         }),
       ).rejects.toThrow(BadRequestException);
@@ -191,6 +244,30 @@ describe('TaskService', () => {
   });
 
   describe('updateTask', () => {
+    it('should throw BadRequestException when updating task to add relative reminder without timeRange or recurrence', async () => {
+      const existingTask = {
+        id: 'task-1',
+        title: 'Task without date',
+        sectionId: 'section-1',
+        timeRange: null,
+        recurrence: null,
+      };
+      taskRepository.findOne.mockResolvedValue(existingTask);
+      taskReminderRepository.find.mockResolvedValue([]);
+
+      await expect(
+        service.updateTask('task-1', {
+          reminders: [
+            {
+              type: 'relative',
+              minuteOffset: 15,
+              channel: 'email',
+            },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should return null if task does not exist', async () => {
       taskRepository.findOne.mockResolvedValue(null);
 
@@ -244,6 +321,7 @@ describe('TaskService', () => {
           },
           labels: true,
           recurrence: true,
+          reminders: true,
         },
       });
       expect(result).toEqual(populatedTask);
@@ -369,6 +447,16 @@ describe('TaskService', () => {
         name: 'User',
       };
 
+      taskReminderRepository.find.mockResolvedValueOnce([
+        {
+          id: 'reminder-1',
+          taskId,
+          type: 'relative',
+          minuteOffset: 15,
+          channel: 'email',
+        },
+      ]);
+
       dataSource.transaction.mockImplementation(
         (cb: (manager: any) => Promise<any>) => {
           const manager = {
@@ -392,15 +480,17 @@ describe('TaskService', () => {
       expect(mockTask.timeRange.start).toBe('2026-10-08T10:00:00.000Z');
       expect(
         mailerSchedulerService.scheduleRecurringTaskReminder,
-      ).toHaveBeenCalledWith({
-        taskId: mockTask.id,
-        userId: mockUser.id,
-        to: mockUser.email,
-        userName: mockUser.name,
-        taskTitle: mockTask.title,
-        rruleString: 'FREQ=DAILY',
-        reminderOffsetMinutes: 15,
-      });
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: mockTask.id,
+          userId: mockUser.id,
+          to: mockUser.email,
+          userName: mockUser.name,
+          taskTitle: mockTask.title,
+          rruleString: 'FREQ=DAILY',
+          reminderOffsetMinutes: 15,
+        }),
+      );
     });
 
     it('should complete recurring task when recurrence series has ended', async () => {
@@ -466,6 +556,16 @@ describe('TaskService', () => {
         name: 'User',
       };
 
+      taskReminderRepository.find.mockResolvedValueOnce([
+        {
+          id: 'reminder-1',
+          taskId,
+          type: 'relative',
+          minuteOffset: 15,
+          channel: 'email',
+        },
+      ]);
+
       dataSource.transaction.mockImplementation(
         (cb: (manager: any) => Promise<any>) => {
           const manager = {
@@ -513,6 +613,15 @@ describe('TaskService', () => {
 
       taskRepository.findOne.mockResolvedValue(mockTask);
       taskRepository.save.mockImplementation((t) => Promise.resolve(t));
+      taskReminderRepository.find.mockResolvedValue([
+        {
+          id: 'reminder-1',
+          taskId,
+          type: 'relative',
+          minuteOffset: 30,
+          channel: 'email',
+        },
+      ]);
       userRepository.findOne.mockResolvedValue({
         id: userId,
         email: 'test@example.com',
@@ -537,7 +646,10 @@ describe('TaskService', () => {
         id: taskId,
         title: 'One-off Task',
         completedAt: new Date('2026-10-08T10:00:00.000Z'),
-        timeRange: { start: '2026-10-08T10:00:00.000Z', end: '2026-10-08T11:00:00.000Z' },
+        timeRange: {
+          start: '2026-10-08T10:00:00.000Z',
+          end: '2026-10-08T11:00:00.000Z',
+        },
         section: { project: { ownerId: userId } },
         recurrence: null,
       };
@@ -551,19 +663,27 @@ describe('TaskService', () => {
         task: mockTask,
       };
 
-      dataSource.transaction.mockImplementation((cb: (manager: any) => Promise<any>) => {
-        const manager = {
-          findOne: jest.fn().mockImplementation((entity) => {
-            if (entity === TaskOccurrence) return Promise.resolve(mockOccurrence);
-            return Promise.resolve(mockTask);
-          }),
-          remove: jest.fn().mockResolvedValue(mockOccurrence),
-          save: jest.fn().mockImplementation((_cls, val) => Promise.resolve(val ?? _cls)),
-        };
-        return cb(manager);
-      });
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockImplementation((entity) => {
+              if (entity === TaskOccurrence)
+                return Promise.resolve(mockOccurrence);
+              return Promise.resolve(mockTask);
+            }),
+            remove: jest.fn().mockResolvedValue(mockOccurrence),
+            save: jest
+              .fn()
+              .mockImplementation((_cls, val) => Promise.resolve(val ?? _cls)),
+          };
+          return cb(manager);
+        },
+      );
 
-      const result = await service.uncompleteOccurrenceById(userId, occurrenceId);
+      const result = await service.uncompleteOccurrenceById(
+        userId,
+        occurrenceId,
+      );
 
       expect(result.completedAt).toBeNull();
     });
@@ -573,7 +693,10 @@ describe('TaskService', () => {
         id: taskId,
         title: 'Recurring Task',
         completedAt: null,
-        timeRange: { start: '2026-10-09T10:00:00.000Z', end: '2026-10-09T11:00:00.000Z' },
+        timeRange: {
+          start: '2026-10-09T10:00:00.000Z',
+          end: '2026-10-09T11:00:00.000Z',
+        },
         section: { project: { ownerId: userId } },
         recurrence: { rrule: { freq: 3 } },
       };
@@ -597,22 +720,30 @@ describe('TaskService', () => {
         completedAt: new Date('2026-10-08T10:05:00.000Z'),
       };
 
-      dataSource.transaction.mockImplementation((cb: (manager: any) => Promise<any>) => {
-        const manager = {
-          findOne: jest.fn().mockImplementation((entity, opts) => {
-            if (entity === TaskOccurrence && opts?.where?.id === occurrenceId) {
-              return Promise.resolve(olderOccurrence);
-            }
-            if (entity === TaskOccurrence && opts?.order?.completedAt === 'DESC') {
-              return Promise.resolve(latestOccurrence);
-            }
-            return Promise.resolve(mockTask);
-          }),
-          remove: jest.fn(),
-          save: jest.fn(),
-        };
-        return cb(manager);
-      });
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockImplementation((entity, opts) => {
+              if (
+                entity === TaskOccurrence &&
+                opts?.where?.id === occurrenceId
+              ) {
+                return Promise.resolve(olderOccurrence);
+              }
+              if (
+                entity === TaskOccurrence &&
+                opts?.order?.completedAt === 'DESC'
+              ) {
+                return Promise.resolve(latestOccurrence);
+              }
+              return Promise.resolve(mockTask);
+            }),
+            remove: jest.fn(),
+            save: jest.fn(),
+          };
+          return cb(manager);
+        },
+      );
 
       await expect(
         service.uncompleteOccurrenceById(userId, occurrenceId),
@@ -631,17 +762,64 @@ describe('TaskService', () => {
         task: mockTask,
       };
 
-      dataSource.transaction.mockImplementation((cb: (manager: any) => Promise<any>) => {
-        const manager = {
-          findOne: jest.fn().mockResolvedValue(mockOccurrence),
-        };
-        return cb(manager);
-      });
+      dataSource.transaction.mockImplementation(
+        (cb: (manager: any) => Promise<any>) => {
+          const manager = {
+            findOne: jest.fn().mockResolvedValue(mockOccurrence),
+          };
+          return cb(manager);
+        },
+      );
 
       await expect(
         service.uncompleteOccurrenceById(userId, occurrenceId),
       ).rejects.toThrow(ForbiddenException);
     });
   });
-});
 
+  describe('deleteOccurrenceById', () => {
+    const userId = 'user-uuid-1';
+    const occurrenceId = 'occ-uuid-1';
+
+    it('should delete occurrence when authorized', async () => {
+      const mockOccurrence: any = {
+        id: occurrenceId,
+        userId,
+        task: {
+          section: { project: { ownerId: userId } },
+        },
+      };
+
+      taskOccurrenceRepository.findOne.mockResolvedValue(mockOccurrence);
+      taskOccurrenceRepository.delete.mockResolvedValue({ affected: 1 });
+
+      const result = await service.deleteOccurrenceById(userId, occurrenceId);
+      expect(result).toBe(true);
+      expect(taskOccurrenceRepository.delete).toHaveBeenCalledWith(occurrenceId);
+    });
+
+    it('should throw NotFoundException if occurrence does not exist', async () => {
+      taskOccurrenceRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deleteOccurrenceById(userId, occurrenceId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user does not own occurrence or project', async () => {
+      const mockOccurrence: any = {
+        id: occurrenceId,
+        userId: 'other-user',
+        task: {
+          section: { project: { ownerId: 'other-user' } },
+        },
+      };
+
+      taskOccurrenceRepository.findOne.mockResolvedValue(mockOccurrence);
+
+      await expect(
+        service.deleteOccurrenceById(userId, occurrenceId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+});

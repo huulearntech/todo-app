@@ -26,6 +26,8 @@ import {
   syncPriorityToken,
   syncDateToken,
   syncLabelToken,
+  syncReminderToken,
+  DEFAULT_REMINDER_SUGGESTIONS,
 } from "@/lib/quick-task-parser";
 
 import {
@@ -52,6 +54,9 @@ import {
   type LabelItem,
 } from "./task-attribute-controls/labels-popover";
 import {
+  ReminderPopover,
+} from "./task-attribute-controls/reminder-popover";
+import {
   ProjectSectionPopover,
 } from "./task-attribute-controls/project-section-popover";
 import { HighlightedTaskInput } from "./highlighted-task-input";
@@ -68,7 +73,7 @@ import {
 import { cn } from "@/lib/utils";
 import { TaskPriority } from "@todo/shared";
 
-const EMPTY_PROJECTS: Array<{ id: string; name: string; colorHexCode?: string }> = [];
+const EMPTY_PROJECTS: Array<{ id: string; name: string; colorKey?: string }> = [];
 const EMPTY_SECTIONS: Array<{ id: string; name: string; projectId: string }> = [];
 const EMPTY_LABELS: LabelItem[] = [];
 
@@ -124,6 +129,9 @@ export function UnifiedTaskAddForm({
   >(undefined);
   const [manualDateDisplay, setManualDateDisplay] = useState<string | undefined>(undefined);
   const [manualLabels, setManualLabels] = useState<LabelItem[]>([]);
+  const [manualReminderOffset, setManualReminderOffset] = useState<
+    number | null | undefined
+  >(undefined);
 
   // Focus shortcut for inline variant
   useHotkey("Q", () => {
@@ -224,7 +232,7 @@ export function UnifiedTaskAddForm({
           id: p.id,
           name: p.name,
           kind: "project",
-          colorHexCode: p.colorHexCode,
+          colorKey: p.colorKey,
           isDefault: p.id === user?.defaultProjectId,
         }));
     }
@@ -251,7 +259,24 @@ export function UnifiedTaskAddForm({
           id: l.id,
           name: l.name,
           kind: "label",
-          colorHexCode: l.colorHexCode,
+          colorKey: l.colorKey,
+        }));
+    }
+
+    if (autocompleteCtx.kind === "reminder") {
+      return DEFAULT_REMINDER_SUGGESTIONS.filter(
+        (r) =>
+          !query ||
+          r.name.toLowerCase().includes(query.toLowerCase()) ||
+          r.token.toLowerCase().includes(query.toLowerCase())
+      )
+        .slice(0, 8)
+        .map((r) => ({
+          id: r.id,
+          name: r.name,
+          kind: "reminder" as const,
+          token: r.token,
+          minuteOffset: r.minuteOffset,
         }));
     }
 
@@ -297,10 +322,11 @@ export function UnifiedTaskAddForm({
 
   const handleSelectSuggestion = (item: SuggestionItemData) => {
     if (!autocompleteCtx) return;
+    const valueToInsert = item.token || item.name;
     const { text: nextText, caret: nextCaret } = applyAutocompleteSelection(
       rawText,
       autocompleteCtx,
-      item.name
+      valueToInsert
     );
     setRawText(nextText);
     pendingCaretRef.current = nextCaret;
@@ -430,6 +456,32 @@ export function UnifiedTaskAddForm({
     setRawText(nextText);
   };
 
+  const activeReminderOffset =
+    manualReminderOffset !== undefined
+      ? manualReminderOffset
+      : resolved.reminderMinutes !== undefined
+      ? resolved.reminderMinutes
+      : null;
+
+  const activeReminders = useMemo(() => {
+    if (activeReminderOffset !== null && activeReminderOffset !== undefined) {
+      return [
+        {
+          type: "relative" as const,
+          minuteOffset: activeReminderOffset,
+          channel: "email" as const,
+        },
+      ];
+    }
+    return [];
+  }, [activeReminderOffset]);
+
+  const handleReminderChange = (minuteOffset: number | null) => {
+    setManualReminderOffset(minuteOffset);
+    const nextText = syncReminderToken(rawText, minuteOffset);
+    setRawText(nextText);
+  };
+
   // Task creation mutation
   const createTaskMutation = useCreateTask({
     onSuccess: () => {
@@ -444,6 +496,7 @@ export function UnifiedTaskAddForm({
       setManualTimeRange(undefined);
       setManualDateDisplay(undefined);
       setManualLabels([]);
+      setManualReminderOffset(undefined);
       onSuccess?.();
     },
   });
@@ -472,6 +525,16 @@ export function UnifiedTaskAddForm({
       return;
     }
 
+    if (activeReminders.length > 0 && !activeTimeRange?.start) {
+      toast.add({
+        title: "Due date required for reminders",
+        description:
+          "Relative email reminders require a task due date or start time. Please add a date (e.g. {tomorrow 10am}) before submitting.",
+        type: "error",
+      });
+      return;
+    }
+
     let finalDescription = description.trim();
     if (resolved.description) {
       finalDescription = finalDescription
@@ -486,6 +549,7 @@ export function UnifiedTaskAddForm({
       sectionId: activeSectionId,
       timeRange: activeTimeRange,
       labels: activeLabels.map((l) => ({ id: l.id })),
+      reminders: activeReminders,
     });
   };
 
@@ -620,6 +684,7 @@ export function UnifiedTaskAddForm({
                 {autocompleteCtx?.kind === "project" && "No matching projects"}
                 {autocompleteCtx?.kind === "section" && "No matching sections"}
                 {autocompleteCtx?.kind === "label" && "No matching labels"}
+                {autocompleteCtx?.kind === "reminder" && "No matching reminders"}
               </AutocompleteEmpty>
             </AutocompleteContent>
           </Autocomplete>
@@ -663,7 +728,7 @@ export function UnifiedTaskAddForm({
         </div>
       )}
 
-      {/* 3. Action Chips Row (Due Date, Priority, Labels) */}
+      {/* 3. Action Chips Row (Due Date, Priority, Labels, Reminder) */}
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <DatePickerPopover
           value={activeTimeRange}
@@ -681,6 +746,12 @@ export function UnifiedTaskAddForm({
           selectedLabels={activeLabels}
           availableLabels={labels}
           onToggleLabel={handleToggleLabel}
+        />
+
+        <ReminderPopover
+          minuteOffset={activeReminderOffset}
+          onChange={handleReminderChange}
+          hasDueDate={Boolean(activeTimeRange?.start)}
         />
       </div>
 

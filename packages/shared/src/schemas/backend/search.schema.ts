@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { TaskPriority } from "../../enums/task-priority.enum.js";
+import { colorKeySchema } from "./color.schema.js";
 
 export const searchProjectResultSchema = z.object({
   id: z.string(),
   name: z.string(),
-  colorHexCode: z.string(),
+  colorKey: colorKeySchema.optional(),
   score: z.number().optional(),
 });
 
@@ -13,7 +14,7 @@ export type SearchProjectResultDto = z.infer<typeof searchProjectResultSchema>;
 export const searchLabelResultSchema = z.object({
   id: z.string(),
   name: z.string(),
-  colorHexCode: z.string(),
+  colorKey: colorKeySchema.optional(),
   score: z.number().optional(),
 });
 
@@ -28,7 +29,7 @@ export const searchTaskResultSchema = z.object({
   sectionName: z.string().optional(),
   projectId: z.string().optional(),
   projectName: z.string().optional(),
-  projectColorHexCode: z.string().optional(),
+  projectColorKey: colorKeySchema.optional(),
   score: z.number().optional(),
 });
 

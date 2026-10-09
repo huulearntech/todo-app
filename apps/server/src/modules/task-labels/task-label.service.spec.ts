@@ -15,7 +15,7 @@ describe('TaskLabelService', () => {
   };
   let colorService: {
     ensureDefaultColors: jest.Mock;
-    getColorByHexCode: jest.Mock;
+    getColorByKey: jest.Mock;
   };
 
   const ownerId = '11111111-1111-1111-1111-111111111111';
@@ -32,11 +32,13 @@ describe('TaskLabelService', () => {
     };
 
     colorService = {
-      ensureDefaultColors: jest.fn().mockResolvedValue([]),
-      getColorByHexCode: jest.fn().mockResolvedValue({
+      ensureDefaultColors: jest.fn().mockResolvedValue([
+        { ownerId, key: 'slate', name: 'Slate' },
+      ]),
+      getColorByKey: jest.fn().mockResolvedValue({
         ownerId,
-        hexCode: '#3B82F6',
-        name: 'Blue',
+        key: 'sky',
+        name: 'Sky Blue',
       }),
     };
 
@@ -58,20 +60,20 @@ describe('TaskLabelService', () => {
   });
 
   describe('createTaskLabel', () => {
-    it('should create label with default color #E0E0E0 and call ensureDefaultColors', async () => {
+    it('should create label with default color slate and call ensureDefaultColors', async () => {
       const createdLabel = {
         id: 'label-1',
         ownerId,
         name: 'Work',
         description: 'Work tasks',
-        colorHexCode: '#E0E0E0',
+        colorKey: 'slate',
       };
       labelRepository.findOne.mockResolvedValue(createdLabel);
 
       const result = await service.createTaskLabel(ownerId, {
         name: 'Work',
         description: 'Work tasks',
-        colorHexCode: '#E0E0E0',
+        colorKey: 'slate',
       });
 
       expect(colorService.ensureDefaultColors).toHaveBeenCalledWith(ownerId);
@@ -79,7 +81,8 @@ describe('TaskLabelService', () => {
         ownerId,
         name: 'Work',
         description: 'Work tasks',
-        colorHexCode: '#E0E0E0',
+        colorKey: 'slate',
+        color: { ownerId, key: 'slate', name: 'Slate' },
       });
       expect(result).toEqual(createdLabel);
     });
@@ -87,32 +90,32 @@ describe('TaskLabelService', () => {
     it('should create label with custom color after validating via colorService', async () => {
       const targetColor = {
         ownerId,
-        hexCode: '#3B82F6',
-        name: 'Blue',
+        key: 'sky',
+        name: 'Sky Blue',
       };
       const createdLabel = {
         id: 'label-2',
         ownerId,
         name: 'Urgent',
-        colorHexCode: '#3B82F6',
+        colorKey: 'sky',
         color: targetColor,
       };
       labelRepository.findOne.mockResolvedValue(createdLabel);
 
       const result = await service.createTaskLabel(ownerId, {
         name: 'Urgent',
-        colorHexCode: '#3b82f6',
+        colorKey: 'sky',
       });
 
-      expect(colorService.getColorByHexCode).toHaveBeenCalledWith(
+      expect(colorService.getColorByKey).toHaveBeenCalledWith(
         ownerId,
-        '#3B82F6',
+        'sky',
       );
       expect(labelRepository.create).toHaveBeenCalledWith({
         ownerId,
         name: 'Urgent',
         description: undefined,
-        colorHexCode: '#3B82F6',
+        colorKey: 'sky',
         color: targetColor,
       });
       expect(result).toEqual(createdLabel);
@@ -120,50 +123,50 @@ describe('TaskLabelService', () => {
   });
 
   describe('updateTaskLabel', () => {
-    it('should update label colorHexCode and color relation entity', async () => {
+    it('should update label colorKey and color relation entity', async () => {
       const oldColor = {
         ownerId,
-        hexCode: '#E0E0E0',
-        name: 'Default Gray',
+        key: 'slate',
+        name: 'Slate',
       };
       const newColor = {
         ownerId,
-        hexCode: '#3B82F6',
-        name: 'Blue',
+        key: 'sky',
+        name: 'Sky Blue',
       };
       const existingLabel = {
         id: 'label-1',
         ownerId,
         name: 'Work',
-        colorHexCode: '#E0E0E0',
+        colorKey: 'slate',
         color: oldColor,
       };
       labelRepository.findOne
         .mockResolvedValueOnce(existingLabel)
         .mockResolvedValueOnce({
           ...existingLabel,
-          colorHexCode: '#3B82F6',
+          colorKey: 'sky',
           color: newColor,
         });
 
       const result = await service.updateTaskLabel(
         'label-1',
-        { colorHexCode: '#3b82f6' },
+        { colorKey: 'sky' },
         ownerId,
       );
 
-      expect(colorService.getColorByHexCode).toHaveBeenCalledWith(
+      expect(colorService.getColorByKey).toHaveBeenCalledWith(
         ownerId,
-        '#3B82F6',
+        'sky',
       );
       expect(labelRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'label-1',
-          colorHexCode: '#3B82F6',
+          colorKey: 'sky',
           color: newColor,
         }),
       );
-      expect(result?.colorHexCode).toBe('#3B82F6');
+      expect(result?.colorKey).toBe('sky');
     });
   });
 
@@ -173,8 +176,8 @@ describe('TaskLabelService', () => {
         {
           id: 'label-1',
           name: 'Work',
-          colorHexCode: '#E0E0E0',
-          color: { hexCode: '#E0E0E0', name: 'Grey' },
+          colorKey: 'slate',
+          color: { key: 'slate', name: 'Slate' },
         },
       ];
       labelRepository.find.mockResolvedValue(labels);

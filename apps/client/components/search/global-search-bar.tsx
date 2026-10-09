@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { getColorConfig } from "@/lib/color-palette";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import {
@@ -255,11 +256,7 @@ export default function GlobalSearchBar() {
                         {task.projectName && (
                           <div className="flex items-center gap-1.5 shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground bg-muted/60">
                             <span
-                              className="size-2 rounded-full shrink-0"
-                              style={{
-                                backgroundColor:
-                                  task.projectColorHexCode || "#808080",
-                              }}
+                              className={`size-2 rounded-full shrink-0 ${getColorConfig(task.projectColorKey).dotClass}`}
                             />
                             <span className="max-w-[100px] truncate">
                               {task.projectName}
@@ -284,29 +281,29 @@ export default function GlobalSearchBar() {
                       </span>
                     </AutocompleteGroupLabel>
 
-                    {projects.map((project) => (
-                      <AutocompleteItem
-                        key={`project-${project.id}`}
-                        value={project}
-                        onClick={() => handleSelectItem(project)}
-                        className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <HashIcon
-                            className="size-4 shrink-0"
-                            style={{
-                              color: project.colorHexCode || "#808080",
-                            }}
-                          />
-                          <span className="truncate text-sm font-medium">
-                            {project.name}
+                    {projects.map((project) => {
+                      const projectConfig = getColorConfig(project.colorKey);
+                      return (
+                        <AutocompleteItem
+                          key={`project-${project.id}`}
+                          value={project}
+                          onClick={() => handleSelectItem(project)}
+                          className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <HashIcon
+                              className={`size-4 shrink-0 ${projectConfig.badgeTextClass}`}
+                            />
+                            <span className="truncate text-sm font-medium">
+                              {project.name}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-muted-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Project
                           </span>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                          Project
-                        </span>
-                      </AutocompleteItem>
-                    ))}
+                        </AutocompleteItem>
+                      );
+                    })}
                   </AutocompleteGroup>
                 </>
               )}
@@ -325,29 +322,29 @@ export default function GlobalSearchBar() {
                       </span>
                     </AutocompleteGroupLabel>
 
-                    {labels.map((label) => (
-                      <AutocompleteItem
-                        key={`label-${label.id}`}
-                        value={label}
-                        onClick={() => handleSelectItem(label)}
-                        className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <TagIcon
-                            className="size-3.5 shrink-0"
-                            style={{
-                              color: label.colorHexCode || "#808080",
-                            }}
-                          />
-                          <span className="truncate text-sm font-medium">
-                            {label.name}
+                    {labels.map((label) => {
+                      const labelConfig = getColorConfig(label.colorKey);
+                      return (
+                        <AutocompleteItem
+                          key={`label-${label.id}`}
+                          value={label}
+                          onClick={() => handleSelectItem(label)}
+                          className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <TagIcon
+                              className={`size-3.5 shrink-0 ${labelConfig.badgeTextClass}`}
+                            />
+                            <span className="truncate text-sm font-medium">
+                              {label.name}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-muted-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Label
                           </span>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                          Label
-                        </span>
-                      </AutocompleteItem>
-                    ))}
+                        </AutocompleteItem>
+                      );
+                    })}
                   </AutocompleteGroup>
                 </>
               )}

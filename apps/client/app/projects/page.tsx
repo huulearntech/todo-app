@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useProjects } from "@/hooks/projects/use-projects";
 import { useAuth } from "@/providers/AuthProvider";
+import { getColorConfig } from "@/lib/color-palette";
 import Header from "@/components/header";
 import AddProjectDialog from "./add-project-form";
 
@@ -174,16 +175,16 @@ export default function ProjectsPage() {
                     className="group relative flex items-center justify-between p-3.5 sm:p-4 rounded-xl border border-border/70 bg-card hover:bg-accent/40 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all duration-150 select-none"
                   >
                     <div className="flex items-center gap-3.5 min-w-0 pr-4">
-                      <div
-                        className="flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border"
-                        style={{
-                          backgroundColor: `${project.colorHexCode || "#E0E0E0"}20`,
-                          borderColor: `${project.colorHexCode || "#E0E0E0"}40`,
-                          color: project.colorHexCode || "#E0E0E0",
-                        }}
-                      >
-                        <HashIcon className="size-4.5" />
-                      </div>
+                      {(() => {
+                        const config = getColorConfig(project.colorKey);
+                        return (
+                          <div
+                            className={`flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border ${config.badgeBgClass} ${config.badgeBorderClass} ${config.badgeTextClass}`}
+                          >
+                            <HashIcon className="size-4.5" />
+                          </div>
+                        );
+                      })()}
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors truncate">

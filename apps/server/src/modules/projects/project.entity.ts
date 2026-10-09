@@ -38,11 +38,11 @@ export class Project {
 
   @Column({
     type: 'varchar',
-    length: 7,
-    name: 'color_hex_code',
-    default: '#E0E0E0',
+    length: 50,
+    name: 'color_key',
+    default: 'slate',
   })
-  colorHexCode!: string;
+  colorKey!: string;
 
   @ManyToOne(() => User, (user) => user.projects, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
@@ -54,7 +54,7 @@ export class Project {
   })
   @JoinColumn([
     { name: 'owner_id', referencedColumnName: 'ownerId' },
-    { name: 'color_hex_code', referencedColumnName: 'hexCode' },
+    { name: 'color_key', referencedColumnName: 'key' },
   ])
   color!: Color;
 

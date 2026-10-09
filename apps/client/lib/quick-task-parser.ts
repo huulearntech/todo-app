@@ -1,6 +1,7 @@
 import * as chrono from "chrono-node";
 import moo from "moo";
-import { TaskPriority } from "@todo/shared";
+import { TaskPriority, type ReminderDto } from "@todo/shared";
+import { getColorConfig } from "@/lib/color-palette";
 
 export interface ParsedRawQuickTask {
   title: string;
@@ -14,12 +15,13 @@ export interface ParsedRawQuickTask {
   description: string;
   assignee?: string;
   reminder?: string;
+  reminderMinutes?: number;
 }
 
 export interface QuickTaskEntityContext {
-  projects: Array<{ id: string; name: string; colorHexCode?: string }>;
+  projects: Array<{ id: string; name: string; colorKey?: string }>;
   sections: Array<{ id: string; name: string; projectId: string }>;
-  labels: Array<{ id: string; name: string; colorHexCode?: string }>;
+  labels: Array<{ id: string; name: string; colorKey?: string }>;
   defaultProjectId?: string;
   defaultSectionId?: string;
 }
@@ -33,17 +35,19 @@ export interface ResolvedQuickTask {
   projectColor?: string;
   sectionId?: string;
   sectionName?: string;
-  labels: Array<{ id: string; name: string; colorHexCode?: string }>;
+  labels: Array<{ id: string; name: string; colorKey?: string }>;
   timeRange: { start: string; end: string } | null;
   dateDisplayText?: string;
   assignee?: string;
   reminder?: string;
+  reminderMinutes?: number;
+  reminders?: ReminderDto[];
 }
 
 export interface ParserOptions {
-  projects?: Array<{ id: string; name: string; colorHexCode?: string }>;
+  projects?: Array<{ id: string; name: string; colorKey?: string }>;
   sections?: Array<{ id: string; name: string; projectId: string }>;
-  labels?: Array<{ id: string; name: string; colorHexCode?: string }>;
+  labels?: Array<{ id: string; name: string; colorKey?: string }>;
 }
 
 const escapeRegex = (s: string) =>
@@ -51,6 +55,49 @@ const escapeRegex = (s: string) =>
 
 export const normalizeName = (s: string) =>
   s.replace(/[\s\-_]/g, "").toLowerCase();
+
+/**
+ * Parses relative minute offset from a string like "30m", "1h", "1d", "0m",
+ * or natural language phrases like "at time of task".
+ */
+export function parseReminderOffset(val: string): number | null {
+  if (!val) return null;
+  const clean = val
+    .replace(/^!/, "")
+    .replace(/["'\[\]]/g, "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    clean === "0" ||
+    clean === "0m" ||
+    clean === "at time of task" ||
+    clean === "on time" ||
+    clean === "at start"
+  ) {
+    return 0;
+  }
+
+  const match = clean.match(
+    /^(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)?$/i
+  );
+  if (!match) return null;
+
+  const num = parseInt(match[1], 10);
+  if (isNaN(num)) return null;
+
+  const unit = match[2]?.toLowerCase();
+  if (!unit || unit.startsWith("m")) {
+    return num;
+  }
+  if (unit.startsWith("h")) {
+    return num * 60;
+  }
+  if (unit.startsWith("d")) {
+    return num * 1440;
+  }
+  return num;
+}
 
 // Moo lexer rules for inline syntax shortcuts
 const createLexer = () =>
@@ -94,6 +141,10 @@ const createLexer = () =>
     assignee: {
       match: /\+[^\s+]+/,
       value: (s) => s.slice(1),
+    },
+    quoted_reminder: {
+      match: /!(?:\"[^\"]+\"|\[[^\]]+\])/,
+      value: (s) => s.slice(2, -1),
     },
     reminder: {
       match: /![^\s!]+/,
@@ -316,7 +367,27 @@ export function parseQuickTaskInput(
     textToParse = textToParse.slice(0, descIndex).trim();
   }
 
-  // 2. Extract deadline {date} or natural language date via chrono-node
+  // 2. Extract inline reminder (!30m, !1h, !["30 minutes before"], etc.) BEFORE date parsing
+  // so Chrono's natural language parser never mistakes "!30m" for a relative timestamp ("30 minutes from now").
+  let preReminder: string | undefined;
+  let preReminderMinutes: number | undefined;
+
+  const reminderRegex =
+    /(?:^|\s)(!(?:\"([^\"]+)\"|\[([^\]]+)\]|[^\s\/#%@{}+!]+))(?=\s|$)/g;
+  const foundReminders = [...textToParse.matchAll(reminderRegex)];
+  if (foundReminders.length > 0) {
+    const lastR = foundReminders[foundReminders.length - 1];
+    const rawVal = (lastR[2] || lastR[3] || lastR[1].slice(1)).trim();
+    preReminder = rawVal;
+    const offset = parseReminderOffset(rawVal);
+    if (offset !== null) {
+      preReminderMinutes = offset;
+    }
+    // Remove all reminder tokens from textToParse so Chrono doesn't see them
+    textToParse = textToParse.replace(reminderRegex, " ").trim();
+  }
+
+  // 3. Extract deadline {date} or natural language date via chrono-node
   let deadlineString: string | undefined;
   let parsedDate: Date | undefined;
   let dateText: string | undefined;
@@ -360,7 +431,7 @@ export function parseQuickTaskInput(
     }
   }
 
-  // 3. Extract multi-word project & section names (quoted or entity-matched)
+  // 4. Extract multi-word project & section names (quoted or entity-matched)
   const {
     text: textAfterProjectSection,
     projectName: preProjectName,
@@ -368,12 +439,12 @@ export function parseQuickTaskInput(
   } = extractMultiWordProjectAndSection(textToParse, options);
   textToParse = textAfterProjectSection;
 
-  // 4. Extract multi-word label names (quoted or entity-matched)
+  // 5. Extract multi-word label names (quoted or entity-matched)
   const { text: textAfterLabels, labelNames: preLabelNames } =
     extractMultiWordLabels(textToParse, options);
   textToParse = textAfterLabels;
 
-  // 5. Tokenize remaining text with moo
+  // 6. Tokenize remaining text with moo
   const lexer = createLexer();
   lexer.reset(textToParse);
 
@@ -383,7 +454,8 @@ export function parseQuickTaskInput(
   let sectionName = preSectionName;
   let priority: TaskPriority | undefined;
   let assignee: string | undefined;
-  let reminder: string | undefined;
+  let reminder: string | undefined = preReminder;
+  let reminderMinutes: number | undefined = preReminderMinutes;
 
   for (const token of lexer) {
     switch (token.type) {
@@ -439,9 +511,15 @@ export function parseQuickTaskInput(
       case "assignee":
         assignee = token.value;
         break;
-      case "reminder":
+      case "quoted_reminder":
+      case "reminder": {
         reminder = token.value;
+        const offset = parseReminderOffset(token.value);
+        if (offset !== null) {
+          reminderMinutes = offset;
+        }
         break;
+      }
       case "description":
         if (!inlineDescription) {
           inlineDescription = token.value;
@@ -478,6 +556,7 @@ export function parseQuickTaskInput(
     description: inlineDescription || "",
     assignee,
     reminder,
+    reminderMinutes,
   };
 }
 
@@ -511,7 +590,7 @@ export function resolveQuickTask(
 
   const projectId = resolvedProject?.id || defaultProjectId;
   const projectName = resolvedProject?.name;
-  const projectColor = resolvedProject?.colorHexCode;
+  const projectColor = resolvedProject?.colorKey;
 
   // 2. Resolve Section (belongs to resolved project)
   const availableSections = projectId
@@ -546,7 +625,7 @@ export function resolveQuickTask(
   const resolvedLabels: Array<{
     id: string;
     name: string;
-    colorHexCode?: string;
+    colorKey?: string;
   }> = [];
   for (const name of parsed.labelNames) {
     const match =
@@ -556,7 +635,7 @@ export function resolveQuickTask(
       resolvedLabels.push({
         id: match.id,
         name: match.name,
-        colorHexCode: match.colorHexCode,
+        colorKey: match.colorKey,
       });
     }
   }
@@ -583,7 +662,7 @@ export function resolveQuickTask(
   if (parsed.assignee) {
     notes.push(`[Assignee: ${parsed.assignee}]`);
   }
-  if (parsed.reminder) {
+  if (parsed.reminder && parsed.reminderMinutes === undefined) {
     notes.push(`[Reminder: ${parsed.reminder}]`);
   }
   if (notes.length > 0) {
@@ -592,6 +671,17 @@ export function resolveQuickTask(
       ? `${finalDescription}\n\n${extra}`
       : extra;
   }
+
+  const reminders =
+    parsed.reminderMinutes !== undefined
+      ? [
+          {
+            type: "relative" as const,
+            minuteOffset: parsed.reminderMinutes,
+            channel: "email" as const,
+          },
+        ]
+      : [];
 
   return {
     title: parsed.title,
@@ -607,14 +697,16 @@ export function resolveQuickTask(
     dateDisplayText,
     assignee: parsed.assignee,
     reminder: parsed.reminder,
+    reminderMinutes: parsed.reminderMinutes,
+    reminders,
   };
 }
 
-export type AutocompleteKind = "project" | "section" | "label";
+export type AutocompleteKind = "project" | "section" | "label" | "reminder";
 
 export interface AutocompleteContext {
   kind: AutocompleteKind;
-  trigger: "#" | "/" | "%" | "@";
+  trigger: "#" | "/" | "%" | "@" | "!";
   query: string;
   start: number;
   end: number;
@@ -670,12 +762,12 @@ export function getAutocompleteContext(
     };
   }
 
-  // 4. Standalone triggers: # (project), / (section), % or @ (label)
-  const standaloneRegex = /(?:^|\s)([#%@/])([^#%@{}\n]*)$/;
+  // 4. Standalone triggers: # (project), / (section), % or @ (label), ! (reminder)
+  const standaloneRegex = /(?:^|\s)([#%@/!])([^#%@/!{}\n]*)$/;
   const match = sub.match(standaloneRegex);
   if (!match) return null;
 
-  const trigger = match[1] as "#" | "/" | "%" | "@";
+  const trigger = match[1] as "#" | "/" | "%" | "@" | "!";
   const query = match[2] || "";
   const triggerIndexInMatch = match[0].lastIndexOf(trigger);
   const start = sub.length - match[0].length + triggerIndexInMatch;
@@ -685,6 +777,8 @@ export function getAutocompleteContext(
     kind = "project";
   } else if (trigger === "/") {
     kind = "section";
+  } else if (trigger === "!") {
+    kind = "reminder";
   } else {
     kind = "label";
   }
@@ -696,6 +790,53 @@ export function getAutocompleteContext(
     start,
     end: caret,
   };
+}
+
+export interface ReminderSuggestion {
+  id: string;
+  name: string;
+  minuteOffset: number;
+  token: string;
+}
+
+export const DEFAULT_REMINDER_SUGGESTIONS: ReminderSuggestion[] = [
+  { id: "0m", name: "At time of task", minuteOffset: 0, token: "0m" },
+  { id: "10m", name: "10 minutes before", minuteOffset: 10, token: "10m" },
+  { id: "15m", name: "15 minutes before", minuteOffset: 15, token: "15m" },
+  { id: "30m", name: "30 minutes before", minuteOffset: 30, token: "30m" },
+  { id: "1h", name: "1 hour before", minuteOffset: 60, token: "1h" },
+  { id: "2h", name: "2 hours before", minuteOffset: 120, token: "2h" },
+  { id: "1d", name: "1 day before", minuteOffset: 1440, token: "1d" },
+];
+
+/**
+ * Replaces any existing reminder token with the newly selected minute offset,
+ * or removes it if minuteOffset is null.
+ */
+export function syncReminderToken(
+  text: string,
+  minuteOffset: number | null
+): string {
+  const reminderRegex =
+    /(?:^|\s)!([^\s!]+|"[^"]*"|'[^']*'|\[[^\]]*\])(?=\s|$)/g;
+
+  if (minuteOffset === null) {
+    return text.replace(reminderRegex, " ").replace(/\s+/g, " ").trim();
+  }
+
+  let label = `${minuteOffset}m`;
+  if (minuteOffset === 0) label = "0m";
+  else if (minuteOffset % 1440 === 0) label = `${minuteOffset / 1440}d`;
+  else if (minuteOffset % 60 === 0) label = `${minuteOffset / 60}h`;
+
+  const newToken = `!${label}`;
+  if (reminderRegex.test(text)) {
+    return text
+      .replace(reminderRegex, ` ${newToken}`)
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  return `${text.trim()} ${newToken}`.trim();
 }
 
 /**
@@ -867,7 +1008,15 @@ export function syncLabelToken(
 
 export interface HighlightToken {
   text: string;
-  type: "text" | "project" | "section" | "label" | "priority" | "date" | "description";
+  type:
+    | "text"
+    | "project"
+    | "section"
+    | "label"
+    | "priority"
+    | "date"
+    | "reminder"
+    | "description";
   color?: string;
   backgroundColor?: string;
   borderColor?: string;
@@ -877,7 +1026,14 @@ export interface HighlightToken {
 interface MatchInterval {
   start: number;
   end: number;
-  type: "project" | "section" | "label" | "priority" | "date" | "description";
+  type:
+    | "project"
+    | "section"
+    | "label"
+    | "priority"
+    | "date"
+    | "reminder"
+    | "description";
   raw: string;
 }
 
@@ -1027,6 +1183,20 @@ export function tokenizeQuickTaskForHighlight(
     });
   }
 
+  // 8. Generic or Quoted Reminder tokens (!...)
+  const reminderRegex =
+    /(?:^|\s)(!(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/#%@{}+!]+))(?=\s|$)/g;
+  while ((match = reminderRegex.exec(searchableText)) !== null) {
+    const rawToken = match[1];
+    const tokenIndex = match.index + match[0].indexOf(rawToken);
+    intervals.push({
+      start: tokenIndex,
+      end: tokenIndex + rawToken.length,
+      type: "reminder",
+      raw: rawToken,
+    });
+  }
+
   // Sort intervals by start index
   intervals.sort((a, b) => a.start - b.start);
 
@@ -1045,6 +1215,7 @@ export function tokenizeQuickTaskForHighlight(
   let lastSectionItem: MatchInterval | undefined;
   let lastPriorityItem: MatchInterval | undefined;
   let lastDateItem: MatchInterval | undefined;
+  let lastReminderItem: MatchInterval | undefined;
 
   for (const item of nonOverlapping) {
     if (item.type === "project") {
@@ -1055,6 +1226,8 @@ export function tokenizeQuickTaskForHighlight(
       lastPriorityItem = item;
     } else if (item.type === "date") {
       lastDateItem = item;
+    } else if (item.type === "reminder") {
+      lastReminderItem = item;
     }
   }
 
@@ -1080,6 +1253,8 @@ export function tokenizeQuickTaskForHighlight(
       isOverridden = item !== lastPriorityItem;
     } else if (item.type === "date") {
       isOverridden = item !== lastDateItem;
+    } else if (item.type === "reminder") {
+      isOverridden = item !== lastReminderItem;
     }
 
     let color: string | undefined;
@@ -1099,7 +1274,7 @@ export function tokenizeQuickTaskForHighlight(
       const matchedProject = options?.projects?.find(
         (p) => normalizeName(p.name) === normalizeName(cleanProjectName)
       );
-      const projColor = matchedProject?.colorHexCode || "#6366f1";
+      const projColor = getColorConfig(matchedProject?.colorKey).hex;
       color = projColor;
       backgroundColor = hexToRgba(projColor, 0.12);
       borderColor = hexToRgba(projColor, 0.3);
@@ -1111,12 +1286,13 @@ export function tokenizeQuickTaskForHighlight(
       const matchedLabel = options?.labels?.find(
         (l) => normalizeName(l.name) === normalizeName(cleanLabelName)
       );
-      if (matchedLabel?.colorHexCode) {
-        color = matchedLabel.colorHexCode;
-        backgroundColor = hexToRgba(matchedLabel.colorHexCode, 0.12);
-        borderColor = hexToRgba(matchedLabel.colorHexCode, 0.25);
+      if (matchedLabel?.colorKey) {
+        const labelColorHex = getColorConfig(matchedLabel.colorKey).hex;
+        color = labelColorHex;
+        backgroundColor = hexToRgba(labelColorHex, 0.12);
+        borderColor = hexToRgba(labelColorHex, 0.25);
       } else {
-        // Label does not have colorHexCode, do not show competing color
+        // Label does not have colorKey, do not show competing color
         color = "var(--muted-foreground)";
         backgroundColor = "rgba(128, 128, 128, 0.08)";
         borderColor = "transparent";
@@ -1144,6 +1320,10 @@ export function tokenizeQuickTaskForHighlight(
       color = "#8b5cf6";
       backgroundColor = "rgba(139, 92, 246, 0.14)";
       borderColor = "rgba(139, 92, 246, 0.35)";
+    } else if (item.type === "reminder") {
+      color = "#f59e0b";
+      backgroundColor = "rgba(245, 158, 11, 0.15)";
+      borderColor = "rgba(245, 158, 11, 0.35)";
     } else if (item.type === "description") {
       color = "var(--muted-foreground)";
     }

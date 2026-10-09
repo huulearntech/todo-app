@@ -67,6 +67,7 @@ const createTaskSchemaDefaultValues: CreateTaskInput = {
   priority: TaskPriority.HIGH,
   sectionId: "",
   labels: [],
+  reminders: [],
 };
 
 const updateTaskSchema = createTaskSchema;

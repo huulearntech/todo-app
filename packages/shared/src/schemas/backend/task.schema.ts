@@ -3,6 +3,26 @@ import { TaskPriority } from "../../enums/task-priority.enum.js";
 import { cursorPaginationSchema } from "./cursor-pagination.schema.js";
 import { rruleSchema } from "./rrule.schema.js";
 
+export const reminderSchema = z.object({
+  id: z.uuid().optional(),
+  type: z.enum(["relative", "absolute"]),
+  minuteOffset: z.number().int().min(0).max(43200).nullable(),
+  remindAt: z.iso.datetime().nullable().optional(),
+  channel: z.enum(["email"]),
+});
+
+export type ReminderDto = z.infer<typeof reminderSchema>;
+
+export const REMINDER_PRESETS = [
+  { label: "At time of task", minutes: 0 },
+  { label: "10 minutes before", minutes: 10 },
+  { label: "15 minutes before", minutes: 15 },
+  { label: "30 minutes before", minutes: 30 },
+  { label: "1 hour before", minutes: 60 },
+  { label: "2 hours before", minutes: 120 },
+  { label: "1 day before", minutes: 1440 },
+] as const;
+
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string(),
@@ -27,6 +47,7 @@ export const createTaskSchema = z.object({
   labels: z.object({
     id: z.uuid()
   }).array(),
+  reminders: reminderSchema.array(),
 });
 
 export type CreateTaskDto = z.infer<typeof createTaskSchema>;
@@ -81,6 +102,9 @@ export const taskResponseSchema = z.object({
   }).array(),
   completedAt: z.iso.datetime().nullable(),
   recurrence: rruleSchema.nullable(),
+  reminders: reminderSchema.extend({
+    id: z.uuid(),
+  }).array().default([]),
 });
 
 export type TaskResponseDto = z.infer<typeof taskResponseSchema>;

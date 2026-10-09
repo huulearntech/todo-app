@@ -6,12 +6,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSections } from "@/hooks/sections/use-sections";
+import { getColorConfig } from "@/lib/color-palette";
 import { cn } from "@/lib/utils";
 
 export interface ProjectSectionPopoverProps {
   currentProjectId?: string;
   currentSectionId?: string;
-  projects: Array<{ id: string; name: string; colorHexCode?: string }>;
+  projects: Array<{ id: string; name: string; colorKey?: string }>;
   onSelect: (projectId: string, sectionId?: string) => void;
   className?: string;
 }
@@ -82,7 +83,8 @@ export function ProjectSectionPopover({
     return `#${proj.name}`;
   }, [projects, currentProjectId, activeSection]);
 
-  const currentColor = projects.find((p) => p.id === currentProjectId)?.colorHexCode;
+  const currentProject = projects.find((p) => p.id === currentProjectId);
+  const currentColorConfig = currentProject?.colorKey ? getColorConfig(currentProject.colorKey) : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -97,10 +99,9 @@ export function ProjectSectionPopover({
               className
             )}
           >
-            {currentColor ? (
+            {currentColorConfig ? (
               <span
-                className="size-2 rounded-full shrink-0"
-                style={{ backgroundColor: currentColor }}
+                className={`size-2 rounded-full shrink-0 ${currentColorConfig.dotClass}`}
               />
             ) : (
               <FolderIcon className="size-3.5 text-muted-foreground shrink-0" />
@@ -136,6 +137,7 @@ export function ProjectSectionPopover({
             </span>
             {filteredProjects.map((p) => {
               const isSelected = p.id === currentProjectId;
+              const pConfig = getColorConfig(p.colorKey);
               return (
                 <button
                   type="button"
@@ -153,8 +155,7 @@ export function ProjectSectionPopover({
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: p.colorHexCode || "#888888" }}
+                      className={`size-2 rounded-full shrink-0 ${pConfig.dotClass}`}
                     />
                     <span className="truncate">#{p.name}</span>
                   </div>

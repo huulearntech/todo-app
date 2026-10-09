@@ -71,7 +71,8 @@ export async function signInServerAction(
     };
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/sign-in`, {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/sign-in`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -116,8 +117,49 @@ export async function signInServerAction(
     }
   }
 
-  return {
-    success: true,
-    user,
-  };
+    return {
+      success: true,
+      user,
+    };
+  } catch {
+    return {
+      success: false,
+      error: "An unexpected error occurred. Please try again.",
+    };
+  }
+}
+
+export async function resendVerificationEmailAction(
+  email: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/magic-link`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: "Failed to send verification email.",
+      };
+    }
+
+    const data = (await response.json()) as { message?: string };
+    return {
+      success: true,
+      message:
+        data.message ||
+        "If an account exists with this email, a verification link has been sent.",
+    };
+  } catch {
+    return {
+      success: false,
+      message: "An unexpected network error occurred.",
+    };
+  }
 }

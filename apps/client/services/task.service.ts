@@ -150,4 +150,11 @@ export const taskService = {
     const response = await apiClient.delete(`/tasks/${id}`);
     return response.data;
   },
+
+  async deleteOccurrenceById(occurrenceId: string) {
+    const response = await apiClient.delete(
+      `/tasks/occurrences/${occurrenceId}`,
+    );
+    return response.data;
+  },
 };

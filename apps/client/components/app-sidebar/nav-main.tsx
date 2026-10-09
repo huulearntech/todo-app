@@ -7,6 +7,7 @@ import {
   TagsIcon,
   CalendarDaysIcon,
   HomeIcon,
+  CheckCircle2Icon,
 } from "lucide-react"
 
 import {
@@ -36,6 +37,11 @@ const items = [
     name: "Labels",
     url: "/labels",
     icon: TagsIcon,
+  },
+  {
+    name: "Completed",
+    url: "/completed",
+    icon: CheckCircle2Icon,
   },
 ]
 

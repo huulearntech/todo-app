@@ -36,29 +36,23 @@ export class ColorController {
     return this.colorService.getMyColors(user.id);
   }
 
-  @Get(':hexCode')
-  async getColorByHexCode(
-    @CurrentUser() user: JwtUser,
-    @Param('hexCode') hexCode: string,
-  ) {
-    return this.colorService.getColorByHexCode(user.id, hexCode);
+  @Get(':key')
+  async getColorByKey(@CurrentUser() user: JwtUser, @Param('key') key: string) {
+    return this.colorService.getColorByKey(user.id, key);
   }
 
-  @Patch(':hexCode')
+  @Patch(':key')
   async updateColor(
     @CurrentUser() user: JwtUser,
-    @Param('hexCode') hexCode: string,
+    @Param('key') key: string,
     @Body() dto: UpdateColorDto,
   ) {
-    return this.colorService.updateColor(user.id, hexCode, dto);
+    return this.colorService.updateColor(user.id, key, dto);
   }
 
-  @Delete(':hexCode')
+  @Delete(':key')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteColor(
-    @CurrentUser() user: JwtUser,
-    @Param('hexCode') hexCode: string,
-  ) {
-    await this.colorService.deleteColor(user.id, hexCode);
+  async deleteColor(@CurrentUser() user: JwtUser, @Param('key') key: string) {
+    await this.colorService.deleteColor(user.id, key);
   }
 }

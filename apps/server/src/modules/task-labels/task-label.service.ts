@@ -3,7 +3,7 @@ import { Repository } from 'typeorm';
 import { TaskLabel } from './task-label.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateTaskLabelDto, UpdateTaskLabelDto } from './task-label.dto';
-import { ColorService, normalizeHexCode } from '../colors/color.service';
+import { ColorService } from '../colors/color.service';
 import { Color } from '../colors/color.entity';
 
 @Injectable()
@@ -18,33 +18,33 @@ export class TaskLabelService {
     ownerId: string,
     dtoOrName: CreateTaskLabelDto | string,
     description?: string,
-    rawColorHex?: string,
+    rawColorKey?: string,
   ): Promise<TaskLabel> {
     let name: string;
     let desc: string | undefined;
-    let hexCode = '#E0E0E0';
+    let key = 'slate';
 
     if (typeof dtoOrName === 'string') {
       name = dtoOrName;
       desc = description;
-      if (rawColorHex) hexCode = rawColorHex;
+      if (rawColorKey) key = rawColorKey;
     } else {
       name = dtoOrName.name;
       desc = dtoOrName.description;
-      if (dtoOrName.colorHexCode) hexCode = dtoOrName.colorHexCode;
+      if (dtoOrName.colorKey) key = dtoOrName.colorKey;
     }
 
-    const normalizedHex = normalizeHexCode(hexCode);
+    const normalizedKey = key.toLowerCase().trim();
 
     let targetColor: Color | undefined;
-    if (normalizedHex === '#E0E0E0') {
+    if (normalizedKey === 'slate') {
       const defaultColors =
         await this.colorService.ensureDefaultColors(ownerId);
-      targetColor = defaultColors.find((c) => c.hexCode === '#E0E0E0');
+      targetColor = defaultColors.find((c) => c.key === 'slate');
     } else {
-      targetColor = await this.colorService.getColorByHexCode(
+      targetColor = await this.colorService.getColorByKey(
         ownerId,
-        normalizedHex,
+        normalizedKey,
       );
     }
 
@@ -52,7 +52,7 @@ export class TaskLabelService {
       ownerId,
       name: name.trim(),
       description: desc?.trim(),
-      colorHexCode: normalizedHex,
+      colorKey: normalizedKey,
       ...(targetColor ? { color: targetColor } : {}),
     });
 
@@ -101,21 +101,21 @@ export class TaskLabelService {
       taskLabel.description = updatedTaskLabel.description?.trim();
     }
 
-    if (updatedTaskLabel.colorHexCode !== undefined) {
-      const normalizedHex = normalizeHexCode(updatedTaskLabel.colorHexCode);
+    if (updatedTaskLabel.colorKey !== undefined) {
+      const normalizedKey = updatedTaskLabel.colorKey.toLowerCase().trim();
       let targetColor: Color | undefined;
-      if (normalizedHex === '#E0E0E0') {
+      if (normalizedKey === 'slate') {
         const defaultColors = await this.colorService.ensureDefaultColors(
           taskLabel.ownerId,
         );
-        targetColor = defaultColors.find((c) => c.hexCode === '#E0E0E0');
+        targetColor = defaultColors.find((c) => c.key === 'slate');
       } else {
-        targetColor = await this.colorService.getColorByHexCode(
+        targetColor = await this.colorService.getColorByKey(
           taskLabel.ownerId,
-          normalizedHex,
+          normalizedKey,
         );
       }
-      taskLabel.colorHexCode = normalizedHex;
+      taskLabel.colorKey = normalizedKey;
       if (targetColor) {
         taskLabel.color = targetColor;
       }

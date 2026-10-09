@@ -18,6 +18,7 @@ import { Section } from '../../sections/section.entity';
 import { TaskPriority } from '@todo/shared';
 
 import { TaskOccurrence } from './task-occurrence.entity';
+import { TaskReminder } from './task-reminder.entity';
 import { TaskRecurrence } from '../entities/task-recurrence.entity';
 import {
   TstzRange,
@@ -105,4 +106,9 @@ export class Task {
   })
   @JoinColumn({ name: 'recurrence_id' })
   recurrence: TaskRecurrence | null;
+
+  @OneToMany(() => TaskReminder, (reminder) => reminder.task, {
+    cascade: ['insert', 'update'],
+  })
+  reminders: TaskReminder[];
 }

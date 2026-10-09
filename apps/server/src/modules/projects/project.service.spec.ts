@@ -18,7 +18,7 @@ describe('ProjectService', () => {
   };
   let colorService: {
     ensureDefaultColors: jest.Mock;
-    getColorByHexCode: jest.Mock;
+    getColorByKey: jest.Mock;
   };
 
   const ownerId = '11111111-1111-1111-1111-111111111111';
@@ -40,11 +40,11 @@ describe('ProjectService', () => {
     colorService = {
       ensureDefaultColors: jest
         .fn()
-        .mockResolvedValue([{ ownerId, hexCode: '#E0E0E0', name: 'Grey' }]),
-      getColorByHexCode: jest.fn().mockResolvedValue({
+        .mockResolvedValue([{ ownerId, key: 'slate', name: 'Slate' }]),
+      getColorByKey: jest.fn().mockResolvedValue({
         ownerId,
-        hexCode: '#3B82F6',
-        name: 'Blue',
+        key: 'sky',
+        name: 'Sky Blue',
       }),
     };
 
@@ -66,14 +66,14 @@ describe('ProjectService', () => {
   });
 
   describe('createProject', () => {
-    it('should create project with default color #E0E0E0 when omitted', async () => {
+    it('should create project with default color slate when omitted', async () => {
       const createdProject = {
         id: 'project-1',
         ownerId,
         name: 'Personal',
         description: 'Personal tasks',
-        colorHexCode: '#E0E0E0',
-        color: { ownerId, hexCode: '#E0E0E0', name: 'Grey' },
+        colorKey: 'slate',
+        color: { ownerId, key: 'slate', name: 'Slate' },
       };
       projectRepository.findOne.mockResolvedValue(createdProject);
 
@@ -87,37 +87,37 @@ describe('ProjectService', () => {
         ownerId,
         name: 'Personal',
         description: 'Personal tasks',
-        colorHexCode: '#E0E0E0',
-        color: { ownerId, hexCode: '#E0E0E0', name: 'Grey' },
+        colorKey: 'slate',
+        color: { ownerId, key: 'slate', name: 'Slate' },
       });
       expect(result).toEqual(createdProject);
     });
 
     it('should create project with custom color after resolving via colorService', async () => {
-      const customColor = { ownerId, hexCode: '#3B82F6', name: 'Blue' };
+      const customColor = { ownerId, key: 'sky', name: 'Sky Blue' };
       const createdProject = {
         id: 'project-2',
         ownerId,
         name: 'Work',
-        colorHexCode: '#3B82F6',
+        colorKey: 'sky',
         color: customColor,
       };
       projectRepository.findOne.mockResolvedValue(createdProject);
 
       const result = await service.createProject(ownerId, {
         name: 'Work',
-        colorHexCode: '#3b82f6',
+        colorKey: 'sky',
       });
 
-      expect(colorService.getColorByHexCode).toHaveBeenCalledWith(
+      expect(colorService.getColorByKey).toHaveBeenCalledWith(
         ownerId,
-        '#3B82F6',
+        'sky',
       );
       expect(projectRepository.create).toHaveBeenCalledWith({
         ownerId,
         name: 'Work',
         description: undefined,
-        colorHexCode: '#3B82F6',
+        colorKey: 'sky',
         color: customColor,
       });
       expect(result).toEqual(createdProject);
@@ -125,14 +125,14 @@ describe('ProjectService', () => {
   });
 
   describe('updateProject', () => {
-    it('should update project colorHexCode and color relation', async () => {
-      const oldColor = { ownerId, hexCode: '#E0E0E0', name: 'Grey' };
-      const newColor = { ownerId, hexCode: '#3B82F6', name: 'Blue' };
+    it('should update project colorKey and color relation', async () => {
+      const oldColor = { ownerId, key: 'slate', name: 'Slate' };
+      const newColor = { ownerId, key: 'sky', name: 'Sky Blue' };
       const existingProject = {
         id: 'project-1',
         ownerId,
         name: 'Work',
-        colorHexCode: '#E0E0E0',
+        colorKey: 'slate',
         color: oldColor,
       };
 
@@ -140,28 +140,28 @@ describe('ProjectService', () => {
         .mockResolvedValueOnce(existingProject)
         .mockResolvedValueOnce({
           ...existingProject,
-          colorHexCode: '#3B82F6',
+          colorKey: 'sky',
           color: newColor,
         });
 
       const result = await service.updateProject(
         'project-1',
-        { colorHexCode: '#3b82f6' },
+        { colorKey: 'sky' },
         ownerId,
       );
 
-      expect(colorService.getColorByHexCode).toHaveBeenCalledWith(
+      expect(colorService.getColorByKey).toHaveBeenCalledWith(
         ownerId,
-        '#3B82F6',
+        'sky',
       );
       expect(projectRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'project-1',
-          colorHexCode: '#3B82F6',
+          colorKey: 'sky',
           color: newColor,
         }),
       );
-      expect(result?.colorHexCode).toBe('#3B82F6');
+      expect(result?.colorKey).toBe('sky');
     });
   });
 });
