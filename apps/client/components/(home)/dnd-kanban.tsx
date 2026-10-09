@@ -80,6 +80,7 @@ interface TaskColumnProps extends Omit<
   ComponentProps<typeof KanbanColumn>,
   "children"
 > {
+  projectId: string
   tasks: Task[]
   completedOccurrences?: CompletedOccurrenceResponseDto[]
   isOverlay?: boolean
@@ -89,6 +90,7 @@ interface TaskColumnProps extends Omit<
 }
 
 function TaskColumn({
+  projectId,
   value,
   title,
   tasks,
@@ -243,7 +245,7 @@ function TaskColumn({
                   ))}
                 </div>
               )}
-              <AddTaskFormTrigger sectionId={value} />
+              <AddTaskFormTrigger sectionId={value} projectId={projectId} />
             </KanbanColumnContent>
           </CardContent>
         </Card>
@@ -399,6 +401,7 @@ function DndKanban({ projectId }: { projectId: string }) {
             {Object.entries(columns).map(([sectionId, tasks]) => (
               <TaskColumn
                 key={sectionId}
+                projectId={projectId}
                 value={sectionId}
                 title={sections?.find((s) => s.id === sectionId)?.name}
                 tasks={tasks}

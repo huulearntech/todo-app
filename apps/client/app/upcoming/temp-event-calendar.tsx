@@ -115,6 +115,7 @@ const DEFAULT_SETTINGS: DemoSettings = {
 export function TempEventCalendar({ projectId }: { projectId: string }) {
   const setAddTaskDialogOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
   const setSectionId = useAddTaskDialogStore((state) => state.setSectionId);
+  const setProjectId = useAddTaskDialogStore((state) => state.setProjectId);
   const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
   const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
 
@@ -147,6 +148,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
       }
     }
 
+    setProjectId(projectId);
     setSectionId(targetSectionId);
     setAddTaskDialogOpen(true);
   };

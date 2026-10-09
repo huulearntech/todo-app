@@ -116,26 +116,38 @@ function extractMultiWordProjectAndSection(
   let projectName: string | undefined;
   let sectionName: string | undefined;
 
+  interface FoundProjectSection {
+    start: number;
+    end: number;
+    projectName?: string;
+    sectionName?: string;
+  }
+
+  const foundList: FoundProjectSection[] = [];
+
   // 1. Quoted or Bracketed compound or separated:
   // e.g. #"Work Projects" / "Sprint 1" or #[Work Projects]/[Sprint 1] or #"Work Projects/Sprint 1"
   const quotedRegex =
-    /#(?:\"([^\"]+)\"|\[([^\]]+)\])(?:(?:\/|\s*\/\s*)(?:\"([^\"]+)\"|\[([^\]]+)\]))?/i;
-  const qm = text.match(quotedRegex);
-  if (qm) {
-    const rawProj = (qm[1] || qm[2] || "").trim();
-    const rawSec = (qm[3] || qm[4] || "").trim();
-    if (rawSec) {
-      projectName = rawProj;
-      sectionName = rawSec;
-    } else if (rawProj.includes("/")) {
+    /(?:^|\s)(#(?:\"([^\"]+)\"|\[([^\]]+)\])(?:(?:\/|\s*\/\s*)(?:\"([^\"]+)\"|\[([^\]]+)\]))?)/gi;
+  let qm: RegExpExecArray | null;
+  while ((qm = quotedRegex.exec(input)) !== null) {
+    const rawSpan = qm[1];
+    const startIndex = qm.index + qm[0].indexOf(rawSpan);
+    const rawProj = (qm[2] || qm[3] || "").trim();
+    const rawSec = (qm[4] || qm[5] || "").trim();
+    let pName = rawProj;
+    let sName = rawSec || undefined;
+    if (!sName && rawProj.includes("/")) {
       const parts = rawProj.split("/");
-      projectName = parts[0]?.trim();
-      sectionName = parts[1]?.trim();
-    } else {
-      projectName = rawProj;
+      pName = parts[0]?.trim();
+      sName = parts[1]?.trim();
     }
-    text = text.replace(qm[0], " ").trim();
-    return { text, projectName, sectionName };
+    foundList.push({
+      start: startIndex,
+      end: startIndex + rawSpan.length,
+      projectName: pName,
+      sectionName: sName,
+    });
   }
 
   // 2. Entity-aware greedy match against known projects (sorted by length descending)
@@ -149,54 +161,86 @@ function extractMultiWordProjectAndSection(
       const pSlug = escapeRegex(normalizeName(proj.name));
       // Matches #ProjectName or #ProjectSlug optionally followed by /SectionName
       const re = new RegExp(
-        `#(?:${pEsc}|${pSlug})(?:\\s*\\/\\s*([^%#@+!{\\n]+))?`,
-        "i"
+        `(?:^|\\s)(#(?:${pEsc}|${pSlug})(?:\\s*\\/\\s*([^%#@+!{\\n]+))?)`,
+        "gi"
       );
-      const m = text.match(re);
-      if (m) {
-        projectName = proj.name;
-        const matchedSpan = m[0];
-
-        if (m[1]) {
-          const secPart = m[1].trim();
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(input)) !== null) {
+        const rawSpan = m[1];
+        const startIndex = m.index + m[0].indexOf(rawSpan);
+        let sName: string | undefined;
+        if (m[2]) {
+          const secPart = m[2].trim();
           const projSections = options.sections
             ? options.sections.filter((s) => s.projectId === proj.id)
             : [];
           const sortedSections = [...projSections].sort(
             (a, b) => b.name.length - a.name.length
           );
-
           let foundSec = false;
           for (const sec of sortedSections) {
             if (secPart.toLowerCase().startsWith(sec.name.toLowerCase())) {
-              sectionName = sec.name;
+              sName = sec.name;
               foundSec = true;
               break;
             }
           }
           if (!foundSec) {
-            // Cut candidate at next inline syntax character if present
-            sectionName = secPart
-              .split(/\s+(?:%|@|p[1-4]|\+|!|\{|\/\/)/i)[0]
-              ?.trim();
+            sName = secPart.split(/\s+(?:%|@|p[1-4]|\+|!|\{|\/\/)/i)[0]?.trim();
           }
         }
-
-        text = text.replace(matchedSpan, " ").trim();
-        return { text, projectName, sectionName };
+        foundList.push({
+          start: startIndex,
+          end: startIndex + rawSpan.length,
+          projectName: proj.name,
+          sectionName: sName,
+        });
       }
     }
   }
 
   // 3. Standalone quoted section: /"Section Name" or /[Section Name]
-  const quotedSecRegex = /(?:^|\s)\/(?:\"([^\"]+)\"|\[([^\]]+)\])/i;
-  const sm = text.match(quotedSecRegex);
-  if (sm) {
-    sectionName = (sm[1] || sm[2] || "").trim();
-    text = text.replace(sm[0], " ").trim();
+  const quotedSecRegex = /(?:^|\s)(\/(?:\"([^\"]+)\"|\[([^\]]+)\]))/gi;
+  let sm: RegExpExecArray | null;
+  while ((sm = quotedSecRegex.exec(input)) !== null) {
+    const rawSpan = sm[1];
+    const startIndex = sm.index + sm[0].indexOf(rawSpan);
+    const sName = (sm[2] || sm[3] || "").trim();
+    foundList.push({
+      start: startIndex,
+      end: startIndex + rawSpan.length,
+      sectionName: sName,
+    });
   }
 
-  return { text, projectName, sectionName };
+  // Deduplicate overlapping spans (earliest / longest start wins)
+  foundList.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+  const nonOverlapping: FoundProjectSection[] = [];
+  let lastEnd = 0;
+  for (const item of foundList) {
+    if (item.start >= lastEnd) {
+      nonOverlapping.push(item);
+      lastEnd = item.end;
+    }
+  }
+
+  // Determine latest-wins values:
+  for (const item of nonOverlapping) {
+    if (item.projectName) {
+      projectName = item.projectName;
+      sectionName = item.sectionName;
+    } else if (item.sectionName) {
+      sectionName = item.sectionName;
+    }
+  }
+
+  // Strip ALL matched project and section spans from text (in reverse order)
+  const sortedDesc = [...nonOverlapping].sort((a, b) => b.start - a.start);
+  for (const item of sortedDesc) {
+    text = `${text.slice(0, item.start)} ${text.slice(item.end)}`;
+  }
+
+  return { text: text.replace(/\s+/g, " ").trim(), projectName, sectionName };
 }
 
 /**
@@ -277,31 +321,42 @@ export function parseQuickTaskInput(
   let parsedDate: Date | undefined;
   let dateText: string | undefined;
 
-  const deadlineMatch = textToParse.match(/\{([^}\n]+)\}/);
-  if (deadlineMatch) {
-    deadlineString = deadlineMatch[1].trim();
-    const dateRes = chrono.parseDate(deadlineString, new Date(), {
-      forwardDate: true,
-    });
-    if (dateRes) {
-      parsedDate = dateRes;
-      dateText = deadlineString;
+  const deadlineMatches = [...textToParse.matchAll(/\{([^}\n]+)\}/g)];
+  if (deadlineMatches.length > 0) {
+    // Latest wins: iterate in reverse to find the winning date
+    for (let i = deadlineMatches.length - 1; i >= 0; i--) {
+      const dMatch = deadlineMatches[i];
+      const rawDate = dMatch[1].trim();
+      const dateRes = chrono.parseDate(rawDate, new Date(), {
+        forwardDate: true,
+      });
+      if (dateRes) {
+        parsedDate = dateRes;
+        deadlineString = rawDate;
+        dateText = rawDate;
+        break;
+      }
     }
-    // Remove the {date} token from remaining text
-    textToParse = textToParse.replace(deadlineMatch[0], " ").trim();
+    // Remove ALL {date} tokens from remaining text so none leak into title
+    textToParse = textToParse.replace(/\{[^}\n]+\}/g, " ").trim();
   } else {
     // Attempt natural language date extraction
     const chronoResults = chrono.parse(textToParse, new Date(), {
       forwardDate: true,
     });
     if (chronoResults.length > 0) {
-      const match = chronoResults[0];
+      // Pick the last natural language date match
+      const match = chronoResults[chronoResults.length - 1];
       parsedDate = match.start.date();
       dateText = match.text;
-      // Remove parsed date span from text
-      const before = textToParse.slice(0, match.index);
-      const after = textToParse.slice(match.index + match.text.length);
-      textToParse = `${before} ${after}`.replace(/\s+/g, " ").trim();
+      // Remove all natural language date spans
+      for (let i = chronoResults.length - 1; i >= 0; i--) {
+        const m = chronoResults[i];
+        const before = textToParse.slice(0, m.index);
+        const after = textToParse.slice(m.index + m.text.length);
+        textToParse = `${before} ${after}`;
+      }
+      textToParse = textToParse.replace(/\s+/g, " ").trim();
     }
   }
 
@@ -652,16 +707,466 @@ export function applyAutocompleteSelection(
   ctx: AutocompleteContext,
   name: string
 ): { text: string; caret: number } {
-  let formattedName = name;
-  if (/[\/#%@{}]/.test(name)) {
-    formattedName = `[${name}]`;
+  const formattedName = formatEntityToken(name);
+  const inserted = `${ctx.trigger}${formattedName} `;
+  let prefix = text.slice(0, ctx.start);
+  let suffix = text.slice(ctx.end);
+
+  prefix = prefix.replace(/\s+$/, "");
+  if (prefix.length > 0) {
+    prefix = `${prefix} `;
+  }
+  suffix = suffix.replace(/^\s+/, "");
+  if (suffix.length > 0) {
+    suffix = ` ${suffix}`;
   }
 
-  const prefix = text.slice(0, ctx.start);
-  const suffix = text.slice(ctx.end);
-  const inserted = `${ctx.trigger}${formattedName} `;
   const nextText = `${prefix}${inserted}${suffix}`;
   const nextCaret = prefix.length + inserted.length;
 
   return { text: nextText, caret: nextCaret };
 }
+
+function formatEntityToken(name: string): string {
+  if (/[\s\/#%@{}]/.test(name)) {
+    return `"${name}"`;
+  }
+  return name;
+}
+
+/**
+ * Replaces any existing project/section token with the newly selected one,
+ * or appends it to the text if none existed.
+ */
+export function syncProjectSectionToken(
+  text: string,
+  projectName: string,
+  sectionName?: string
+): string {
+  const pStr = formatEntityToken(projectName);
+  const sStr = sectionName ? `/${formatEntityToken(sectionName)}` : "";
+  const newToken = `#${pStr}${sStr}`;
+
+  const projectRegex =
+    /(?:^|\s)(#(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/]+)(?:\/(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/]+))?|\/(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/]+))(?=\s|$)/g;
+
+  if (projectRegex.test(text)) {
+    let replacedFirst = false;
+    return text
+      .replace(projectRegex, (match) => {
+        if (!replacedFirst) {
+          replacedFirst = true;
+          const leadingSpace = match.startsWith(" ") ? " " : "";
+          return `${leadingSpace}${newToken}`;
+        }
+        return "";
+      })
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  return `${text.trim()} ${newToken}`.trim();
+}
+
+/**
+ * Replaces or updates the priority token (p1..p4) in the text, or removes it if null.
+ */
+export function syncPriorityToken(
+  text: string,
+  priority?: TaskPriority | null
+): string {
+  const priorityRegex = /(?:^|\s)\b(p[1-4])\b(?=\s|$)/gi;
+
+  if (!priority) {
+    return text.replace(priorityRegex, " ").replace(/\s+/g, " ").trim();
+  }
+
+  const pToken =
+    priority === TaskPriority.HIGH
+      ? "p1"
+      : priority === TaskPriority.MEDIUM
+      ? "p2"
+      : "p3";
+
+  if (priorityRegex.test(text)) {
+    let replacedFirst = false;
+    return text
+      .replace(priorityRegex, (match) => {
+        if (!replacedFirst) {
+          replacedFirst = true;
+          const leadingSpace = match.startsWith(" ") ? " " : "";
+          return `${leadingSpace}${pToken}`;
+        }
+        return "";
+      })
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  return `${text.trim()} ${pToken}`.trim();
+}
+
+/**
+ * Replaces or updates the braced date token {...} in the text, or removes it if null.
+ */
+export function syncDateToken(
+  text: string,
+  displayText?: string | null
+): string {
+  const dateRegex = /(?:^|\s)\{[^}]*\}(?=\s|$)/g;
+
+  if (!displayText) {
+    return text.replace(dateRegex, " ").replace(/\s+/g, " ").trim();
+  }
+
+  const newToken = `{${displayText}}`;
+
+  if (dateRegex.test(text)) {
+    let replacedFirst = false;
+    return text
+      .replace(dateRegex, (match) => {
+        if (!replacedFirst) {
+          replacedFirst = true;
+          const leadingSpace = match.startsWith(" ") ? " " : "";
+          return `${leadingSpace}${newToken}`;
+        }
+        return "";
+      })
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  return `${text.trim()} ${newToken}`.trim();
+}
+
+/**
+ * Toggles a label token (%label) in the text.
+ */
+export function syncLabelToken(
+  text: string,
+  labelName: string,
+  active: boolean
+): string {
+  const escaped = escapeRegex(labelName);
+  const labelRegex = new RegExp(
+    `(?:^|\\s)%("${escaped}"|'${escaped}'|\\[${escaped}\\]|${escaped})(?=\\s|$)`,
+    "i"
+  );
+
+  if (!active) {
+    return text.replace(labelRegex, " ").replace(/\s+/g, " ").trim();
+  }
+
+  if (labelRegex.test(text)) {
+    return text;
+  }
+
+  const tokenStr = formatEntityToken(labelName);
+  return `${text.trim()} %${tokenStr}`.trim();
+}
+
+export interface HighlightToken {
+  text: string;
+  type: "text" | "project" | "section" | "label" | "priority" | "date" | "description";
+  color?: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  isOverridden?: boolean;
+}
+
+interface MatchInterval {
+  start: number;
+  end: number;
+  type: "project" | "section" | "label" | "priority" | "date" | "description";
+  raw: string;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const cleanHex = hex.replace("#", "");
+  if (cleanHex.length === 3) {
+    const r = parseInt(cleanHex[0] + cleanHex[0], 16);
+    const g = parseInt(cleanHex[1] + cleanHex[1], 16);
+    const b = parseInt(cleanHex[2] + cleanHex[2], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  if (cleanHex.length === 6) {
+    const r = parseInt(cleanHex.slice(0, 2), 16);
+    const g = parseInt(cleanHex.slice(2, 4), 16);
+    const b = parseInt(cleanHex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return hex;
+}
+
+export function tokenizeQuickTaskForHighlight(
+  text: string,
+  options?: ParserOptions
+): HighlightToken[] {
+  if (!text) return [];
+
+  const intervals: MatchInterval[] = [];
+
+  // 1. Description token (from // to end of string)
+  const descMatch = text.match(/\/\/\s*[\s\S]*$/);
+  if (descMatch && descMatch.index !== undefined) {
+    intervals.push({
+      start: descMatch.index,
+      end: text.length,
+      type: "description",
+      raw: descMatch[0],
+    });
+  }
+
+  const limitIndex =
+    descMatch && descMatch.index !== undefined ? descMatch.index : text.length;
+  const searchableText = text.slice(0, limitIndex);
+
+  // 2. Date token ({...})
+  const dateRegex = /\{[^}]+\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = dateRegex.exec(searchableText)) !== null) {
+    intervals.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      type: "date",
+      raw: match[0],
+    });
+  }
+
+  // 3. Priority token (\bp[1-4]\b)
+  const priorityRegex = /(?:^|\s)\b(p[1-4])\b(?=\s|$)/gi;
+  while ((match = priorityRegex.exec(searchableText)) !== null) {
+    const rawToken = match[1];
+    const tokenIndex = match.index + match[0].indexOf(rawToken);
+    intervals.push({
+      start: tokenIndex,
+      end: tokenIndex + rawToken.length,
+      type: "priority",
+      raw: rawToken,
+    });
+  }
+
+  // 4. Known multi-word projects and sections
+  if (options?.projects && options.projects.length > 0) {
+    const sortedProjects = [...options.projects].sort(
+      (a, b) => b.name.length - a.name.length
+    );
+    for (const proj of sortedProjects) {
+      const pEsc = escapeRegex(proj.name);
+      const re = new RegExp(`#(?:${pEsc})(?:\\s*\\/\\s*([^%#@+!{\\n]+))?`, "gi");
+      let mProj: RegExpExecArray | null;
+      while ((mProj = re.exec(searchableText)) !== null) {
+        let fullRaw = mProj[0];
+        if (mProj[1] && options.sections) {
+          const secTrimmed = mProj[1].trim();
+          for (const s of options.sections) {
+            if (secTrimmed.toLowerCase().startsWith(s.name.toLowerCase())) {
+              fullRaw = mProj[0].slice(
+                0,
+                mProj[0].toLowerCase().indexOf(s.name.toLowerCase()) + s.name.length
+              );
+              break;
+            }
+          }
+        }
+        intervals.push({
+          start: mProj.index,
+          end: mProj.index + fullRaw.length,
+          type: "project",
+          raw: fullRaw,
+        });
+      }
+    }
+  }
+
+  // 5. Known multi-word labels
+  if (options?.labels && options.labels.length > 0) {
+    const sortedLabels = [...options.labels].sort(
+      (a, b) => b.name.length - a.name.length
+    );
+    for (const lbl of sortedLabels) {
+      const lEsc = escapeRegex(lbl.name);
+      const re = new RegExp(`[%@](?:${lEsc})`, "gi");
+      let mLbl: RegExpExecArray | null;
+      while ((mLbl = re.exec(searchableText)) !== null) {
+        intervals.push({
+          start: mLbl.index,
+          end: mLbl.index + mLbl[0].length,
+          type: "label",
+          raw: mLbl[0],
+        });
+      }
+    }
+  }
+
+  // 6. Generic or Quoted Project/Section tokens (#...)
+  const projectRegex =
+    /(?:^|\s)(#(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/#%@{]+)(?:\/(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/#%@{]+))?|\/(?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/#%@{]+))(?=\s|$)/g;
+  while ((match = projectRegex.exec(searchableText)) !== null) {
+    const rawToken = match[1];
+    const tokenIndex = match.index + match[0].indexOf(rawToken);
+    intervals.push({
+      start: tokenIndex,
+      end: tokenIndex + rawToken.length,
+      type: rawToken.startsWith("#") ? "project" : "section",
+      raw: rawToken,
+    });
+  }
+
+  // 7. Generic or Quoted Label tokens (%... or @...)
+  const labelRegex =
+    /(?:^|\s)([%@](?:"[^"]*"|'[^']*'|\[[^\]]*\]|[^\s\/#%@{]+))(?=\s|$)/g;
+  while ((match = labelRegex.exec(searchableText)) !== null) {
+    const rawToken = match[1];
+    const tokenIndex = match.index + match[0].indexOf(rawToken);
+    intervals.push({
+      start: tokenIndex,
+      end: tokenIndex + rawToken.length,
+      type: "label",
+      raw: rawToken,
+    });
+  }
+
+  // Sort intervals by start index
+  intervals.sort((a, b) => a.start - b.start);
+
+  // Deduplicate overlapping intervals (first one wins)
+  const nonOverlapping: MatchInterval[] = [];
+  let lastEnd = 0;
+  for (const interval of intervals) {
+    if (interval.start >= lastEnd) {
+      nonOverlapping.push(interval);
+      lastEnd = interval.end;
+    }
+  }
+
+  // Find the winning (last) interval for each single-value attribute type
+  let lastProjectItem: MatchInterval | undefined;
+  let lastSectionItem: MatchInterval | undefined;
+  let lastPriorityItem: MatchInterval | undefined;
+  let lastDateItem: MatchInterval | undefined;
+
+  for (const item of nonOverlapping) {
+    if (item.type === "project") {
+      lastProjectItem = item;
+    } else if (item.type === "section") {
+      lastSectionItem = item;
+    } else if (item.type === "priority") {
+      lastPriorityItem = item;
+    } else if (item.type === "date") {
+      lastDateItem = item;
+    }
+  }
+
+  // Build final tokens with text gaps
+  const result: HighlightToken[] = [];
+  let cursor = 0;
+
+  for (const item of nonOverlapping) {
+    if (item.start > cursor) {
+      result.push({
+        text: text.slice(cursor, item.start),
+        type: "text",
+      });
+    }
+
+    const raw = text.slice(item.start, item.end);
+    let isOverridden = false;
+    if (item.type === "project") {
+      isOverridden = item !== lastProjectItem;
+    } else if (item.type === "section") {
+      isOverridden = item !== lastSectionItem;
+    } else if (item.type === "priority") {
+      isOverridden = item !== lastPriorityItem;
+    } else if (item.type === "date") {
+      isOverridden = item !== lastDateItem;
+    }
+
+    let color: string | undefined;
+    let backgroundColor: string | undefined;
+    let borderColor: string | undefined;
+
+    if (isOverridden) {
+      color = "var(--muted-foreground)";
+      backgroundColor = "transparent";
+      borderColor = "transparent";
+    } else if (item.type === "project" || item.type === "section") {
+      const cleanProjectName = raw
+        .replace(/^#/, "")
+        .split("/")[0]
+        .replace(/["'\[\]]/g, "")
+        .trim();
+      const matchedProject = options?.projects?.find(
+        (p) => normalizeName(p.name) === normalizeName(cleanProjectName)
+      );
+      const projColor = matchedProject?.colorHexCode || "#6366f1";
+      color = projColor;
+      backgroundColor = hexToRgba(projColor, 0.12);
+      borderColor = hexToRgba(projColor, 0.3);
+    } else if (item.type === "label") {
+      const cleanLabelName = raw
+        .replace(/^[%@]/, "")
+        .replace(/["'\[\]]/g, "")
+        .trim();
+      const matchedLabel = options?.labels?.find(
+        (l) => normalizeName(l.name) === normalizeName(cleanLabelName)
+      );
+      if (matchedLabel?.colorHexCode) {
+        color = matchedLabel.colorHexCode;
+        backgroundColor = hexToRgba(matchedLabel.colorHexCode, 0.12);
+        borderColor = hexToRgba(matchedLabel.colorHexCode, 0.25);
+      } else {
+        // Label does not have colorHexCode, do not show competing color
+        color = "var(--muted-foreground)";
+        backgroundColor = "rgba(128, 128, 128, 0.08)";
+        borderColor = "transparent";
+      }
+    } else if (item.type === "priority") {
+      const pLower = item.raw.toLowerCase();
+      if (pLower === "p1") {
+        color = "#ef4444";
+        backgroundColor = "rgba(239, 68, 68, 0.15)";
+        borderColor = "rgba(239, 68, 68, 0.35)";
+      } else if (pLower === "p2") {
+        color = "#f59e0b";
+        backgroundColor = "rgba(245, 158, 11, 0.15)";
+        borderColor = "rgba(245, 158, 11, 0.35)";
+      } else if (pLower === "p3") {
+        color = "#3b82f6";
+        backgroundColor = "rgba(59, 130, 246, 0.15)";
+        borderColor = "rgba(59, 130, 246, 0.35)";
+      } else {
+        color = "var(--muted-foreground)";
+        backgroundColor = "rgba(120, 120, 120, 0.1)";
+        borderColor = "rgba(120, 120, 120, 0.2)";
+      }
+    } else if (item.type === "date") {
+      color = "#8b5cf6";
+      backgroundColor = "rgba(139, 92, 246, 0.14)";
+      borderColor = "rgba(139, 92, 246, 0.35)";
+    } else if (item.type === "description") {
+      color = "var(--muted-foreground)";
+    }
+
+    result.push({
+      text: raw,
+      type: item.type,
+      color,
+      backgroundColor,
+      borderColor,
+      isOverridden,
+    });
+
+    cursor = item.end;
+  }
+
+  if (cursor < text.length) {
+    result.push({
+      text: text.slice(cursor),
+      type: "text",
+    });
+  }
+
+  return result;
+}
+

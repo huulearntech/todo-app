@@ -67,6 +67,31 @@ function PostponeDropZone() {
   );
 }
 
+/**
+ * Calculates the target postponed date:
+ * - Postpones the date to tomorrow (next day).
+ * - If the task already has a scheduled time (timeRange.start), preserves its exact time of day.
+ * - If the task has no time set, postpones the date to tomorrow with default time.
+ */
+export function calculatePostponedDate(task: Pick<Task, "timeRange">): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (task.timeRange?.start) {
+    const originalStart = new Date(task.timeRange.start);
+    if (!isNaN(originalStart.getTime())) {
+      tomorrow.setHours(
+        originalStart.getHours(),
+        originalStart.getMinutes(),
+        originalStart.getSeconds(),
+        originalStart.getMilliseconds()
+      );
+    }
+  }
+
+  return tomorrow.toISOString();
+}
+
 export default function TaskList() {
   const [showCompleted, setShowCompleted] = useShowCompleted("due-today");
   const {
@@ -110,9 +135,7 @@ export default function TaskList() {
 
       const postponeTimeout = setTimeout(() => {
         if (isUndone) return;
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowIso = tomorrow.toISOString();
+        const tomorrowIso = calculatePostponedDate(taskToPostpone);
         postponeTaskMutation.mutate({ taskId, postponeTo: tomorrowIso });
       }, 4000);
 
