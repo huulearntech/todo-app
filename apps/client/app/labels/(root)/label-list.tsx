@@ -38,11 +38,11 @@ import {
 } from "lucide-react";
 
 import Dialog_AddLabel from "./add-label-form";
-import Dialog_EditLabel from "./temp-edit-label-form";
+import EditLabelDialog from "./edit-label-dialog";
 import { useLabels } from "@/hooks/labels/use-labels";
 import { getColorConfig } from "@/lib/color-palette";
 
-export default function TempTaskLabelList() {
+export default function LabelList() {
   const queryClient = useQueryClient();
 
   const { data: labels = [], isLoading } = useLabels();
@@ -50,18 +50,6 @@ export default function TempTaskLabelList() {
   const [editingLabel, setEditingLabel] = useState<TaskLabel | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<TaskLabel | null>(null);
 
-  // DO NOT FUCKING INTRODUCE BULLSHITS THAT I DID NOT ASK FOR. WHO TOLD YOU TO PUT A FUCKING SEARCH HERE? WHO?
-  // const [searchQuery, setSearchQuery] = useState("");
-  // // Filter labels by search query
-  // const filteredLabels = useMemo(() => {
-  //   if (!searchQuery.trim()) return labels;
-  //   const query = searchQuery.toLowerCase();
-  //   return labels.filter(
-  //     (label) =>
-  //       label.name.toLowerCase().includes(query) ||
-  //       (label.description && label.description.toLowerCase().includes(query))
-  //   );
-  // }, [labels, searchQuery]);
 
   const handleDeleteConfirm = async () => {
     if (!deletingLabel) return;
@@ -294,7 +282,7 @@ export default function TempTaskLabelList() {
 
       {/* Edit Label Dialog */}
       {editingLabel && (
-        <Dialog_EditLabel label={editingLabel} setLabel={setEditingLabel} />
+        <EditLabelDialog label={editingLabel} setLabel={setEditingLabel} />
       )}
 
       {/* Delete Label Confirmation Dialog */}

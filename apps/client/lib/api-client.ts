@@ -13,6 +13,17 @@ export const apiClient: AxiosInstance = axios.create({
   },
 });
 
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    config.headers.set(
+      "x-timezone",
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
+  }
+  return config;
+});
+
+
 let refreshPromise: Promise<void> | null = null;
 
 async function refreshAccessToken(): Promise<void> {

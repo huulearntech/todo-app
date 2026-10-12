@@ -1,7 +1,7 @@
 "use client";
 
 import DndKanban from "@/components/(home)/dnd-kanban";
-import { TempEventCalendar } from "@/app/upcoming/temp-event-calendar";
+import { UpcomingEventCalendar } from "@/app/upcoming/upcoming-event-calendar";
 import { useProjectView } from "./project-view-context";
 
 export default function ProjectContent({ projectId }: { projectId: string }) {
@@ -13,7 +13,7 @@ export default function ProjectContent({ projectId }: { projectId: string }) {
         <DndKanban projectId={projectId} />
       ) : (
         <div className="flex-1 min-h-0 min-w-0 h-full overflow-y-auto p-4 sm:p-6">
-          <TempEventCalendar projectId={projectId} />
+          <UpcomingEventCalendar projectId={projectId} />
         </div>
       )}
     </main>

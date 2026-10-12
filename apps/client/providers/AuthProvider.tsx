@@ -3,13 +3,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
-import type { UserResponseDto, SignInDto } from "@todo/shared";
+import type { UserResponseDto } from "@todo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: UserResponseDto | null;
   isLoading: boolean;
-  signIn: ({ email, password }: { email: string; password: string }) => Promise<UserResponseDto>;
   signOut: () => void;
   setUser: React.Dispatch<React.SetStateAction<UserResponseDto | null>>;
 }
@@ -65,20 +64,6 @@ export default function AuthProvider({ children, initialUser }: AuthProviderProp
     };
   }, [initialUser]);
 
-  const signIn = async (signInDto: SignInDto): Promise<UserResponseDto> => {
-    try {
-      setIsLoading(true);
-      const authenticatedUser = await authService.signIn(signInDto);
-      setUser(authenticatedUser);
-      return authenticatedUser;
-    } catch (error) {
-      setUser(null);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const signOut = async () => {
     try {
       setIsLoading(true);
@@ -95,7 +80,7 @@ export default function AuthProvider({ children, initialUser }: AuthProviderProp
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut, setUser }}>
+    <AuthContext.Provider value={{ user, isLoading, signOut, setUser }}>
       {children}
     </AuthContext.Provider>
   );

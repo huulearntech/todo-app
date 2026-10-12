@@ -64,9 +64,9 @@ export const taskFilterSchema = z.object({
   projectId: z.string(),
   status: z.enum(["pending", "completed"]),
   taskLabelIds: z.preprocess((value) => {
-    // Nếu không truyền gì, trả về undefined
+    // If empty/null, return undefined
     if (value === undefined || value === null) return undefined;
-    // Nếu client chỉ truyền 1 phần tử, URL query đôi khi biến nó thành string thay vì array
+    // When client sends only 1 element, query parsers may produce a string rather than an array
     if (typeof value === 'string') return [value];
     return value;
   }, z.uuid().array()),

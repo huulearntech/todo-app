@@ -43,8 +43,12 @@ export class SectionService {
 
     const section = this.sectionRepository.create({
       projectId,
+      ownerId,
       name,
       description,
+      colorKey: createSectionDto.colorKey
+        ? createSectionDto.colorKey.toLowerCase().trim()
+        : null,
       lexorank: newRank,
     });
     return this.sectionRepository.save(section);
@@ -71,6 +75,8 @@ export class SectionService {
       queryBuilder
         .andWhere('section.name % :name', { name: filter.name })
         .orderBy('similarity(section.name, :name)', 'DESC');
+    } else {
+      queryBuilder.orderBy('section.lexorank COLLATE "C"', 'ASC');
     }
 
     return queryBuilder
@@ -79,8 +85,8 @@ export class SectionService {
         'section.name',
         'section.description',
         'section.projectId',
+        'section.colorKey',
       ])
-      .orderBy('section.lexorank', 'ASC')
       .getMany();
   }
 

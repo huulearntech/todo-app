@@ -30,13 +30,8 @@ export const completeTaskOccurrenceResponseSchema = z.object({
 });
 export type CompleteTaskOccurrenceResponseDto = z.infer<typeof completeTaskOccurrenceResponseSchema>;
 
-// Backward compatibility aliases
-export const completeTaskInputSchema = completeTaskOccurrenceInputSchema;
-export type CompleteTaskInput = CompleteTaskOccurrenceInput;
-export const completeTaskResponseSchema = completeTaskOccurrenceResponseSchema;
-export type CompleteTaskResponseDto = CompleteTaskOccurrenceResponseDto;
-
 export const postponeTaskInputSchema = z.object({
   postponeTo: z.iso.datetime({ precision: 3 }),
 });
 export type PostponeTaskInput = z.infer<typeof postponeTaskInputSchema>;
+

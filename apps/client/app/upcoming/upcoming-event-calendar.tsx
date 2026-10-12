@@ -112,10 +112,8 @@ const DEFAULT_SETTINGS: DemoSettings = {
   timeZoneId: "local",
 }
 
-export function TempEventCalendar({ projectId }: { projectId: string }) {
-  const setAddTaskDialogOpen = useAddTaskDialogStore((state) => state.setDialogIsOpen);
-  const setSectionId = useAddTaskDialogStore((state) => state.setSectionId);
-  const setProjectId = useAddTaskDialogStore((state) => state.setProjectId);
+export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
+  const openAddTaskDialog = useAddTaskDialogStore((state) => state.openDialog);
   const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
   const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
 
@@ -137,8 +135,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
           name: "Tasks",
         });
         targetSectionId = response.data.id;
-      } catch (error) {
-        console.error("Failed to ensure section for project:", error);
+      } catch {
         toast.add({
           title: "Error",
           description: "Could not find or create a section for this project.",
@@ -148,9 +145,7 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
       }
     }
 
-    setProjectId(projectId);
-    setSectionId(targetSectionId);
-    setAddTaskDialogOpen(true);
+    openAddTaskDialog({ projectId, sectionId: targetSectionId });
   };
 
   // NOTE: This part might be optimizable
@@ -210,7 +205,6 @@ export function TempEventCalendar({ projectId }: { projectId: string }) {
           }}
           onEventClick={(occurence) => {
             if (!occurence.event.data) {
-              console.error("Event data is missing for the clicked event:", occurence.event);
               return;
             }
 

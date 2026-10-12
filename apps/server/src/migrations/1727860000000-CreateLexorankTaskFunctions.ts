@@ -229,7 +229,7 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
           p_task_id uuid,
           p_section_id uuid,
           p_title text,
-          p_description text DEFAULT NULL,
+          p_description text DEFAULT '',
           p_priority text DEFAULT 'high',
           p_time_range_start timestamptz DEFAULT NULL,
           p_time_range_end timestamptz DEFAULT NULL,
@@ -285,8 +285,13 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
               END;
           END IF;
 
+          -- Prevent degenerate [x, x) empty range by offsetting end by 1 hour if start >= end
           IF p_time_range_start IS NOT NULL AND p_time_range_end IS NOT NULL THEN
-              v_time_range := tstzrange(p_time_range_start, p_time_range_end, '[)');
+              IF p_time_range_start >= p_time_range_end THEN
+                  v_time_range := tstzrange(p_time_range_start, p_time_range_start + interval '1 hour', '[)');
+              ELSE
+                  v_time_range := tstzrange(p_time_range_start, p_time_range_end, '[)');
+              END IF;
           END IF;
 
           INSERT INTO tasks (
@@ -303,7 +308,7 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
               p_section_id,
               v_new_rank,
               p_title,
-              p_description,
+              COALESCE(p_description, ''),
               lower(COALESCE(p_priority, 'high'))::tasks_priority_enum,
               v_time_range
           )
@@ -311,8 +316,12 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
 
           IF p_label_ids IS NOT NULL AND array_length(p_label_ids, 1) > 0 THEN
               INSERT INTO task_to_task_labels (task_id, task_label_id)
-              SELECT p_task_id, unnest(p_label_ids)
-              ON CONFLICT DO NOTHING;
+              SELECT
+                  p_task_id,
+                  l.id
+              FROM task_labels l
+              WHERE l.id = ANY(p_label_ids)
+                AND l.owner_id = p_owner_id;
           END IF;
 
           RETURN v_task;

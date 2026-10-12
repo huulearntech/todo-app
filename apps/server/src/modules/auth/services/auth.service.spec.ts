@@ -35,7 +35,6 @@ describe('AuthService - Magic Link & Sign Up', () => {
     isEmailVerified: false,
     taskLabels: [],
     projects: [],
-    colors: [],
     refreshTokens: [],
     magicLinkTokens: [],
     goals: [],

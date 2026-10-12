@@ -7,8 +7,6 @@ import type { ProjectResponseDto } from "@todo/shared";
  * Uses React `cache()` for per-request memoization, ensuring that
  * `generateMetadata` and `ProjectLayout` share the same backend request.
  */
-
-// NOTE: Why the fuck do I need cache here when I'm using Next.js fetch?
 export const getProjectById = cache(
   async (id: string): Promise<ProjectResponseDto | null> => {
     try {

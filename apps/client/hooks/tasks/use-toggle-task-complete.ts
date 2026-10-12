@@ -5,6 +5,7 @@ import { taskService } from "@/services/task.service";
 import { taskQueryKeys, productivityQueryKeys } from "@/lib/query/query-keys";
 import { toast } from "@/components/ui/toast";
 import type { TaskResponseDto as Task } from "@todo/shared";
+import { getErrorMessage } from "@/lib/api-error";
 
 interface ToggleTaskCompleteVariables {
   task: Task;
@@ -106,13 +107,9 @@ export function useToggleTaskComplete() {
             },
           );
 
-          const message =
-            err?.response?.data?.message ??
-            err?.message ??
-            "Failed to complete task";
           toast.add({
             title: "Error",
-            description: message,
+            description: getErrorMessage(err, "Failed to complete task"),
             type: "error",
           });
         }
@@ -190,13 +187,9 @@ export function useToggleTaskComplete() {
           type: "info",
         });
       } catch (err: any) {
-        const message =
-          err?.response?.data?.message ??
-          err?.message ??
-          "Failed to restore task";
         toast.add({
           title: "Error",
-          description: message,
+          description: getErrorMessage(err, "Failed to restore task"),
           type: "error",
         });
       } finally {

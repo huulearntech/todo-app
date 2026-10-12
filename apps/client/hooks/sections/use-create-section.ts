@@ -24,7 +24,7 @@ export function useCreateSection(hookProjectId?: string) {
         sectionQueryKeys.byProject(pid),
         (oldItems = []) => [
           ...oldItems,
-          { id: `temp-${Date.now()}`, ...newSection } as SectionResponseDto,
+          { id: `temp-${Date.now()}`, ...newSection, colorKey: newSection.colorKey || "slate" } as SectionResponseDto,
         ]
       );
 

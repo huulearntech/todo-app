@@ -5,6 +5,7 @@ import { taskService } from "@/services/task.service";
 import { taskQueryKeys, productivityQueryKeys } from "@/lib/query/query-keys";
 import { toast } from "@/components/ui/toast";
 import type { CompletedOccurrenceResponseDto, TaskResponseDto as Task } from "@todo/shared";
+import { getErrorMessage } from "@/lib/api-error";
 
 export function useDeleteTask() {
   const queryClient = useQueryClient();
@@ -27,14 +28,10 @@ export function useDeleteTask() {
         (old) => old?.filter((o) => o.id !== taskId) ?? [],
       );
     },
-    onError: (err: any) => {
-      const message =
-        err?.response?.data?.message ??
-        err?.message ??
-        "Failed to delete task";
+    onError: (err: unknown) => {
       toast.add({
         title: "Error",
-        description: message,
+        description: getErrorMessage(err, "Failed to delete task"),
         type: "error",
       });
     },

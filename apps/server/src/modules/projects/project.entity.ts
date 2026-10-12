@@ -12,7 +12,7 @@ import {
 
 import { User } from '../users/user.entity';
 import { Section } from '../sections/section.entity';
-import { Color } from '../colors/color.entity';
+import { TrigramIndex } from '../../common/decorators/trigram-index.decorator';
 
 @Entity('projects')
 @Index(['ownerId', 'id'])
@@ -21,6 +21,7 @@ export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @TrigramIndex()
   @Column()
   name!: string;
 
@@ -47,16 +48,6 @@ export class Project {
   @ManyToOne(() => User, (user) => user.projects, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner!: User;
-
-  @ManyToOne(() => Color, (color) => color.projects, {
-    nullable: false,
-    onDelete: 'RESTRICT',
-  })
-  @JoinColumn([
-    { name: 'owner_id', referencedColumnName: 'ownerId' },
-    { name: 'color_key', referencedColumnName: 'key' },
-  ])
-  color!: Color;
 
   @OneToMany(() => Section, (section) => section.project, { cascade: true })
   sections!: Section[];

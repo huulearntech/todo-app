@@ -38,7 +38,7 @@ import { updateTaskLabelSchema, type UpdateTaskLabelDto } from "@todo/shared";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
 
-export default function Dialog_EditLabel({
+export default function EditLabelDialog({
   label,
   setLabel,
 }: {

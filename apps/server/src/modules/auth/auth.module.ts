@@ -17,12 +17,19 @@ import { MagicLinkGuard } from './guards/magic-link.guard';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { MailerModule } from '../mailer/mailer.module';
 
+import { TypedConfigService } from '@/src/config/typed-config.service';
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt-access' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET, // Must match the Strategy secret
-      signOptions: { expiresIn: '900s' }, // Access token expiration time // FIX: @Consistency
+    JwtModule.registerAsync({
+      inject: [TypedConfigService],
+      useFactory: (configService: TypedConfigService) => ({
+        secret: configService.get('JWT_SECRET'),
+        signOptions: {
+          expiresIn: `${configService.get('JWT_SECRET_EXPIRATION_SECONDS')}s`,
+        },
+      }),
     }),
     TypeOrmModule.forFeature([User, RefreshToken, MagicLinkToken]),
     UserModule,

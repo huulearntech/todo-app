@@ -42,6 +42,50 @@ export class AuthController {
     return user;
   }
 
+  private setAuthCookies(
+    response: Response,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    response.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge:
+        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000,
+      path: '/auth/refresh-token',
+    });
+
+    response.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge:
+        this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000,
+      path: '/',
+    });
+  }
+
+  private clearAuthCookies(response: Response) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProduction,
+      path: '/auth/refresh-token',
+    });
+
+    response.clearCookie('access_token', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProduction,
+      path: '/',
+    });
+  }
+
   @Public()
   @UseGuards(GuestGuard)
   @Post('sign-in')
@@ -53,26 +97,9 @@ export class AuthController {
     const { accessToken, refreshToken, user } =
       await this.authService.signIn(signInDto);
 
-    // 2. Set Refresh Token Cookie
-    response.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge:
-        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
-    });
+    this.setAuthCookies(response, accessToken, refreshToken);
 
-    // 3. Set Access Token Cookie
-    response.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/',
-    });
-
-    // 4. Return user profile data or a success flag back as JSON
+    // Return user profile data back as JSON
     return user;
   }
 
@@ -82,21 +109,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     await this.authService.signOut(user.id);
-
-    response.clearCookie('refresh_token', {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: true,
-      path: '/auth/refresh-token',
-    });
-
-    response.clearCookie('access_token', {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: true,
-      path: '/',
-    });
-
+    this.clearAuthCookies(response);
     return { message: 'Signed out' };
   }
 
@@ -115,24 +128,7 @@ export class AuthController {
         oldRefreshToken,
       );
 
-    // 2. Set new Refresh Token Cookie
-    response.cookie('refresh_token', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge:
-        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/auth/refresh-token', // Restrict cookie to refresh token endpoint
-    });
-
-    // 3. Set new Access Token Cookie
-    response.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000, // Convert seconds to milliseconds
-      path: '/',
-    });
+    this.setAuthCookies(response, accessToken, newRefreshToken);
 
     return { accessToken };
   }
@@ -155,24 +151,7 @@ export class AuthController {
       await this.refreshTokenService.generatePairOfTokens(user.id);
     await this.refreshTokenService.createRefreshToken(user.id, refreshToken);
 
-    // Set Refresh Token Cookie
-    response.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge:
-        this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000,
-      path: '/auth/refresh-token',
-    });
-
-    // Set Access Token Cookie
-    response.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000,
-      path: '/',
-    });
+    this.setAuthCookies(response, accessToken, refreshToken);
 
     const isJsonRequest =
       request.headers['accept']?.includes('application/json');

@@ -17,11 +17,6 @@ export const productivityService = {
   async getGoalProgress(): Promise<GoalProgressResponseDto> {
     const response = await apiClient.get<GoalProgressResponseDto>(
       "/productivity/goals",
-      {
-        headers: {
-          "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-      },
     );
     return response.data;
   },
@@ -38,9 +33,6 @@ export const productivityService = {
     const response = await apiClient.get<DayGoalHistoryItem[]>(
       "/productivity/history",
       {
-        headers: {
-          "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
         params: { days },
       },
     );

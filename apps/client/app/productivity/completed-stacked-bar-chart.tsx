@@ -38,7 +38,7 @@ const CHART_COLORS = [
   "oklch(0.556 0 0)", // Muted slate for "Other"
 ];
 
-export default function TempCompletedStackedBarChart() {
+export default function CompletedStackedBarChart() {
   const { data, isLoading } = useCompletedTasksLast7Days({
     select: (tasks) => {
       // 1. Initialize the last 7 days excluding current day (today), ordered chronologically

@@ -10,6 +10,7 @@ export type AddTaskDialogActions = {
   setProjectId: (projectId?: string) => void;
   setSectionId: (sectionId?: string) => void;
   openDialog: (params?: { projectId?: string; sectionId?: string }) => void;
+  closeDialog: () => void;
   setDialogIsOpen: (open: boolean) => void;
 };
 
@@ -32,6 +33,17 @@ export const addTaskDialogStore = (initState: AddTaskDialogState = addTaskDialog
         sectionId: params?.sectionId,
         dialogIsOpen: true,
       }),
-    setDialogIsOpen: (open: boolean) => set({ dialogIsOpen: open }),
+    closeDialog: () =>
+      set({
+        dialogIsOpen: false,
+        projectId: undefined,
+        sectionId: undefined,
+      }),
+    setDialogIsOpen: (open: boolean) =>
+      set(
+        open
+          ? { dialogIsOpen: true }
+          : { dialogIsOpen: false, projectId: undefined, sectionId: undefined }
+      ),
   }));
 };

@@ -1,4 +1,3 @@
-// TODO: This code is too shitty. Need to rewrite it anyway
 "use client";
 
 import { useEffect, useId, useRef } from "react";

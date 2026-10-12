@@ -148,26 +148,12 @@ export class TasksController {
     });
   }
 
-  @Post(':id/complete')
-  async completeTask(
-    @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
-    @Body() body?: CompleteTaskOccurrenceDto,
-  ) {
-    return this.completeTaskOccurrence(user, id, body);
-  }
-
   @Post(':id/occurrences/uncomplete')
   async uncompleteTaskOccurrence(
     @CurrentUser() user: JwtUser,
     @Param('id') id: string,
   ) {
     return this.taskService.uncompleteTaskOccurrence(user.id, id);
-  }
-
-  @Post(':id/uncomplete')
-  async uncompleteTask(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    return this.uncompleteTaskOccurrence(user, id);
   }
 
   @Post(':id/postpone')
@@ -185,11 +171,11 @@ export class TasksController {
 
   @Patch(':id')
   async updateTask(
-    // @CurrentUser() user: JwtUser,
+    @CurrentUser() user: JwtUser,
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
   ) {
-    return this.taskService.updateTask(id, updateTaskDto);
+    return this.taskService.updateTask(id, updateTaskDto, user.id);
   }
 
   @Patch(':id/reorder')

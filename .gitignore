@@ -3,10 +3,13 @@ node_modules/
 .pnpm-store/
 
 # Next.js build output
+apps/client/.next/
+apps/client/out/
 apps/frontend/.next/
 apps/frontend/out/
 
 # NestJS build output
+apps/server/dist/
 apps/backend/dist/
 
 # Shared build output and stuffs

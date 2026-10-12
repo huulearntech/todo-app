@@ -10,7 +10,6 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { useHotkey } from "@tanstack/react-hotkeys";
 import { useAuth } from "@/providers/AuthProvider";
 import { useProjects } from "@/hooks/projects/use-projects";
 import { useSections } from "@/hooks/sections/use-sections";
@@ -67,7 +66,6 @@ import { toast } from "@/components/ui/toast";
 
 import {
   CornerDownLeftIcon,
-  FileTextIcon,
   Loader2Icon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -89,7 +87,6 @@ export interface UnifiedTaskAddFormProps {
 }
 
 export function UnifiedTaskAddForm({
-  variant = "inline",
   defaultProjectId,
   defaultSectionId,
   autoFocus = false,
@@ -116,9 +113,8 @@ export function UnifiedTaskAddForm({
   // Store highlighted item in ref to prevent continuous render cascades during autocomplete filtering
   const highlightedItemRef = useRef<SuggestionItemData | null>(null);
 
-  // Description state
+  // Description state - permanently visible standard field
   const [description, setDescription] = useState("");
-  const [isDescriptionOpen, setIsDescriptionOpen] = useState(variant === "dialog");
 
   // Explicit interactive overrides (when user clicks buttons rather than typing inline)
   const [manualProjectId, setManualProjectId] = useState<string | undefined>(defaultProjectId);
@@ -132,13 +128,6 @@ export function UnifiedTaskAddForm({
   const [manualReminderOffset, setManualReminderOffset] = useState<
     number | null | undefined
   >(undefined);
-
-  // Focus shortcut for inline variant
-  useHotkey("Q", () => {
-    if (variant === "inline") {
-      taskInputRef.current?.focus();
-    }
-  });
 
   // Auto-focus if requested
   useEffect(() => {
@@ -489,9 +478,6 @@ export function UnifiedTaskAddForm({
       setCaret(0);
       setDismissedToken(null);
       setDescription("");
-      if (variant === "inline") {
-        setIsDescriptionOpen(false);
-      }
       setManualPriority(null);
       setManualTimeRange(undefined);
       setManualDateDisplay(undefined);
@@ -578,13 +564,8 @@ export function UnifiedTaskAddForm({
       }
     }
 
-    if (e.key === "ArrowDown" && !isDescriptionOpen) {
-      e.preventDefault();
-      setIsDescriptionOpen(true);
-    } else if (e.key === "Escape") {
-      if (isDescriptionOpen && variant === "inline") {
-        setIsDescriptionOpen(false);
-      } else if (rawText) {
+    if (e.key === "Escape") {
+      if (rawText) {
         setRawText("");
         setCaret(0);
       } else {
@@ -593,15 +574,12 @@ export function UnifiedTaskAddForm({
     }
   };
 
-  const isDialog = variant === "dialog";
-
   return (
     <form
       ref={formRef}
       onSubmit={handleSubmit}
       className={cn(
-        "group relative flex flex-col gap-2 rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-4 shadow-sm transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10",
-        isDialog && "border-0 shadow-none bg-transparent p-4 sm:p-5",
+        "flex flex-col gap-2.5 p-4 sm:p-5 bg-transparent",
         className
       )}
     >
@@ -689,44 +667,24 @@ export function UnifiedTaskAddForm({
             </AutocompleteContent>
           </Autocomplete>
         </div>
-
-        {/* Toggle description button (for inline variant) */}
-        {!isDialog && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsDescriptionOpen((prev) => !prev)}
-            className={cn(
-              "size-8 p-0 text-muted-foreground hover:text-foreground shrink-0",
-              (isDescriptionOpen || Boolean(description || resolved.description)) &&
-                "text-primary bg-primary/10 hover:bg-primary/20"
-            )}
-            title="Add description (or press ↓)"
-          >
-            <FileTextIcon className="size-4" />
-          </Button>
-        )}
       </div>
 
-      {/* 2. Description Area */}
-      {isDescriptionOpen && (
-        <div className="relative pt-1 border-t border-border/30 transition-all">
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            placeholder="Description..."
-            rows={isDialog ? 3 : 2}
-            className="w-full resize-none border-0 bg-transparent px-1 text-xs sm:text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
-          />
-        </div>
-      )}
+      {/* 2. Description Area (standard form field, permanently visible) */}
+      <div className="relative pt-1 border-t border-border/30 transition-all">
+        <Textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          placeholder="Description"
+          rows={3}
+          className="w-full resize-none border-0 bg-transparent px-1 text-xs sm:text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
+        />
+      </div>
 
       {/* 3. Action Chips Row (Due Date, Priority, Labels, Reminder) */}
       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -767,7 +725,7 @@ export function UnifiedTaskAddForm({
 
         {/* Right: Cancel & Add Task Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {(isDialog || onCancel) && (
+          {onCancel && (
             <Button
               type="button"
               variant="ghost"

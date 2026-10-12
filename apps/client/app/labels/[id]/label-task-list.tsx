@@ -8,7 +8,7 @@ import { Badge } from "@/components/reui/badge";
 import { TagIcon, CheckCircle2Icon } from "lucide-react";
 import { getColorConfig } from "@/lib/color-palette";
 
-export default function TempTaskList({ labelId }: { labelId: string }) {
+export default function LabelTaskList({ labelId }: { labelId: string }) {
   const { data: labels = [] } = useLabels();
   const label = labels.find((l) => l.id === labelId);
 

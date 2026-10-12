@@ -87,8 +87,7 @@ export default function Avatar({
         description: "Your profile picture has been updated successfully!",
         type: "success",
       });
-    } catch (error) {
-      console.error("Error uploading avatar:", error);
+    } catch {
       toast.add({
         title: "Upload failed",
         description: "Could not upload your avatar. Please try again.",

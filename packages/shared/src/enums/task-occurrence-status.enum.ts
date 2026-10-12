@@ -4,4 +4,3 @@ export enum TaskOccurrenceStatus {
   SKIPPED = 'skipped',
 }
 
-export { TaskOccurrenceStatus as TaskOccurenceStatus };

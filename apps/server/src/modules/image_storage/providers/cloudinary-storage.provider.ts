@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { TypedConfigService } from '../../../config/typed-config.service';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, type SignApiOptions } from 'cloudinary';
 import {
   IImageStorageProvider,
   SignedUploadSignatureResponse,
@@ -25,13 +25,12 @@ export class CloudinaryStorageProvider implements IImageStorageProvider {
   }
 
   async generateUploadSignature(
-    folder: string = 'products',
+    folder: string = 'avatars',
     publicId?: string,
   ): Promise<SignedUploadSignatureResponse> {
     const timestamp = Math.floor(Date.now() / 1000);
 
-    // TODO: rigid types
-    const paramsToSign: Record<string, unknown> = {
+    const paramsToSign: SignApiOptions = {
       folder,
       timestamp,
     };

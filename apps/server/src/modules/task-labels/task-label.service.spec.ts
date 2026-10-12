@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TaskLabelService } from './task-label.service';
 import { TaskLabel } from './task-label.entity';
-import { ColorService } from '../colors/color.service';
 
 describe('TaskLabelService', () => {
   let service: TaskLabelService;
@@ -12,10 +11,6 @@ describe('TaskLabelService', () => {
     create: jest.Mock;
     save: jest.Mock;
     delete: jest.Mock;
-  };
-  let colorService: {
-    ensureDefaultColors: jest.Mock;
-    getColorByKey: jest.Mock;
   };
 
   const ownerId = '11111111-1111-1111-1111-111111111111';
@@ -31,27 +26,12 @@ describe('TaskLabelService', () => {
       delete: jest.fn(),
     };
 
-    colorService = {
-      ensureDefaultColors: jest.fn().mockResolvedValue([
-        { ownerId, key: 'slate', name: 'Slate' },
-      ]),
-      getColorByKey: jest.fn().mockResolvedValue({
-        ownerId,
-        key: 'sky',
-        name: 'Sky Blue',
-      }),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TaskLabelService,
         {
           provide: getRepositoryToken(TaskLabel),
           useValue: labelRepository,
-        },
-        {
-          provide: ColorService,
-          useValue: colorService,
         },
       ],
     }).compile();
@@ -60,7 +40,7 @@ describe('TaskLabelService', () => {
   });
 
   describe('createTaskLabel', () => {
-    it('should create label with default color slate and call ensureDefaultColors', async () => {
+    it('should create label with default color slate', async () => {
       const createdLabel = {
         id: 'label-1',
         ownerId,
@@ -76,29 +56,21 @@ describe('TaskLabelService', () => {
         colorKey: 'slate',
       });
 
-      expect(colorService.ensureDefaultColors).toHaveBeenCalledWith(ownerId);
       expect(labelRepository.create).toHaveBeenCalledWith({
         ownerId,
         name: 'Work',
         description: 'Work tasks',
         colorKey: 'slate',
-        color: { ownerId, key: 'slate', name: 'Slate' },
       });
       expect(result).toEqual(createdLabel);
     });
 
-    it('should create label with custom color after validating via colorService', async () => {
-      const targetColor = {
-        ownerId,
-        key: 'sky',
-        name: 'Sky Blue',
-      };
+    it('should create label with custom color', async () => {
       const createdLabel = {
         id: 'label-2',
         ownerId,
         name: 'Urgent',
         colorKey: 'sky',
-        color: targetColor,
       };
       labelRepository.findOne.mockResolvedValue(createdLabel);
 
@@ -107,46 +79,29 @@ describe('TaskLabelService', () => {
         colorKey: 'sky',
       });
 
-      expect(colorService.getColorByKey).toHaveBeenCalledWith(
-        ownerId,
-        'sky',
-      );
       expect(labelRepository.create).toHaveBeenCalledWith({
         ownerId,
         name: 'Urgent',
         description: undefined,
         colorKey: 'sky',
-        color: targetColor,
       });
       expect(result).toEqual(createdLabel);
     });
   });
 
   describe('updateTaskLabel', () => {
-    it('should update label colorKey and color relation entity', async () => {
-      const oldColor = {
-        ownerId,
-        key: 'slate',
-        name: 'Slate',
-      };
-      const newColor = {
-        ownerId,
-        key: 'sky',
-        name: 'Sky Blue',
-      };
+    it('should update label colorKey directly', async () => {
       const existingLabel = {
         id: 'label-1',
         ownerId,
         name: 'Work',
         colorKey: 'slate',
-        color: oldColor,
       };
       labelRepository.findOne
         .mockResolvedValueOnce(existingLabel)
         .mockResolvedValueOnce({
           ...existingLabel,
           colorKey: 'sky',
-          color: newColor,
         });
 
       const result = await service.updateTaskLabel(
@@ -155,15 +110,10 @@ describe('TaskLabelService', () => {
         ownerId,
       );
 
-      expect(colorService.getColorByKey).toHaveBeenCalledWith(
-        ownerId,
-        'sky',
-      );
       expect(labelRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'label-1',
           colorKey: 'sky',
-          color: newColor,
         }),
       );
       expect(result?.colorKey).toBe('sky');
@@ -171,13 +121,12 @@ describe('TaskLabelService', () => {
   });
 
   describe('getTaskLabelsByOwnerId', () => {
-    it('should find labels with color relation included', async () => {
+    it('should find labels for ownerId ordered by createdAt', async () => {
       const labels = [
         {
           id: 'label-1',
           name: 'Work',
           colorKey: 'slate',
-          color: { key: 'slate', name: 'Slate' },
         },
       ];
       labelRepository.find.mockResolvedValue(labels);
@@ -186,7 +135,6 @@ describe('TaskLabelService', () => {
 
       expect(labelRepository.find).toHaveBeenCalledWith({
         where: { ownerId },
-        relations: { color: true },
         order: { createdAt: 'DESC' },
       });
       expect(result).toEqual(labels);

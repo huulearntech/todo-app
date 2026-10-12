@@ -1,4 +1,3 @@
-// NOTE: This is redundant
 "use client";
 
 import * as React from "react";

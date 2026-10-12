@@ -13,7 +13,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function TempCircularProgress({
+export function CircularProgressIndicator({
   size = 40,
   strokeWidth = 4,
   progress = 0,

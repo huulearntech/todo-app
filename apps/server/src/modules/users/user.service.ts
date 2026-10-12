@@ -8,8 +8,6 @@ import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { SignUpDto } from '../auth/dto/sign-up.dto';
 import { User } from './user.entity';
 import { Project } from '../projects/project.entity';
-import { Color } from '../colors/color.entity';
-import { DEFAULT_PALETTE_COLORS } from '../colors/color.service';
 
 @Injectable()
 export class UserService {
@@ -33,15 +31,6 @@ export class UserService {
     const userResponse = await this.dataSource.transaction(
       async (transactionalEntityManager) => {
         const savedUser = await transactionalEntityManager.save(User, user);
-
-        const defaultColors = DEFAULT_PALETTE_COLORS.map((dc) =>
-          transactionalEntityManager.create(Color, {
-            ownerId: savedUser.id,
-            key: dc.key,
-            name: dc.name,
-          }),
-        );
-        await transactionalEntityManager.save(Color, defaultColors);
 
         await transactionalEntityManager.save(Project, {
           id: defaultProjectId,

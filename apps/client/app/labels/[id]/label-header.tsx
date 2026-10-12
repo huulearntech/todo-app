@@ -37,9 +37,9 @@ import {
 import { toast } from "@/components/ui/toast";
 
 import { MoreHorizontalIcon, PencilIcon, Trash2Icon, TagIcon } from "lucide-react";
-import Dialog_EditLabel from "../(root)/temp-edit-label-form";
+import EditLabelDialog from "../(root)/edit-label-dialog";
 
-export default function Header() {
+export default function LabelHeader() {
   const params = useParams();
   const router = useRouter();
   const labelId = params?.id as string;
@@ -131,7 +131,7 @@ export default function Header() {
 
       {/* Edit Dialog */}
       {isEditing && currentLabel && (
-        <Dialog_EditLabel
+        <EditLabelDialog
           label={currentLabel}
           setLabel={(val) => !val && setIsEditing(false)}
         />

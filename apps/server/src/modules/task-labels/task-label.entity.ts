@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { Task } from '../tasks/entities/task.entity';
 import { User } from '../users/user.entity';
-import { Color } from '../colors/color.entity';
+import { TrigramIndex } from '@/src/common/decorators/trigram-index.decorator';
 
 @Entity('task_labels')
 @Index(['name', 'ownerId'], { unique: true }) // NOTE: This ensures that a user cannot create two labels with the same name.
@@ -19,6 +19,7 @@ export class TaskLabel {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @TrigramIndex()
   @Column({ type: 'text' })
   name!: string;
 
@@ -48,14 +49,4 @@ export class TaskLabel {
   @ManyToOne(() => User, (owner) => owner.taskLabels, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner!: User;
-
-  @ManyToOne(() => Color, (color) => color.taskLabels, {
-    nullable: false,
-    onDelete: 'RESTRICT',
-  })
-  @JoinColumn([
-    { name: 'owner_id', referencedColumnName: 'ownerId' },
-    { name: 'color_key', referencedColumnName: 'key' },
-  ])
-  color!: Color;
 }

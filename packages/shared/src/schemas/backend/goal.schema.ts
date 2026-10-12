@@ -22,7 +22,7 @@ export const goalPeriodProgressSchema = z.object({
   completed: z.number().int(),
   target: z.number().int(),
   isAchieved: z.boolean(),
-  percentage: z.number(),
+  ratio: z.number(),
 });
 
 export type GoalPeriodProgressDto = z.infer<typeof goalPeriodProgressSchema>;

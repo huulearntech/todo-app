@@ -8,7 +8,6 @@ import { TaskOccurrence } from './entities/task-occurrence.entity';
 import { TaskReminder } from './entities/task-reminder.entity';
 
 import { TaskService } from './services/task.service';
-import { TaskRecurrenceService } from './services/task-recurrence.service';
 
 import { TasksController } from './controllers/task.controller';
 
@@ -29,7 +28,7 @@ import { User } from '../users/user.entity';
     MailerModule,
   ],
   controllers: [TasksController],
-  providers: [TaskService, TaskRecurrenceService],
+  providers: [TaskService],
   exports: [TaskService, TypeOrmModule],
 })
 export class TaskModule {}

@@ -5,6 +5,7 @@ import { taskService } from "@/services/task.service";
 import { taskQueryKeys, productivityQueryKeys } from "@/lib/query/query-keys";
 import { toast } from "@/components/ui/toast";
 import type { CompletedOccurrenceResponseDto } from "@todo/shared";
+import { getErrorMessage } from "@/lib/api-error";
 
 export function useDeleteOccurrence() {
   const queryClient = useQueryClient();
@@ -26,20 +27,19 @@ export function useDeleteOccurrence() {
 
       return { previousOccurrences };
     },
-    onError: (err: any, _occurrenceId, context) => {
+    onError: (err: unknown, _occurrenceId, context) => {
       if (context?.previousOccurrences) {
         queryClient.setQueryData(
           taskQueryKeys.completed(),
           context.previousOccurrences,
         );
       }
-      const message =
-        err?.response?.data?.message ??
-        err?.message ??
-        "Failed to delete completed occurrence";
       toast.add({
         title: "Error",
-        description: message,
+        description: getErrorMessage(
+          err,
+          "Failed to delete completed occurrence",
+        ),
         type: "error",
       });
     },

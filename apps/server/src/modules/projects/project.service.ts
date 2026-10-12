@@ -7,15 +7,12 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { User } from '../users/user.entity';
 import { ProjectFilterDto } from './dto/project-filter.dto';
-import { ColorService } from '../colors/color.service';
-import { Color } from '../colors/color.entity';
 
 @Injectable()
 export class ProjectService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
-    private readonly colorService: ColorService,
   ) {}
 
   async createProject(
@@ -25,21 +22,11 @@ export class ProjectService {
     const { name, description, colorKey } = createProjectDto;
     const key = (colorKey || 'slate').toLowerCase().trim();
 
-    let targetColor: Color | undefined;
-    if (key === 'slate') {
-      const defaultColors =
-        await this.colorService.ensureDefaultColors(ownerId);
-      targetColor = defaultColors.find((c) => c.key === 'slate');
-    } else {
-      targetColor = await this.colorService.getColorByKey(ownerId, key);
-    }
-
     const project = this.projectRepository.create({
       ownerId,
       name: name.trim(),
       description: description?.trim(),
       colorKey: key,
-      ...(targetColor ? { color: targetColor } : {}),
     });
 
     const saved = await this.projectRepository.save(project);
@@ -86,7 +73,6 @@ export class ProjectService {
   async getProjectById(id: string): Promise<Project | null> {
     return this.projectRepository.findOne({
       where: { id },
-      relations: { color: true },
     });
   }
 
@@ -113,23 +99,7 @@ export class ProjectService {
     }
 
     if (updatedProject.colorKey !== undefined) {
-      const key = updatedProject.colorKey.toLowerCase().trim();
-      let targetColor: Color | undefined;
-      if (key === 'slate') {
-        const defaultColors = await this.colorService.ensureDefaultColors(
-          project.ownerId,
-        );
-        targetColor = defaultColors.find((c) => c.key === 'slate');
-      } else {
-        targetColor = await this.colorService.getColorByKey(
-          project.ownerId,
-          key,
-        );
-      }
-      project.colorKey = key;
-      if (targetColor) {
-        project.color = targetColor;
-      }
+      project.colorKey = updatedProject.colorKey.toLowerCase().trim();
     }
 
     await this.projectRepository.save(project);

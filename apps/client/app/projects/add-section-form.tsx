@@ -64,6 +64,7 @@ const AddSectionForm = React.forwardRef<AddSectionFormHandle, AddSectionFormProp
         projectId,
         name: "",
         description: "",
+        colorKey: "slate",
       },
     });
 

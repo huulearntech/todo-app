@@ -20,6 +20,7 @@ import { ColorModule } from './modules/colors/color.module';
 import { MailerModule } from './modules/mailer/mailer.module';
 import { SearchModule } from './modules/search/search.module';
 import { ProductivityModule } from './modules/productivity/productivity.module';
+import { TrigramIndexModule } from './common/database/trigram-index.module';
 
 import { ZodValidationPipe } from 'nestjs-zod';
 
@@ -28,9 +29,11 @@ import { migrations } from './migrations';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
+      imports: [AppConfigModule],
+      inject: [TypedConfigService],
+      useFactory: (configService: TypedConfigService) => ({
         type: 'postgres',
-        url: process.env.DATABASE_URL,
+        url: configService.get('DATABASE_URL'),
         autoLoadEntities: true,
         synchronize: true, // set to false in production to avoid data loss!
         migrations,
@@ -62,6 +65,7 @@ import { migrations } from './migrations';
     ProductivityModule,
     ImageStorageModule.register(),
     AppConfigModule,
+    TrigramIndexModule,
   ],
   controllers: [AppController],
   providers: [

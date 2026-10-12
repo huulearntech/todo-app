@@ -115,7 +115,7 @@ export class ProductivityService {
         completed: completedToday,
         target: dailyTarget,
         isAchieved: completedToday >= dailyTarget,
-        percentage:
+        ratio:
           dailyTarget > 0
             ? Math.round((completedToday / dailyTarget) * 100) / 100
             : 0,
@@ -124,7 +124,7 @@ export class ProductivityService {
         completed: completedThisWeek,
         target: weeklyTarget,
         isAchieved: completedThisWeek >= weeklyTarget,
-        percentage:
+        ratio:
           weeklyTarget > 0
             ? Math.round((completedThisWeek / weeklyTarget) * 100) / 100
             : 0,

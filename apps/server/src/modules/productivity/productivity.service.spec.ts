@@ -95,13 +95,13 @@ describe('ProductivityService', () => {
           completed: 3,
           target: 5,
           isAchieved: false,
-          percentage: 0.6,
+          ratio: 0.6,
         },
         weekly: {
           completed: 22,
           target: 20,
           isAchieved: true,
-          percentage: 1.1,
+          ratio: 1.1,
         },
       });
     });

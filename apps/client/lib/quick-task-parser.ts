@@ -1,7 +1,7 @@
 import * as chrono from "chrono-node";
 import moo from "moo";
 import { TaskPriority, type ReminderDto } from "@todo/shared";
-import { getColorConfig } from "@/lib/color-palette";
+import { getColorConfig, COLOR_PALETTE_CONFIG } from "@/lib/color-palette";
 
 export interface ParsedRawQuickTask {
   title: string;
@@ -1017,9 +1017,7 @@ export interface HighlightToken {
     | "date"
     | "reminder"
     | "description";
-  color?: string;
-  backgroundColor?: string;
-  borderColor?: string;
+  className?: string;
   isOverridden?: boolean;
 }
 
@@ -1035,23 +1033,6 @@ interface MatchInterval {
     | "reminder"
     | "description";
   raw: string;
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const cleanHex = hex.replace("#", "");
-  if (cleanHex.length === 3) {
-    const r = parseInt(cleanHex[0] + cleanHex[0], 16);
-    const g = parseInt(cleanHex[1] + cleanHex[1], 16);
-    const b = parseInt(cleanHex[2] + cleanHex[2], 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  if (cleanHex.length === 6) {
-    const r = parseInt(cleanHex.slice(0, 2), 16);
-    const g = parseInt(cleanHex.slice(2, 4), 16);
-    const b = parseInt(cleanHex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  return hex;
 }
 
 export function tokenizeQuickTaskForHighlight(
@@ -1257,83 +1238,80 @@ export function tokenizeQuickTaskForHighlight(
       isOverridden = item !== lastReminderItem;
     }
 
-    let color: string | undefined;
-    let backgroundColor: string | undefined;
-    let borderColor: string | undefined;
+    let className: string | undefined;
 
     if (isOverridden) {
-      color = "var(--muted-foreground)";
-      backgroundColor = "transparent";
-      borderColor = "transparent";
-    } else if (item.type === "project" || item.type === "section") {
-      const cleanProjectName = raw
-        .replace(/^#/, "")
-        .split("/")[0]
-        .replace(/["'\[\]]/g, "")
-        .trim();
-      const matchedProject = options?.projects?.find(
-        (p) => normalizeName(p.name) === normalizeName(cleanProjectName)
-      );
-      const projColor = getColorConfig(matchedProject?.colorKey).hex;
-      color = projColor;
-      backgroundColor = hexToRgba(projColor, 0.12);
-      borderColor = hexToRgba(projColor, 0.3);
-    } else if (item.type === "label") {
-      const cleanLabelName = raw
-        .replace(/^[%@]/, "")
-        .replace(/["'\[\]]/g, "")
-        .trim();
-      const matchedLabel = options?.labels?.find(
-        (l) => normalizeName(l.name) === normalizeName(cleanLabelName)
-      );
-      if (matchedLabel?.colorKey) {
-        const labelColorHex = getColorConfig(matchedLabel.colorKey).hex;
-        color = labelColorHex;
-        backgroundColor = hexToRgba(labelColorHex, 0.12);
-        borderColor = hexToRgba(labelColorHex, 0.25);
-      } else {
-        // Label does not have colorKey, do not show competing color
-        color = "var(--muted-foreground)";
-        backgroundColor = "rgba(128, 128, 128, 0.08)";
-        borderColor = "transparent";
+      className = "line-through opacity-40 select-none text-muted-foreground";
+    } else {
+      switch (item.type) {
+        case "project":
+        case "section": {
+          const cleanProjectName = raw
+            .replace(/^#/, "")
+            .split("/")[0]
+            .replace(/["'\[\]]/g, "")
+            .trim();
+          const matchedProject = options?.projects?.find(
+            (p) => normalizeName(p.name) === normalizeName(cleanProjectName)
+          );
+          const config = getColorConfig(matchedProject?.colorKey);
+          className = `${config.badgeBgClass} ${config.badgeTextClass}`;
+          break;
+        }
+        case "label": {
+          const cleanLabelName = raw
+            .replace(/^[%@]/, "")
+            .replace(/["'\[\]]/g, "")
+            .trim();
+          const matchedLabel = options?.labels?.find(
+            (l) => normalizeName(l.name) === normalizeName(cleanLabelName)
+          );
+          if (matchedLabel?.colorKey) {
+            const config = getColorConfig(matchedLabel.colorKey);
+            className = `${config.badgeBgClass} ${config.badgeTextClass}`;
+          } else {
+            className = "text-muted-foreground bg-muted/50";
+          }
+          break;
+        }
+        case "priority": {
+          const pLower = item.raw.toLowerCase();
+          const config =
+            pLower === "p1"
+              ? COLOR_PALETTE_CONFIG.red
+              : pLower === "p2"
+                ? COLOR_PALETTE_CONFIG.amber
+                : pLower === "p3"
+                  ? COLOR_PALETTE_CONFIG.blue
+                  : null;
+          className = config
+            ? `${config.badgeBgClass} ${config.badgeTextClass}`
+            : "text-muted-foreground bg-muted/40";
+          break;
+        }
+        case "date": {
+          const config = COLOR_PALETTE_CONFIG.violet;
+          className = `${config.badgeBgClass} ${config.badgeTextClass}`;
+          break;
+        }
+        case "reminder": {
+          const config = COLOR_PALETTE_CONFIG.amber;
+          className = `${config.badgeBgClass} ${config.badgeTextClass}`;
+          break;
+        }
+        case "description": {
+          className = "text-muted-foreground italic";
+          break;
+        }
+        default:
+          break;
       }
-    } else if (item.type === "priority") {
-      const pLower = item.raw.toLowerCase();
-      if (pLower === "p1") {
-        color = "#ef4444";
-        backgroundColor = "rgba(239, 68, 68, 0.15)";
-        borderColor = "rgba(239, 68, 68, 0.35)";
-      } else if (pLower === "p2") {
-        color = "#f59e0b";
-        backgroundColor = "rgba(245, 158, 11, 0.15)";
-        borderColor = "rgba(245, 158, 11, 0.35)";
-      } else if (pLower === "p3") {
-        color = "#3b82f6";
-        backgroundColor = "rgba(59, 130, 246, 0.15)";
-        borderColor = "rgba(59, 130, 246, 0.35)";
-      } else {
-        color = "var(--muted-foreground)";
-        backgroundColor = "rgba(120, 120, 120, 0.1)";
-        borderColor = "rgba(120, 120, 120, 0.2)";
-      }
-    } else if (item.type === "date") {
-      color = "#8b5cf6";
-      backgroundColor = "rgba(139, 92, 246, 0.14)";
-      borderColor = "rgba(139, 92, 246, 0.35)";
-    } else if (item.type === "reminder") {
-      color = "#f59e0b";
-      backgroundColor = "rgba(245, 158, 11, 0.15)";
-      borderColor = "rgba(245, 158, 11, 0.35)";
-    } else if (item.type === "description") {
-      color = "var(--muted-foreground)";
     }
 
     result.push({
       text: raw,
       type: item.type,
-      color,
-      backgroundColor,
-      borderColor,
+      className,
       isOverridden,
     });
 

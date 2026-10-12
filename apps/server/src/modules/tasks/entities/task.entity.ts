@@ -24,6 +24,7 @@ import {
   TstzRange,
   TstzRangeTransformer,
 } from '../../../common/transformers/tstzrange.transformer';
+import { TrigramIndex } from '@/src/common/decorators/trigram-index.decorator';
 
 // TODO: Lexorank: Implement Lexorank reordering cronjob
 
@@ -38,7 +39,7 @@ export class Task {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index('idx_task_title_trgm', { synchronize: false })
+  @TrigramIndex()
   @Column()
   title: string;
 
@@ -107,8 +108,6 @@ export class Task {
   @JoinColumn({ name: 'recurrence_id' })
   recurrence: TaskRecurrence | null;
 
-  @OneToMany(() => TaskReminder, (reminder) => reminder.task, {
-    cascade: ['insert', 'update'],
-  })
+  @OneToMany(() => TaskReminder, (reminder) => reminder.task)
   reminders: TaskReminder[];
 }

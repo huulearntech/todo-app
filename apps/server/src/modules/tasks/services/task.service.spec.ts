@@ -326,6 +326,63 @@ describe('TaskService', () => {
       });
       expect(result).toEqual(populatedTask);
     });
+
+    it('should update task reminders with actingUserId as ownerId and delete old reminders', async () => {
+      const existingTask = {
+        id: 'task-1',
+        title: 'Task with date',
+        sectionId: 'section-1',
+        timeRange: {
+          start: '2026-10-10T10:00:00.000Z',
+          end: '2026-10-10T11:00:00.000Z',
+        },
+        recurrence: null,
+      };
+      const oldReminder = {
+        id: 'rem-old-1',
+        taskId: 'task-1',
+        userId: 'user-1',
+        type: 'relative',
+        minuteOffset: 30,
+      };
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(existingTask)
+        .mockResolvedValueOnce({ ...existingTask, reminders: [] });
+      taskRepository.save.mockImplementation((t) => Promise.resolve(t));
+      taskReminderRepository.find.mockResolvedValueOnce([oldReminder]);
+      taskReminderRepository.create.mockImplementation((data) => data);
+      taskReminderRepository.save.mockImplementation((data) =>
+        Promise.resolve({ id: 'rem-new-1', ...data }),
+      );
+
+      await service.updateTask(
+        'task-1',
+        {
+          reminders: [
+            {
+              type: 'relative',
+              minuteOffset: 15,
+              channel: 'email',
+            },
+          ],
+        },
+        'user-1',
+      );
+
+      expect(taskReminderRepository.delete).toHaveBeenCalledWith({
+        taskId: 'task-1',
+      });
+      expect(taskReminderRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'task-1',
+          userId: 'user-1',
+          minuteOffset: 15,
+        }),
+      );
+      expect(taskReminderRepository.save).toHaveBeenCalled();
+      expect(taskRepository.save).toHaveBeenCalled();
+    });
   });
 
   describe('updateTaskOrder', () => {
@@ -413,7 +470,7 @@ describe('TaskService', () => {
         },
       );
 
-      const result = await service.completeTask(userId, taskId);
+      const result = await service.completeTaskOccurrence(userId, taskId);
 
       expect(result.isRecurringAdvanced).toBe(false);
       expect(result.nextDueTime).toBeNull();
@@ -472,7 +529,7 @@ describe('TaskService', () => {
         },
       );
 
-      const result = await service.completeTask(userId, taskId);
+      const result = await service.completeTaskOccurrence(userId, taskId);
 
       expect(result.isRecurringAdvanced).toBe(true);
       expect(result.nextDueTime).toBe('2026-10-08T10:00:00.000Z');
@@ -522,7 +579,7 @@ describe('TaskService', () => {
         },
       );
 
-      const result = await service.completeTask(userId, taskId);
+      const result = await service.completeTaskOccurrence(userId, taskId);
 
       expect(result.isRecurringAdvanced).toBe(false);
       expect(result.nextDueTime).toBeNull();
@@ -581,7 +638,7 @@ describe('TaskService', () => {
         },
       );
 
-      const result = await service.completeTask(userId, taskId);
+      const result = await service.completeTaskOccurrence(userId, taskId);
 
       expect(result.isRecurringAdvanced).toBe(true);
       expect(result.nextDueTime).toBe('2026-10-09T10:00:00.000Z'); // Next Friday
@@ -795,7 +852,9 @@ describe('TaskService', () => {
 
       const result = await service.deleteOccurrenceById(userId, occurrenceId);
       expect(result).toBe(true);
-      expect(taskOccurrenceRepository.delete).toHaveBeenCalledWith(occurrenceId);
+      expect(taskOccurrenceRepository.delete).toHaveBeenCalledWith(
+        occurrenceId,
+      );
     });
 
     it('should throw NotFoundException if occurrence does not exist', async () => {

@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { colorKeySchema } from "./color.schema.js";
 
 const createSectionSchema = z.object({
   projectId: z.uuid("Project ID must be a valid UUID"),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
+  colorKey: colorKeySchema.nullable().optional(),
 });
 
 
@@ -13,7 +15,8 @@ const sectionResponseSchema = z.object({
   id: z.uuid("Section ID must be a valid UUID"),
   projectId: z.uuid("Project ID must be a valid UUID"),
   name: z.string(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
+  colorKey: colorKeySchema.nullable().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

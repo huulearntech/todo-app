@@ -1,8 +1,5 @@
 import { memo } from "react";
-import type {
-  CompletedOccurrenceResponseDto,
-  TaskResponseDto as Task,
-} from "@todo/shared";
+import type { TaskResponseDto as Task } from "@todo/shared";
 
 import {
   Item,
@@ -15,13 +12,11 @@ import {
 import {
   AlarmClockIcon,
   CalendarRangeIcon,
-  CheckCircle2Icon,
   HashIcon,
   RepeatIcon,
   TagIcon,
 } from "lucide-react";
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { useToggleTaskComplete } from "@/hooks/tasks/use-toggle-task-complete";
 import { useTaskLabels } from "@/hooks/labels/use-task-labels";
 import { Checkbox } from "../ui/checkbox";
@@ -36,7 +31,6 @@ const priorityCheckboxStyles: Record<string, string> = {
 
 interface TaskCardProps {
   task: Task;
-  occurrence?: CompletedOccurrenceResponseDto;
 }
 
 function formatReminderTooltip(
@@ -61,10 +55,11 @@ function formatReminderTooltip(
     .join(", ");
 }
 
-function TaskCardInner({ task, occurrence }: TaskCardProps) {
-  const isCompleted = Boolean(occurrence || task.completedAt);
-  const isLatestOccurrence = occurrence?.isLatestOccurrence ?? true;
-
+/**
+ * TaskCard represents an active (uncompleted) task in Kanban boards and task lists.
+ * For completed tasks, use `CompletedTaskCard`.
+ */
+function TaskCard({ task }: TaskCardProps) {
   const hasReminders = Boolean(task.reminders && task.reminders.length > 0);
   const reminderText = hasReminders ? formatReminderTooltip(task.reminders) : "";
 
@@ -75,14 +70,11 @@ function TaskCardInner({ task, occurrence }: TaskCardProps) {
     toggleCompleteMutation.mutate({
       task,
       checked,
-      occurrenceId: occurrence?.occurrenceId,
     });
   };
 
   const setTask = useEditTaskDialogStore((state) => state.setTask);
-  const setDialogIsOpen = useEditTaskDialogStore(
-    (state) => state.setDialogIsOpen,
-  );
+  const setDialogIsOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
 
   const taskDueLocalTime = task.timeRange?.end
     ? new Date(task.timeRange.end).toLocaleString("en-US", {
@@ -91,41 +83,10 @@ function TaskCardInner({ task, occurrence }: TaskCardProps) {
       })
     : undefined;
 
-  const completedLocalTime = occurrence?.completedAt
-    ? new Date(occurrence.completedAt).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
-    : task.completedAt
-      ? new Date(task.completedAt).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-        })
-      : undefined;
-
-  const checkboxNode = (
-    <Checkbox
-      checked={isCompleted}
-      disabled={isCompleted && !isLatestOccurrence}
-      onCheckedChange={handleCheckedChange}
-      className={cn(
-        "rounded-full size-6 border-2 dark:bg-transparent transition-colors",
-        "data-checked:text-white dark:data-checked:text-background",
-        isCompleted && !isLatestOccurrence && "cursor-not-allowed opacity-40",
-        priorityCheckboxStyles[task.priority] ?? priorityCheckboxStyles.low,
-      )}
-      onClick={(e) => e.stopPropagation()}
-    />
-  );
-
   return (
     <Item
       variant="outline"
-      className={cn(
-        "group relative text-card-foreground border-border/80 hover:border-primary/50 shadow-xs transition-all rounded-xl p-2.5 cursor-pointer select-none",
-        isCompleted &&
-          "opacity-60 bg-muted/20 hover:opacity-85 border-border/60 hover:border-border",
-      )}
+      className="group relative text-card-foreground bg-card border-border/80 hover:border-primary/50 shadow-xs transition-all rounded-xl p-2.5 cursor-pointer select-none"
       onClick={() => {
         setTask(task);
         setDialogIsOpen(true);
@@ -133,58 +94,39 @@ function TaskCardInner({ task, occurrence }: TaskCardProps) {
     >
       <ItemHeader>
         <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-          <ItemTitle
-            className={cn(
-              "text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2",
-              isCompleted &&
-                "line-through text-muted-foreground group-hover:text-muted-foreground",
-            )}
-          >
+          <ItemTitle className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {task.title}
           </ItemTitle>
 
           {task.description && (
-            <ItemDescription
-              className={cn(
-                "text-xs text-muted-foreground line-clamp-2 leading-relaxed",
-                isCompleted && "line-through opacity-70",
-              )}
-            >
+            <ItemDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
               {task.description}
             </ItemDescription>
           )}
         </div>
 
-        {isCompleted && !isLatestOccurrence ? (
-          <Tooltip>
-            <TooltipTrigger render={<span>{checkboxNode}</span>} />
-            <TooltipContent className="rounded-lg text-xs">
-              Only the latest completed occurrence can be restored.
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          checkboxNode
-        )}
+        <Checkbox
+          checked={false}
+          onCheckedChange={handleCheckedChange}
+          className={cn(
+            "rounded-full size-6 border-2 dark:bg-transparent transition-colors",
+            "data-checked:text-white dark:data-checked:text-background",
+            priorityCheckboxStyles[task.priority] ?? priorityCheckboxStyles.low
+          )}
+          onClick={(e) => e.stopPropagation()}
+        />
       </ItemHeader>
 
       <ItemFooter className="pt-1.5 [&_svg]:size-3.5 flex items-center justify-between gap-2 border-t border-border/30 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
-          {isCompleted && completedLocalTime ? (
-            <div
-              className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md"
-              title={`Completed on ${completedLocalTime}`}
-            >
-              <CheckCircle2Icon />
-              <span className="text-xs font-medium">Done {completedLocalTime}</span>
-            </div>
-          ) : taskDueLocalTime ? (
+          {taskDueLocalTime && (
             <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-md">
               <CalendarRangeIcon />
               <span title={taskDueLocalTime} className="text-xs font-medium">
                 {taskDueLocalTime}
               </span>
             </div>
-          ) : null}
+          )}
 
           {task.recurrence && (
             <div
@@ -195,44 +137,20 @@ function TaskCardInner({ task, occurrence }: TaskCardProps) {
             </div>
           )}
 
-          {hasReminders && !isCompleted && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <div
-                    className="flex items-center gap-1 text-amber-600 dark:text-amber-400 p-1 rounded-md"
-                    title={`Email reminder: ${reminderText}`}
-                  >
-                    <AlarmClockIcon className="size-3.5" />
-                  </div>
-                }
-              />
-              <TooltipContent className="rounded-lg text-xs">
-                <span>Email reminder: {reminderText}</span>
-              </TooltipContent>
-            </Tooltip>
+          {hasReminders && (
+            <div
+              className="flex items-center gap-1 text-amber-600 dark:text-amber-400 p-1 rounded-md"
+              title={`Email reminder: ${reminderText}`}
+            >
+              <AlarmClockIcon className="size-3.5" />
+            </div>
           )}
 
           {labels.length > 0 && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <div className="flex items-center gap-1 text-muted-foreground px-1.5 py-0.5 rounded-md">
-                    <TagIcon />
-                    <span className="text-xs font-medium">{labels.length}</span>
-                  </div>
-                }
-              />
-              <TooltipContent className="rounded-lg text-xs">
-                <ul className="flex flex-col gap-1 p-0.5">
-                  {labels.map((label) => (
-                    <li key={label.id} className="text-xs font-medium">
-                      {label.name}
-                    </li>
-                  ))}
-                </ul>
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-1 text-muted-foreground px-1.5 py-0.5 rounded-md">
+              <TagIcon />
+              <span className="text-xs font-medium">{labels.length}</span>
+            </div>
           )}
         </div>
 
@@ -249,4 +167,4 @@ function TaskCardInner({ task, occurrence }: TaskCardProps) {
   );
 }
 
-export default memo(TaskCardInner);
+export default memo(TaskCard);

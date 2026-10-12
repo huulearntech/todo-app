@@ -17,11 +17,6 @@ export const taskService = {
     return response.data;
   },
 
-  async getAllTasks() {
-    const response = await apiClient.get<Task[]>("/tasks");
-    return response.data;
-  },
-
   async getMyTasks(filter?: TaskFilterDto) {
     const response = await apiClient.get<Task[]>("/tasks/me", {
       params: filter,
@@ -59,32 +54,19 @@ export const taskService = {
   },
 
   async getMyTasksDueToday() {
-    const response = await apiClient.get<Task[]>("/tasks/me/due-today", {
-      headers: {
-        "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone, // Send the user's timezone to the server 
-      },
-    });
+    const response = await apiClient.get<Task[]>("/tasks/me/due-today");
     return response.data;
   },
 
   async getMyCompletedOccurrencesDueToday() {
     const response = await apiClient.get<CompletedOccurrenceResponseDto[]>(
       "/tasks/me/due-today?status=completed",
-      {
-        headers: {
-          "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-      },
     );
     return response.data;
   },
 
   async getMyTasksCompletedInLast7Days() {
-    const response = await apiClient.get<CompletedOccurrenceResponseDto[]>("/tasks/me/completed-last-7-days", {
-      headers: {
-        "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone, // Send the user's timezone to the server 
-      },
-    });
+    const response = await apiClient.get<CompletedOccurrenceResponseDto[]>("/tasks/me/completed-last-7-days");
     return response.data;
   },
 
@@ -104,10 +86,6 @@ export const taskService = {
     return response.data;
   },
 
-  async completeTask(taskId: string, completedAt?: string) {
-    return this.completeTaskOccurrence(taskId, { completedAt });
-  },
-
   async uncompleteTaskOccurrence(taskId: string) {
     const response = await apiClient.post<Task>(
       `/tasks/${taskId}/occurrences/uncomplete`,
@@ -120,10 +98,6 @@ export const taskService = {
       `/tasks/occurrences/${occurrenceId}/uncomplete`,
     );
     return response.data;
-  },
-
-  async uncompleteTask(taskId: string) {
-    return this.uncompleteTaskOccurrence(taskId);
   },
 
   async postponeTask(taskId: string, postponeTo: string) {

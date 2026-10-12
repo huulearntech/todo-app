@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-
-function getSafeRedirectUrl(target: string | null, fallback = "/"): string {
-  if (!target) return fallback;
-  if (target.startsWith("/") && !target.startsWith("//")) {
-    return target;
-  }
-  return fallback;
-}
+import { getSafeRedirectUrl } from "@/lib/safe-redirect";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

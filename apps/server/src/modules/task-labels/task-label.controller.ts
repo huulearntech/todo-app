@@ -62,10 +62,7 @@ export class TaskLabelController {
         combinedFilter,
       );
     }
-    return this.taskService.getTasksByOwnerIdAndFilter(
-      user.id,
-      combinedFilter,
-    );
+    return this.taskService.getTasksByOwnerIdAndFilter(user.id, combinedFilter);
   }
 
   @Patch(':id')

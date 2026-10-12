@@ -1,7 +1,7 @@
 "use client";
 
-import { TempEventCalendar } from "./temp-event-calendar";
-import { useAuth } from "@/providers/AuthProvider"; // TODO: this is temporary
+import { UpcomingEventCalendar } from "./upcoming-event-calendar";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function UpcomingPage() {
   const { user } = useAuth();
@@ -11,6 +11,6 @@ export default function UpcomingPage() {
   }
 
   return (
-    <TempEventCalendar projectId={user.defaultProjectId}/>
+    <UpcomingEventCalendar projectId={user.defaultProjectId}/>
   );
 }

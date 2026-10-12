@@ -32,9 +32,9 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { TempCircularProgress } from "./temp-circular-progress-indicator";
+import { CircularProgressIndicator } from "./circular-progress-indicator";
 
-export default function TempGoalProgressCard() {
+export default function GoalProgressCard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dailyInput, setDailyInput] = useState<number>(5);
   const [weeklyInput, setWeeklyInput] = useState<number>(20);
@@ -194,10 +194,10 @@ export default function TempGoalProgressCard() {
 
           <CardContent>
             <div className="flex items-center gap-5">
-              <TempCircularProgress
+              <CircularProgressIndicator
                 size={68}
                 strokeWidth={6}
-                progress={goals.daily.percentage}
+                progress={goals.daily.ratio}
                 fillColor={
                   goals.daily.isAchieved
                     ? "stroke-emerald-500"
@@ -208,7 +208,7 @@ export default function TempGoalProgressCard() {
                     <CheckCircle2Icon className="size-6 text-emerald-500" />
                   ) : (
                     <span className="text-xs font-bold text-foreground">
-                      {Math.round(goals.daily.percentage * 100)}%
+                      {Math.round(goals.daily.ratio * 100)}%
                     </span>
                   )
                 }
@@ -259,10 +259,10 @@ export default function TempGoalProgressCard() {
 
           <CardContent>
             <div className="flex items-center gap-5">
-              <TempCircularProgress
+              <CircularProgressIndicator
                 size={68}
                 strokeWidth={6}
-                progress={goals.weekly.percentage}
+                progress={goals.weekly.ratio}
                 fillColor={
                   goals.weekly.isAchieved
                     ? "stroke-emerald-500"
@@ -273,7 +273,7 @@ export default function TempGoalProgressCard() {
                     <TrophyIcon className="size-6 text-emerald-500" />
                   ) : (
                     <span className="text-xs font-bold text-foreground">
-                      {Math.round(goals.weekly.percentage * 100)}%
+                      {Math.round(goals.weekly.ratio * 100)}%
                     </span>
                   )
                 }

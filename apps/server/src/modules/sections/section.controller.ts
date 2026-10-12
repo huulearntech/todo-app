@@ -53,10 +53,7 @@ export class SectionController {
   }
 
   @Delete(':id')
-  async deleteSection(
-    @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
-  ) {
+  async deleteSection(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     const deleted = await this.sectionService.deleteSection(user.id, id);
     if (!deleted) {
       throw new NotFoundException('Section not found');

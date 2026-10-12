@@ -11,9 +11,6 @@ export class CompleteTaskOccurrenceDto extends createZodDto(
 ) {}
 export type CompleteTaskOccurrenceInput = CompleteTaskOccurrencePayload;
 
-// Backward-compatible aliases
-export class CompleteTaskDto extends CompleteTaskOccurrenceDto {}
-export type CompleteTaskInput = CompleteTaskOccurrencePayload;
-
 export class PostponeTaskDto extends createZodDto(postponeTaskInputSchema) {}
 export type PostponeTaskInput = PostponeTaskPayload;
+

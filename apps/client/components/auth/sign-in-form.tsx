@@ -25,14 +25,7 @@ import {
   EyeIcon,
   EyeOffIcon,
 } from "lucide-react";
-
-function getSafeRedirectUrl(target: string | null, fallback = "/"): string {
-  if (!target) return fallback;
-  if (target.startsWith("/") && !target.startsWith("//")) {
-    return target;
-  }
-  return fallback;
-}
+import { getSafeRedirectUrl } from "@/lib/safe-redirect";
 
 export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }) {
   const router = useRouter();

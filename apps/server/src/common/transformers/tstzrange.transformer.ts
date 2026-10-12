@@ -6,7 +6,7 @@ export interface TstzRange {
 }
 
 export class TstzRangeTransformer implements ValueTransformer {
-  // 1. Khi lưu từ code NestJS xuống Postgres
+  // 1. Serialization: from NestJS code to Postgres
   to(value: TstzRange | null): string | null {
     if (!value) return null;
     const startDate = new Date(value.start);
@@ -20,11 +20,11 @@ export class TstzRangeTransformer implements ValueTransformer {
     const startStr = startDate.toISOString();
     const endStr = endDate.toISOString();
 
-    // Lưu xuống DB dưới dạng dải [start, end)
+    // Store in DB as range [start, end)
     return `[${startStr},${endStr})`;
   }
 
-  // 2. Khi đọc từ Postgres lên code NestJS
+  // 2. Deserialization: from Postgres to NestJS code
   from(value: string | null): TstzRange | null {
     if (!value || value === 'empty') return null;
 

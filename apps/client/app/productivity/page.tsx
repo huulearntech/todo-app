@@ -1,7 +1,7 @@
 "use client";
 
-import TempCompletedStackedBarChart from "./temp-completed-stacked-bar-chart";
-import TempGoalProgressCard from "./temp-goal-progress-card";
+import CompletedStackedBarChart from "./completed-stacked-bar-chart";
+import GoalProgressCard from "./goal-progress-card";
 import { useAuth } from "@/providers/AuthProvider";
 import { TrendingUpIcon } from "lucide-react";
 
@@ -29,10 +29,10 @@ export default function DailyProductivityPage() {
       </div>
 
       {/* Goal Targets Section */}
-      <TempGoalProgressCard />
+      <GoalProgressCard />
 
       {/* Main Chart Section */}
-      <TempCompletedStackedBarChart />
+      <CompletedStackedBarChart />
     </div>
   );
 }

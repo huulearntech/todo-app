@@ -2,7 +2,7 @@
 
 // NOTE: Maybe this search bar can also use the quick command system like the create task form
 
-import { ReactNode, useEffect, useState } from "react"
+import { ReactNode, useState } from "react"
 import { useDebouncedValue } from "@tanstack/react-pacer"
 
 import {
@@ -14,18 +14,18 @@ import {
   AutocompleteStatus,
 } from "@/components/reui/autocomplete"
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import { LoaderCircleIcon } from 'lucide-react'
+import { LoaderCircleIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import type { TaskResponseDto as Task } from "@todo/shared"
 import { taskService } from "@/services/task.service"
+import { useEditTaskDialogStore } from "@/providers/MyStoreProvider"
+import { cn } from "@/lib/utils"
 
-export default function TaskSearchBar() {
+export default function TaskSearchBar({ className }: { className?: string }) {
   const [searchValue, setSearchValue] = useState("")
+
+  const setTask = useEditTaskDialogStore((state) => state.setTask)
+  const setDialogIsOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen)
 
   const [debouncedSearchValue] = useDebouncedValue(searchValue, { wait: 300 })
 
@@ -33,10 +33,10 @@ export default function TaskSearchBar() {
     queryKey: ["search-tasks", debouncedSearchValue],
     queryFn: async () => {
       if (!debouncedSearchValue) return []
-      const results = await taskService.getMyTasks({ title: debouncedSearchValue });
+      const results = await taskService.getMyTasks({ title: debouncedSearchValue })
       return results
     },
-    enabled: debouncedSearchValue.trim().length > 0, // Only run the query if the search value is not empty
+    enabled: debouncedSearchValue.trim().length > 0,
   })
 
   let status: ReactNode = ""
@@ -44,15 +44,15 @@ export default function TaskSearchBar() {
   if (isPending) {
     status = (
       <div className="flex items-center gap-2">
-        <LoaderCircleIcon  className="size-4 animate-spin" />
+        <LoaderCircleIcon className="size-4 animate-spin" />
         Searching tasks...
       </div>
     )
   } else if (error) {
     status = error.message
-  } else if (searchResults.length === 0 && searchValue) {
+  } else if (searchResults && searchResults.length === 0 && searchValue) {
     status = `No tasks found for "${searchValue}"`
-  } else if (searchResults.length > 0) {
+  } else if (searchResults && searchResults.length > 0) {
     status = `${searchResults.length} task${searchResults.length === 1 ? "" : "s"} found`
   } else if (!searchValue) {
     status = "Start typing to search tasks..."
@@ -61,7 +61,7 @@ export default function TaskSearchBar() {
   const shouldRenderPopup = searchValue.trim() !== ""
 
   return (
-    <div className="w-full max-w-xs">
+    <div className={cn("w-full max-w-xs", className)}>
       <Autocomplete
         items={searchResults}
         value={searchValue}
@@ -69,37 +69,29 @@ export default function TaskSearchBar() {
         itemToStringValue={(item: unknown) => (item as Task).title}
         filter={null}
       >
-        <AutocompleteInput placeholder="Search tasks..." showClear />
+        <AutocompleteInput
+          size="sm"
+          placeholder="Search tasks..."
+          showClear
+          className="h-7 text-xs bg-muted/30 border-border/60"
+        />
         {shouldRenderPopup && (
-          <AutocompleteContent>
+          <AutocompleteContent className="rounded-xl shadow-xl border-border/80 bg-popover">
             <AutocompleteStatus>{status}</AutocompleteStatus>
             <AutocompleteList>
               {(task: Task) => (
                 <AutocompleteItem
                   key={task.id}
                   value={task}
-                  className="rounded-lg"
+                  className="rounded-lg cursor-pointer text-xs py-1.5 px-2 hover:bg-muted/50"
+                  onClick={() => {
+                    setTask(task)
+                    setDialogIsOpen(true)
+                  }}
                 >
-                  <div className="flex items-center gap-2.5 truncate">
-                    {/* <Avatar className="size-9">
-                      <AvatarImage
-                        src={developer.avatar}
-                        alt={developer.name}
-                      />
-                      <AvatarFallback>
-                        {developer.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar> */}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">
-                        {task.title}
-                      </div>
-                      {/* <div className="text-muted-foreground truncate text-sm">
-                        {developer.role} • {developer.location}
-                      </div> */}
+                  <div className="flex items-center gap-2 truncate">
+                    <div className="min-w-0 flex-1 truncate font-medium">
+                      {task.title}
                     </div>
                   </div>
                 </AutocompleteItem>

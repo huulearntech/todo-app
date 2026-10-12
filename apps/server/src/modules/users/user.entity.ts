@@ -11,8 +11,8 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
 import { Project } from '../projects/project.entity';
-import { Color } from '../colors/color.entity';
 import { UserGoal } from './entities/user-goal.entity';
+import { Section } from '../sections/section.entity';
 
 @Entity('users')
 export class User {
@@ -52,8 +52,8 @@ export class User {
   @OneToMany(() => Project, (project) => project.owner, { cascade: true })
   projects: Project[];
 
-  @OneToMany(() => Color, (color) => color.owner, { cascade: true })
-  colors: Color[];
+  @OneToMany(() => Section, (section) => section.owner, { cascade: true })
+  sections?: Section[];
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];

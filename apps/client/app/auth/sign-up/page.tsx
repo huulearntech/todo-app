@@ -5,14 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import SignUpForm from "@/components/auth/sign-up-form";
-
-function getSafeRedirectUrl(target: string | null, fallback = "/"): string {
-  if (!target) return fallback;
-  if (target.startsWith("/") && !target.startsWith("//")) {
-    return target;
-  }
-  return fallback;
-}
+import { getSafeRedirectUrl } from "@/lib/safe-redirect";
 
 function SignUpContent() {
   const { user, isLoading } = useAuth();

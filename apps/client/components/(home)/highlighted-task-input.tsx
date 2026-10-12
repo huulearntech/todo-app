@@ -83,33 +83,12 @@ export const HighlightedTaskInput = forwardRef<
             );
           }
 
-          if (token.type === "description") {
-            return (
-              <span
-                key={index}
-                className="italic text-muted-foreground/75"
-                style={{ color: token.color }}
-              >
-                {token.text}
-              </span>
-            );
-          }
-
-          // Special attribute tokens: Zero horizontal padding/border ensures 100% exact caret alignment
           return (
             <span
               key={index}
-              style={{
-                color: token.isOverridden
-                  ? "var(--muted-foreground)"
-                  : token.color,
-                backgroundColor: token.isOverridden
-                  ? "transparent"
-                  : token.backgroundColor,
-              }}
               className={cn(
                 "rounded-[3px] font-medium transition-colors",
-                token.isOverridden && "line-through opacity-40 select-none"
+                token.className
               )}
             >
               {token.text}

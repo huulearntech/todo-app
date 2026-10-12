@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 
 import GlobalSearchBar from "./search/global-search-bar";
-import { ThemeToggle } from "./theme-toggle";
+// import { ThemeToggle } from "./theme-toggle";
 
 export default function Header() {
   const { user } = useAuth();
@@ -20,7 +20,7 @@ export default function Header() {
         <GlobalSearchBar />
       </div>
       <div className="flex items-center gap-2">
-        <ThemeToggle />
+        {/* <ThemeToggle /> */}
         {!user && (
           <Button
             variant="outline"

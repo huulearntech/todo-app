@@ -2,6 +2,7 @@
 
 import DndKanban from "@/components/(home)/dnd-kanban";
 import { useAuth } from "@/providers/AuthProvider";
+import { ExampleKanban } from "./example-kanban";
 
 export default function InboxPage() {
   const { user, isLoading } = useAuth();
@@ -25,6 +26,7 @@ export default function InboxPage() {
   return (
     <main className="flex-1 min-h-0 min-w-0 h-full flex flex-col overflow-hidden">
       <DndKanban projectId={user.defaultProjectId} />
+      {/* <ExampleKanban /> */}
     </main>
   );
 }

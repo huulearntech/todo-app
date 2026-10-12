@@ -1,9 +1,7 @@
-// NOTE: The mello mezon app send the whole Object.keys(finalColumns) to the server,
-// and limit the number of columns as well.
 "use client"
 
 import dynamic from "next/dynamic"
-import { ComponentProps, useState, Fragment, useEffect, useRef, useMemo } from "react"
+import { ComponentProps, useState, Fragment, useEffect, useRef } from "react"
 import { Badge } from "@/components/reui/badge"
 import {
   Kanban,
@@ -14,6 +12,7 @@ import {
   KanbanItem,
   KanbanItemHandle,
   KanbanOverlay,
+  type KanbanCommitMeta,
 } from "@/components/reui/kanban"
 
 import { Button } from "@/components/ui/button"
@@ -22,18 +21,25 @@ import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, PlusIcon 
 
 import TaskItemListView from "./task-card"
 
-import type { TaskResponseDto as Task } from "@todo/shared"
+import {
+  type TaskResponseDto as Task,
+  type SectionResponseDto,
+  TaskPriority,
+} from "@todo/shared"
 import { useProjectTasks } from "@/hooks/tasks/use-project-tasks"
+import { useLabels } from "@/hooks/labels/use-labels"
+import { KanbanFilterBar } from "./kanban-filter-bar"
+import type { LabelItem } from "./task-attribute-controls/labels-popover"
 import { useSections } from "@/hooks/sections/use-sections"
 import { useMoveTasks } from "@/hooks/tasks/use-move-tasks"
 import { useMoveSection } from "@/hooks/sections/use-move-section"
-import { useRenameSection } from "@/hooks/sections/use-rename-section"
 import { useDeleteSection } from "@/hooks/sections/use-delete-section"
 import { AddTaskFormTrigger } from "./add-task-form"
 import AddSectionForm, { type AddSectionFormHandle } from "../../app/projects/add-section-form"
+import EditSectionDialog from "../../app/projects/edit-section-dialog"
+import { getColorConfig } from "@/lib/color-palette"
+import { cn } from "@/lib/utils"
 import { Skeleton } from "../ui/skeleton"
-import { Input } from "../ui/input"
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +68,7 @@ interface TaskCardProps extends Omit<
   isOverlay?: boolean
 }
 
+// NOTE: I have tried to replace this with dummy card, the performance still sucks. So it should be in the kanban
 function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
   const Wrapper = (asHandle && !isOverlay) ? KanbanItemHandle : Fragment
 
@@ -69,6 +76,8 @@ function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
     <KanbanItem value={task.id} {...props}>
       <Wrapper>
         <TaskItemListView task={task} />
+        {/* <div className="w-20 h-20 border">
+        </div> */}
       </Wrapper>
     </KanbanItem>
   )
@@ -80,102 +89,50 @@ interface TaskColumnProps extends Omit<
 > {
   projectId: string
   tasks: Task[]
+  section?: SectionResponseDto
   isOverlay?: boolean
-  onRename: (sectionId: string, newName: string) => void
+  onEdit: (section: SectionResponseDto) => void
   onDelete: (sectionId: string) => void
-  isRenaming?: boolean
 }
 
 function TaskColumn({
   projectId,
   value,
-  title,
+  section,
   tasks,
   isOverlay,
-  onRename,
+  onEdit,
   onDelete,
-  isRenaming,
   ...props
 }: TaskColumnProps) {
-  const [editingName, setEditingName] = useState<string | null>(null)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const isEditing = editingName !== null
-
-  useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    }
-  }, [isEditing])
-
-  const handleSave = () => {
-    if (editingName === null) return
-    const trimmed = editingName.trim()
-    if (trimmed && trimmed !== title) {
-      onRename(value, trimmed)
-    }
-    setEditingName(null)
-  }
-
-  const handleCancel = () => {
-    setEditingName(null)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      handleSave()
-    } else if (e.key === "Escape") {
-      e.preventDefault()
-      handleCancel()
-    }
-  }
+  // const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const title = section?.name || "Untitled section"
+  const colorConfig = getColorConfig(section?.colorKey)
 
   return (
     <>
       <KanbanColumn value={value} {...props}>
-        <Card className="mb-2.5">
+        <Card
+          className={cn(
+            "mb-2.5 transition-colors border-border/80",
+            section?.colorKey && colorConfig?.badgeBgClass
+          )}
+        >
           <CardHeader className="flex items-center justify-between gap-2">
-            {isEditing ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  handleSave()
-                }}
-                className="flex-1 min-w-0"
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span
+                className="text-sm font-semibold text-foreground truncate"
+                title={title}
               >
-                <Input
-                  ref={inputRef}
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onBlur={handleSave}
-                  disabled={isRenaming}
-                  className="h-7 px-2 py-0 text-sm font-semibold rounded-md bg-background border-primary/50 shadow-xs focus-visible:ring-1 focus-visible:ring-primary w-full"
-                  maxLength={100}
-                  aria-label="Section name"
-                />
-              </form>
-            ) : (
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => setEditingName(title ?? "")}
-                  className="text-sm font-semibold text-foreground truncate rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-muted/70 transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-w-[190px]"
-                  title="Click to rename section"
-                  aria-label={`Rename section ${title ?? ""}`}
-                >
-                  {title || "Untitled section"}
-                </button>
-                <Badge variant="outline" className="shrink-0">
-                  {tasks.length}
-                </Badge>
-              </div>
-            )}
+                {title}
+              </span>
+              <Badge variant="outline" className="shrink-0">
+                {tasks.length}
+              </Badge>
+            </div>
 
             <div className="flex items-center gap-0.5 shrink-0">
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger
                   render={(triggerProps) => (
                     <Button
@@ -183,7 +140,7 @@ function TaskColumn({
                       size="icon-xs"
                       variant="ghost"
                       className="opacity-0 group-hover/kanban-column:opacity-100 data-popup-open:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground transition-opacity rounded-md"
-                      aria-label={`Section options for ${title ?? "section"}`}
+                      aria-label={`Section options for ${title}`}
                     />
                   )}
                 >
@@ -192,11 +149,11 @@ function TaskColumn({
                 <DropdownMenuContent align="end" className="w-40 rounded-xl p-1 shadow-md">
                   <DropdownMenuGroup>
                     <DropdownMenuItem
-                      onClick={() => setEditingName(title ?? "")}
+                      onClick={() => section && onEdit(section)}
                       className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
                     >
                       <PencilIcon className="size-3.5 text-muted-foreground" />
-                      <span>Rename</span>
+                      <span>Edit section</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 bg-border/50" />
                     <DropdownMenuItem
@@ -209,7 +166,7 @@ function TaskColumn({
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
 
               <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" className="rounded-md" />} >
                 <GripVerticalIcon className="size-4" />
@@ -232,7 +189,7 @@ function TaskColumn({
         </Card>
       </KanbanColumn>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Section</AlertDialogTitle>
@@ -259,120 +216,174 @@ function TaskColumn({
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
     </>
   )
 }
 
 
+const EMPTY_LABELS: LabelItem[] = [];
+
 function DndKanban({ projectId }: { projectId: string }) {
   const addSectionRef = useRef<AddSectionFormHandle>(null);
   const {
-    pendingTasks,
+    data: projectTasks,
     isLoading: tasksLoading,
   } = useProjectTasks(projectId);
   const { data: sections, isLoading: sectionsLoading } = useSections(projectId);
-  const isLoading = tasksLoading || sectionsLoading;
+  const isLoading = tasksLoading || sectionsLoading || projectTasks === undefined;
+
+  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const { data: availableLabels = EMPTY_LABELS } = useLabels();
 
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
 
   useEffect(() => {
     const acc: Record<string, Task[]> = {};
-    if (!sections || !pendingTasks) return;
+    if (!sections || !projectTasks) return;
 
     for (const section of sections) {
       acc[section.id] = [];
     }
 
-    for (const task of pendingTasks) {
+    for (const task of projectTasks) {
+      if (
+        selectedPriorities.length > 0 &&
+        !selectedPriorities.includes(task.priority)
+      ) {
+        continue;
+      }
+      if (selectedLabelIds.length > 0) {
+        const hasMatch = task.labels?.some((tl) =>
+          selectedLabelIds.includes(tl.id)
+        );
+        if (!hasMatch) continue;
+      }
       (acc[task.sectionId] ??= []).push(task);
     }
 
+    // Sync external query data & filter criteria into local draggable columns state
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumns(acc);
-  }, [sections, pendingTasks]);
+  }, [sections, projectTasks, selectedPriorities, selectedLabelIds]);
+
+  const handleTogglePriority = (priority: TaskPriority) => {
+    setSelectedPriorities((prev) =>
+      prev.includes(priority)
+        ? prev.filter((p) => p !== priority)
+        : [...prev, priority]
+    );
+  };
+
+  const handleToggleLabel = (label: LabelItem) => {
+    setSelectedLabelIds((prev) =>
+      prev.includes(label.id)
+        ? prev.filter((id) => id !== label.id)
+        : [...prev, label.id]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSelectedPriorities([]);
+    setSelectedLabelIds([]);
+  };
 
   const moveTasksMutation = useMoveTasks(projectId);
   const moveSectionMutation = useMoveSection(projectId);
-  const renameSectionMutation = useRenameSection(projectId);
   const deleteSectionMutation = useDeleteSection(projectId);
+  const [sectionToEdit, setSectionToEdit] = useState<SectionResponseDto | null>(null);
 
   const handleFloatingAddSectionClick = () => {
     addSectionRef.current?.scrollIntoView();
     addSectionRef.current?.focus();
   };
 
+  const handleValueCommit = (finalColumns: Record<string, Task[]>, meta: KanbanCommitMeta<Task>) => {
+    if (meta.kind == "column") { // Move section
+      const {
+        activeContainer: movedItemId,
+        activeIndex,
+        overIndex
+      } = meta;
+      if (activeIndex === overIndex) return;
+
+      const newIndex = overIndex;
+
+      const payload = {
+        sectionId: movedItemId,
+        prevId: newIndex > 0
+          ? Object.keys(finalColumns)[newIndex - 1]
+          : null,
+      };
+      moveSectionMutation.mutate(payload);
+
+      return;
+    }
+
+    { // Move task
+      const newIndex = meta.overIndex;
+      const targetSectionId = meta.overContainer;
+
+      const payload = {
+        sectionId: targetSectionId,
+        taskId: meta.event.active.id.toString(),
+        prevId: newIndex > 0
+          ? finalColumns[targetSectionId][newIndex - 1].id
+          : null,
+      }
+      moveTasksMutation.mutate(payload);
+
+      return;
+    }
+  }
+
   if (isLoading) {
     return <KanbanBoardSkeleton />;
   }
 
+  const totalTasksCount = projectTasks?.length ?? 0;
+  const filteredTasksCount = Object.values(columns).reduce(
+    (sum, colTasks) => sum + colTasks.length,
+    0
+  );
+
   return (
     <div className="relative flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-background/50 backdrop-blur-xs shrink-0">
-        <div className="text-xs text-muted-foreground font-medium">
-          {pendingTasks.length} {pendingTasks.length === 1 ? "task" : "tasks"}
-        </div>
-      </div>
+      <KanbanFilterBar
+        totalCount={totalTasksCount}
+        filteredCount={filteredTasksCount}
+        selectedPriorities={selectedPriorities}
+        onTogglePriority={handleTogglePriority}
+        selectedLabelIds={selectedLabelIds}
+        onToggleLabel={handleToggleLabel}
+        availableLabels={availableLabels}
+        onClearFilters={handleClearFilters}
+      />
 
       <section className="flex-1 min-h-0 min-w-0 h-full w-full overflow-auto p-4 bg-secondary custom-kanban-scroll">
         <Kanban
           className="min-w-max min-h-full flex"
           value={columns}
           onValueChange={setColumns}
-          onValueCommit={(finalColumns, meta) => {
-            if (meta.kind == "column") { // Move section
-              const {
-                activeContainer: movedItemId,
-                activeIndex,
-                overIndex
-              } = meta;
-              if (activeIndex === overIndex) return;
-
-              const newIndex = overIndex;
-              console.log(activeIndex, overIndex);
-
-              const payload = {
-                sectionId: movedItemId,
-                prevId: newIndex > 0
-                  ? Object.keys(finalColumns)[newIndex - 1]
-                  : null,
-              };
-              console.log("Moving section with payload:", payload);
-              moveSectionMutation.mutate(payload);
-
-              return;
-            }
-
-            { // Move task
-              const newIndex = meta.overIndex;
-              const targetSectionId = meta.overContainer;
-
-              const payload = {
-                sectionId: targetSectionId,
-                taskId: meta.event.active.id.toString(),
-                prevId: newIndex > 0
-                  ? finalColumns[targetSectionId][newIndex - 1].id
-                  : null,
-              }
-              moveTasksMutation.mutate(payload);
-
-              return;
-            }
-          }}
+          onValueCommit={handleValueCommit}
           getItemValue={(item) => item.id}
         >
           <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4 pb-6">
-            {Object.entries(columns).map(([sectionId, tasks]) => (
-              <TaskColumn
-                key={sectionId}
-                projectId={projectId}
-                value={sectionId}
-                title={sections?.find((s) => s.id === sectionId)?.name}
-                tasks={tasks}
-                onRename={(id, name) => renameSectionMutation.mutate({ sectionId: id, name })}
-                onDelete={(id) => deleteSectionMutation.mutate(id)}
-                isRenaming={renameSectionMutation.isPending}
-              />
-            ))}
+            {Object.entries(columns).map(([sectionId, tasks]) => {
+              const section = sections?.find((s) => s.id === sectionId);
+              return (
+                <TaskColumn
+                  key={sectionId}
+                  projectId={projectId}
+                  value={sectionId}
+                  section={section}
+                  tasks={tasks}
+                  onEdit={(sec) => setSectionToEdit(sec)}
+                  onDelete={(id) => deleteSectionMutation.mutate(id)}
+                />
+              );
+            })}
 
             <div data-slot="kanban-column">
               <AddSectionForm ref={addSectionRef} projectId={projectId} />
@@ -383,27 +394,26 @@ function DndKanban({ projectId }: { projectId: string }) {
       </section>
 
       {/* Floating Action Button */}
-      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                size="lg"
-                onClick={handleFloatingAddSectionClick}
-                className="rounded-full shadow-lg hover:shadow-xl bg-primary text-primary-foreground flex items-center gap-2 px-4 h-11 transition-all active:scale-95 cursor-pointer"
-                aria-label="Add new section"
-              >
-                <PlusIcon className="size-4.5" />
-                <span className="font-semibold text-xs sm:text-sm">New Section</span>
-              </Button>
-            }
-          />
-          <TooltipContent side="left" className="text-xs">
-            Quickly jump and add a new section
-          </TooltipContent>
-        </Tooltip>
-      </div>
+      {/* <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleFloatingAddSectionClick}
+          className="rounded-full shadow-lg hover:shadow-xl bg-primary text-primary-foreground flex items-center gap-2 px-4 h-11 transition-all active:scale-95 cursor-pointer"
+          aria-label="Add new section"
+        >
+          <PlusIcon className="size-4.5" />
+          <span className="font-semibold text-xs sm:text-sm">New Section</span>
+        </Button>
+      </div> */}
+
+      {/* Edit Section Dialog */}
+      <EditSectionDialog
+        projectId={projectId}
+        section={sectionToEdit}
+        open={Boolean(sectionToEdit)}
+        onOpenChange={(open) => !open && setSectionToEdit(null)}
+      />
     </div>
   )
 }

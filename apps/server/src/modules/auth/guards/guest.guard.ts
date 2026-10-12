@@ -4,7 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-// Định nghĩa kiểu user trả về sau khi validate dựa trên cấu trúc JwtStrategy của bạn
+// Define the user shape returned after validation based on JwtStrategy
 interface AuthenticatedUser {
   id: string;
   email: string;

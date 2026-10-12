@@ -1,25 +1,26 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
-
-// async function bootstrap() {
-//   const app = await NestFactory.create(AppModule);
-//   await app.listen(process.env.PORT ?? 3000);
-// }
-// bootstrap();
+import { TypedConfigService } from './config/typed-config.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(cookieParser()); // Use cookie-parser middleware to parse cookies
 
-  // Enable CORS for your NextJS frontend URL
+  const configService = app.get(TypedConfigService);
+  const frontendUrl =
+    configService.get('FRONTEND_URL') || 'http://localhost:3000';
+  const port = configService.get('PORT') || 4000;
+
+  // Enable CORS for frontend URL
   app.enableCors({
-    origin: 'http://localhost:3000', // Your Next.js dev server
+    origin: frontendUrl,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
 
-  await app.listen(4000); // Running on port 4000
+  await app.listen(port);
 }
 bootstrap();
+

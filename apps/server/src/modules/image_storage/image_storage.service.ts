@@ -13,7 +13,7 @@ export class ImageStorageService {
   ) {}
 
   async getUploadSignature(
-    folder: string = 'products',
+    folder: string = 'avatars',
     publicId?: string,
   ): Promise<SignedUploadSignatureResponse> {
     return this.storageProvider.generateUploadSignature(folder, publicId);

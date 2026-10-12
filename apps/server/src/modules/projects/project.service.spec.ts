@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProjectService } from './project.service';
 import { Project } from './project.entity';
-import { ColorService } from '../colors/color.service';
 
 describe('ProjectService', () => {
   let service: ProjectService;
@@ -15,10 +14,6 @@ describe('ProjectService', () => {
     manager: {
       transaction: jest.Mock;
     };
-  };
-  let colorService: {
-    ensureDefaultColors: jest.Mock;
-    getColorByKey: jest.Mock;
   };
 
   const ownerId = '11111111-1111-1111-1111-111111111111';
@@ -37,27 +32,12 @@ describe('ProjectService', () => {
       },
     };
 
-    colorService = {
-      ensureDefaultColors: jest
-        .fn()
-        .mockResolvedValue([{ ownerId, key: 'slate', name: 'Slate' }]),
-      getColorByKey: jest.fn().mockResolvedValue({
-        ownerId,
-        key: 'sky',
-        name: 'Sky Blue',
-      }),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProjectService,
         {
           provide: getRepositoryToken(Project),
           useValue: projectRepository,
-        },
-        {
-          provide: ColorService,
-          useValue: colorService,
         },
       ],
     }).compile();
@@ -73,7 +53,6 @@ describe('ProjectService', () => {
         name: 'Personal',
         description: 'Personal tasks',
         colorKey: 'slate',
-        color: { ownerId, key: 'slate', name: 'Slate' },
       };
       projectRepository.findOne.mockResolvedValue(createdProject);
 
@@ -82,25 +61,21 @@ describe('ProjectService', () => {
         description: 'Personal tasks',
       });
 
-      expect(colorService.ensureDefaultColors).toHaveBeenCalledWith(ownerId);
       expect(projectRepository.create).toHaveBeenCalledWith({
         ownerId,
         name: 'Personal',
         description: 'Personal tasks',
         colorKey: 'slate',
-        color: { ownerId, key: 'slate', name: 'Slate' },
       });
       expect(result).toEqual(createdProject);
     });
 
-    it('should create project with custom color after resolving via colorService', async () => {
-      const customColor = { ownerId, key: 'sky', name: 'Sky Blue' };
+    it('should create project with custom color', async () => {
       const createdProject = {
         id: 'project-2',
         ownerId,
         name: 'Work',
         colorKey: 'sky',
-        color: customColor,
       };
       projectRepository.findOne.mockResolvedValue(createdProject);
 
@@ -109,31 +84,23 @@ describe('ProjectService', () => {
         colorKey: 'sky',
       });
 
-      expect(colorService.getColorByKey).toHaveBeenCalledWith(
-        ownerId,
-        'sky',
-      );
       expect(projectRepository.create).toHaveBeenCalledWith({
         ownerId,
         name: 'Work',
         description: undefined,
         colorKey: 'sky',
-        color: customColor,
       });
       expect(result).toEqual(createdProject);
     });
   });
 
   describe('updateProject', () => {
-    it('should update project colorKey and color relation', async () => {
-      const oldColor = { ownerId, key: 'slate', name: 'Slate' };
-      const newColor = { ownerId, key: 'sky', name: 'Sky Blue' };
+    it('should update project colorKey directly', async () => {
       const existingProject = {
         id: 'project-1',
         ownerId,
         name: 'Work',
         colorKey: 'slate',
-        color: oldColor,
       };
 
       projectRepository.findOne
@@ -141,7 +108,6 @@ describe('ProjectService', () => {
         .mockResolvedValueOnce({
           ...existingProject,
           colorKey: 'sky',
-          color: newColor,
         });
 
       const result = await service.updateProject(
@@ -150,15 +116,10 @@ describe('ProjectService', () => {
         ownerId,
       );
 
-      expect(colorService.getColorByKey).toHaveBeenCalledWith(
-        ownerId,
-        'sky',
-      );
       expect(projectRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'project-1',
           colorKey: 'sky',
-          color: newColor,
         }),
       );
       expect(result?.colorKey).toBe('sky');

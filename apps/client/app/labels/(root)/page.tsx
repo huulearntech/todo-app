@@ -1,9 +1,9 @@
-import TempTaskLabelList from "./temp-label-list";
+import LabelList from "./label-list";
 
 export default function LabelsPage() {
   return (
     <div className="w-full flex justify-center">
-      <TempTaskLabelList />
+      <LabelList />
     </div>
   );
 }

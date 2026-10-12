@@ -26,7 +26,7 @@ export const imageUploadService = {
    * Step 1: Request signed upload credentials from our server
    */
   async getUploadSignature(
-    folder: string = 'products',
+    folder: string = 'avatars',
     publicId?: string,
   ): Promise<SignedUploadSignature> {
     const response = await apiClient.post<SignedUploadSignature>(
@@ -73,7 +73,7 @@ export const imageUploadService = {
    */
   async uploadMultipleImagesDirect(
     files: File[],
-    folder: string = 'products',
+    folder: string = 'avatars',
   ): Promise<UploadedImageResult[]> {
     // Concurrently request upload signatures for files
     // NOTE: Requesting multiple signatures at once can slowdown the

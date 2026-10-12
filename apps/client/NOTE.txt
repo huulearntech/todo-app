@@ -1,18 +1,10 @@
 NOTE (23 Sep 2026): may put lexorank in separate table and use somekind of foreign key along with the sections/project/view
 that they belong to. That is the context of the lexorank. For example, we even have the lexorank in home page where those tasks do not belong to a single section.
 
-
-NOTE: Learn more about zod codec and transform.
-
-NOTE (29 Sep 2026): Read the recurrence of event-calendar-recurrence.tsx, implement zod schema according to it
-The DTOs sent over the wire should follow that interface.
-
-NOTE: (6 Oct 2026): the label list has a unique key problem when adding new label.
-For magic link account verification, can use sse to notify browser about verification even on a different device.
+NOTE: (6 Oct 2026): For magic link account verification, can use sse to notify browser about verification even on a different device.
 the problem is, how to know which browser they request verification, and what if there is many browsers that request the thing?
 
-NOTE: (8 Oct 2026): 1. flicker in the add task dialog's project + section selection when changing project, due to loading the section names of that project.
-2. The highlight in the quick add task input make its caret misaligned
-3. The kanban again reduces performance when moving task. This AI likes to fuck that up.
-
 NOTE: (9 Oct 2026): User who not yet verify email still be able to sign in. Prohibit that
+The dnd kanban needs refactoring and stability improvements.
+
+NOTE: (12 Oct 2026): Differentiate default color of items like sections, labels, projects: color being background or foreground, first of all?

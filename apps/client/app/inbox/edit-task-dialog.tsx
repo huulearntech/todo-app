@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { TaskForm } from "@/components/(home)/task-form";
 
-export default function TempEditTaskDialog() {
+export default function EditTaskDialog() {
   const task = useEditTaskDialogStore((state) => state.task);
   const setTask = useEditTaskDialogStore((state) => state.setTask);
 
