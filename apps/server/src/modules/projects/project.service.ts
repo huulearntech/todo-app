@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -80,14 +80,10 @@ export class ProjectService {
     id: string,
     updatedProject: Partial<UpdateProjectDto>,
     ownerId?: string,
-  ): Promise<Project | null> {
+  ): Promise<Project> {
     const project = await this.getProjectById(id);
-    if (!project) {
-      return null;
-    }
-
-    if (ownerId && project.ownerId !== ownerId) {
-      return null;
+    if (!project || (ownerId && project.ownerId !== ownerId)) {
+      throw new NotFoundException('Project not found');
     }
 
     if (updatedProject.name !== undefined) {
@@ -103,11 +99,16 @@ export class ProjectService {
     }
 
     await this.projectRepository.save(project);
-    return this.getProjectById(id);
+    return (await this.getProjectById(id)) ?? project;
   }
 
-  async deleteProject(id: string): Promise<boolean> {
-    const result = await this.projectRepository.delete({ id });
-    return result.affected !== 0;
+  async deleteProject(id: string, ownerId?: string): Promise<void> {
+    const project = await this.projectRepository.findOne({
+      where: ownerId ? { id, ownerId } : { id },
+    });
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+    await this.projectRepository.delete({ id });
   }
 }

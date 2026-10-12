@@ -50,7 +50,6 @@ export default function EditLabelDialog({
   const { control, handleSubmit, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
     defaultValues: {
-      id: label.id,
       name: label.name,
       description: label.description || "",
       colorKey: label.colorKey || "slate",
@@ -59,7 +58,10 @@ export default function EditLabelDialog({
 
   const updateLabelMutation = useUpdateLabel();
 
-  const onSubmit = (data: UpdateTaskLabelDto) => updateLabelMutation.mutate(data, {
+  const onSubmit = (data: UpdateTaskLabelDto) =>
+    updateLabelMutation.mutate(
+      { id: label.id, data },
+      {
     onSuccess: () => {
       toast.add({
         title: "Label updated",

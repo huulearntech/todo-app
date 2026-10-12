@@ -2,16 +2,29 @@ import { z } from "zod";
 import { colorKeySchema, colorResponseSchema } from "./color.schema.js";
 
 export const createProjectSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name must be at most 100 characters long"),
+  description: z
+    .string()
+    .max(10_000, "Description must be at most 10000 characters")
+    .optional(),
   colorKey: colorKeySchema.optional(),
 });
 
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;
 
 export const updateProjectSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name must be at most 100 characters long"),
+  description: z
+    .string()
+    .max(10_000, "Description must be at most 10000 characters"),
   colorKey: colorKeySchema,
 }).partial();
 

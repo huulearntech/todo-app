@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 
@@ -27,9 +27,7 @@ export class SectionService {
     });
 
     if (!exists) {
-      throw new Error(
-        'Project not found or you do not have permission to add a section to this project.',
-      );
+      throw new NotFoundException('Project not found');
     }
 
     const sectionWithHighestLexorank = await this.sectionRepository.findOne({
@@ -98,12 +96,12 @@ export class SectionService {
     ownerId: string,
     id: string,
     updatedSection: Partial<Section>,
-  ): Promise<Section | null> {
+  ): Promise<Section> {
     const section = await this.sectionRepository.findOne({
       where: { id, project: { ownerId } },
     });
     if (!section) {
-      return null;
+      throw new NotFoundException('Section not found');
     }
     Object.assign(section, updatedSection);
     return this.sectionRepository.save(section);
@@ -119,10 +117,13 @@ export class SectionService {
     id: string;
     prevId: string | null;
   }): Promise<void> {
-    const sectionToMove = await this.sectionRepository.findOneOrFail({
+    const sectionToMove = await this.sectionRepository.findOne({
       where: { id, project: { ownerId } },
       select: { id: true, lexorank: true, projectId: true },
     });
+    if (!sectionToMove) {
+      throw new NotFoundException('Section not found');
+    }
 
     if (!prevId) {
       // If prevId is null, it means the task is being moved to the top of the list.
@@ -145,10 +146,13 @@ export class SectionService {
       return;
     }
 
-    const prevSection = await this.sectionRepository.findOneOrFail({
+    const prevSection = await this.sectionRepository.findOne({
       where: { id: prevId, projectId: sectionToMove.projectId },
       select: { id: true, lexorank: true },
     });
+    if (!prevSection) {
+      throw new NotFoundException('Previous section not found');
+    }
 
     const nextSection = await this.sectionRepository.findOne({
       where: {
@@ -167,14 +171,13 @@ export class SectionService {
     await this.sectionRepository.update({ id }, { lexorank: newLexorank });
   }
 
-  async deleteSection(ownerId: string, id: string): Promise<boolean> {
+  async deleteSection(ownerId: string, id: string): Promise<void> {
     const section = await this.sectionRepository.findOne({
       where: { id, project: { ownerId } },
     });
     if (!section) {
-      return false;
+      throw new NotFoundException('Section not found');
     }
-    const result = await this.sectionRepository.delete({ id });
-    return result.affected !== 0; // NOTE: more detail response
+    await this.sectionRepository.delete({ id });
   }
 }

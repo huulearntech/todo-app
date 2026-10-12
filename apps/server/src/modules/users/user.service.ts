@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import argon2 from 'argon2';
@@ -53,15 +53,18 @@ export class UserService {
     return userResponse;
   }
 
-  async deleteUser(id: string): Promise<boolean> {
+  async deleteUser(id: string): Promise<void> {
     const result = await this.userRepository.delete(id);
-    return result.affected !== 0;
+    if (result.affected === 0) {
+      throw new NotFoundException('User not found');
+    }
   }
 
   async findById(id: string): Promise<UserResponseDto | null> {
     return this.userRepository.findOne({
       where: { id },
       select: {
+        id: true,
         email: true,
         name: true,
         avatarUrl: true,
@@ -74,7 +77,10 @@ export class UserService {
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const user = await this.userRepository.findOneOrFail({ where: { id } });
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
     Object.assign(user, updateUserDto);
     const updatedUser = await this.userRepository.save(user);

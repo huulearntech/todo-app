@@ -19,18 +19,25 @@ export function useCreateTask(options?: UseCreateTaskOptions) {
     onMutate: async (newTask) => {
       await queryClient.cancelQueries({ queryKey: taskQueryKeys.all });
 
-      const previousTasks = queryClient.getQueryData<Task[]>(taskQueryKeys.all);
-
-      queryClient.setQueryData<Task[]>(taskQueryKeys.all, (oldTasks) => {
-        if (!oldTasks) return [newTask as Task];
-        return [...oldTasks, { ...newTask, id: `temp-${Date.now()}` } as Task];
+      const previousQueries = queryClient.getQueriesData<Task[]>({
+        queryKey: taskQueryKeys.all,
       });
 
-      return { previousTasks };
+      queryClient.setQueriesData<Task[]>(
+        { queryKey: taskQueryKeys.all },
+        (oldTasks) => {
+          if (!oldTasks || !Array.isArray(oldTasks)) return oldTasks;
+          return [...oldTasks, { ...newTask, id: `temp-${Date.now()}` } as unknown as Task];
+        }
+      );
+
+      return { previousQueries };
     },
-    onError: (_err, _newTask, onMutateResult) => {
-      if (onMutateResult?.previousTasks) {
-        queryClient.setQueryData(taskQueryKeys.all, onMutateResult.previousTasks);
+    onError: (_err, _newTask, context) => {
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
       toast.add({
         title: "Error creating task",

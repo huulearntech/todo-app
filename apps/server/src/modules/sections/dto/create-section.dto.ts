@@ -16,11 +16,19 @@ import {
   type SectionFilterDto as SectionFilterPayload,
 } from '@todo/shared';
 
+import {
+  reorderSectionSchema,
+  type ReorderSectionDto as ReorderSectionPayload,
+} from '@todo/shared';
+
 export class CreateSectionDto extends createZodDto(createSectionSchema) {}
 export interface CreateSectionDto extends CreateSectionPayload {}
 
 export class UpdateSectionDto extends createZodDto(updateSectionSchema) {}
 export interface UpdateSectionDto extends UpdateSectionPayload {}
+
+export class ReorderSectionDto extends createZodDto(reorderSectionSchema) {}
+export interface ReorderSectionDto extends ReorderSectionPayload {}
 
 export class SectionResponseDto extends createZodDto(sectionResponseSchema) {}
 export interface SectionResponseDto extends SectionResponsePayload {}

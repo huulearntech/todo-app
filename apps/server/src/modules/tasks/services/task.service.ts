@@ -5,7 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { Task } from '../entities/task.entity';
 import { TaskOccurrence } from '../entities/task-occurrence.entity';
@@ -188,6 +193,27 @@ export class TaskService {
     }
   }
 
+  /**
+   * Filters tasks that have ANY of the given labels without touching the `label`
+   * join, so the response still contains every label of the matching tasks.
+   */
+  private applyLabelFilter<T extends object>(
+    queryBuilder: SelectQueryBuilder<T>,
+    taskLabelIds?: string[],
+  ): void {
+    if (!taskLabelIds || taskLabelIds.length === 0) {
+      return;
+    }
+    queryBuilder.andWhere(
+      `EXISTS (
+        SELECT 1 FROM task_to_task_labels filter_tl
+        WHERE filter_tl.task_id = task.id
+          AND filter_tl.task_label_id IN (:...taskLabelIds)
+      )`,
+      { taskLabelIds },
+    );
+  }
+
   async getTaskById(id: string): Promise<Task | null> {
     return this.taskRepository.findOne({
       where: { id },
@@ -235,16 +261,8 @@ export class TaskService {
           .addOrderBy('task.lexorank COLLATE "C"', 'ASC');
       }
 
-      if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
-        queryBuilder.innerJoin(
-          'task.labels',
-          'label',
-          'label.id IN (:...taskLabelIds)',
-          { taskLabelIds: filter.taskLabelIds },
-        );
-      } else {
-        queryBuilder.leftJoin('task.labels', 'label');
-      }
+      this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
+      queryBuilder.leftJoin('task.labels', 'label');
 
       // NOTE: If there is some way to keep this and the zod schema in sync, that would be great. But for now, this is just manual.
       queryBuilder.select([
@@ -294,16 +312,8 @@ export class TaskService {
           .addOrderBy('task.lexorank COLLATE "C"', 'ASC');
       }
 
-      if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
-        queryBuilder.innerJoin(
-          'task.labels',
-          'label',
-          'label.id IN (:...taskLabelIds)',
-          { taskLabelIds: filter.taskLabelIds },
-        );
-      } else {
-        queryBuilder.leftJoin('task.labels', 'label');
-      }
+      this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
+      queryBuilder.leftJoin('task.labels', 'label');
 
       queryBuilder.select([
         'task',
@@ -348,11 +358,7 @@ export class TaskService {
       });
     }
 
-    if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
-      queryBuilder.andWhere('label.id IN (:...taskLabelIds)', {
-        taskLabelIds: filter.taskLabelIds,
-      });
-    }
+    this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
 
     if (filter.title) {
       queryBuilder.andWhere('task.title ILIKE :title', {
@@ -394,20 +400,30 @@ export class TaskService {
         timeRange: task.timeRange,
         completedAt: occ.completedAt
           ? occ.completedAt.toISOString()
-          : new Date().toISOString(),
+          : null,
         recurrence: task.recurrence?.rrule ?? null,
         occurrenceId: occ.id,
         scheduledDate: occ.scheduledDate
           ? occ.scheduledDate.toISOString()
           : null,
         isLatestOccurrence: isLatest,
-        reminders: (task.reminders ?? []).map((r) => ({
-          id: r.id,
-          type: r.type,
-          minuteOffset: r.minuteOffset,
-          remindAt: r.remindAt ? r.remindAt.toISOString() : null,
-          channel: r.channel,
-        })),
+        reminders: (task.reminders ?? []).map((r) =>
+          r.type === 'relative'
+            ? {
+                id: r.id,
+                type: 'relative' as const,
+                minuteOffset: r.minuteOffset ?? 0,
+                channel: r.channel,
+              }
+            : {
+                id: r.id,
+                type: 'absolute' as const,
+                remindAt: r.remindAt
+                  ? r.remindAt.toISOString()
+                  : new Date().toISOString(),
+                channel: r.channel,
+              },
+        ),
       };
     });
   }
@@ -511,20 +527,30 @@ export class TaskService {
         timeRange: task.timeRange,
         completedAt: occ.completedAt
           ? occ.completedAt.toISOString()
-          : new Date().toISOString(),
+          : null,
         recurrence: task.recurrence?.rrule ?? null,
         occurrenceId: occ.id,
         scheduledDate: occ.scheduledDate
           ? occ.scheduledDate.toISOString()
           : null,
         isLatestOccurrence: isLatest,
-        reminders: (task.reminders ?? []).map((r) => ({
-          id: r.id,
-          type: r.type,
-          minuteOffset: r.minuteOffset,
-          remindAt: r.remindAt ? r.remindAt.toISOString() : null,
-          channel: r.channel,
-        })),
+        reminders: (task.reminders ?? []).map((r) =>
+          r.type === 'relative'
+            ? {
+                id: r.id,
+                type: 'relative' as const,
+                minuteOffset: r.minuteOffset ?? 0,
+                channel: r.channel,
+              }
+            : {
+                id: r.id,
+                type: 'absolute' as const,
+                remindAt: r.remindAt
+                  ? r.remindAt.toISOString()
+                  : new Date().toISOString(),
+                channel: r.channel,
+              },
+        ),
       };
     });
   }
@@ -533,10 +559,10 @@ export class TaskService {
     id: string,
     updatedTask: UpdateTaskDto,
     actingUserId?: string,
-  ): Promise<Task | null> {
+  ): Promise<Task> {
     const task = await this.getTaskById(id);
     if (!task) {
-      return null;
+      throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
     const section = await this.sectionRepository.findOne({
@@ -599,7 +625,11 @@ export class TaskService {
       await this.rescheduleTaskReminders(savedTask, ownerId);
     }
 
-    return this.getTaskById(savedTask.id);
+    const refreshedTask = await this.getTaskById(savedTask.id);
+    if (!refreshedTask) {
+      throw new NotFoundException(`Task with ID ${savedTask.id} not found`);
+    }
+    return refreshedTask;
   }
 
   async updateTaskOrder({
@@ -630,7 +660,7 @@ export class TaskService {
     }
   }
 
-  async deleteTask(id: string): Promise<boolean> {
+  async deleteTask(id: string): Promise<void> {
     const reminders = await this.taskReminderRepository.find({
       where: { taskId: id },
     });
@@ -641,7 +671,9 @@ export class TaskService {
     await this.mailerSchedulerService.cancelTaskReminder(id);
     await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
     const result = await this.taskRepository.delete(id);
-    return result.affected !== 0;
+    if (result.affected === 0) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
   }
 
   async completeTaskOccurrence(

@@ -1,7 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   CompleteTaskOccurrenceResponseDto,
-  CompleteTaskResponseDto,
   CompletedOccurrenceResponseDto,
   TaskResponseDto as Task,
 } from "@todo/shared";

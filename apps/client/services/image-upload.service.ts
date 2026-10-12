@@ -69,6 +69,17 @@ export const imageUploadService = {
   },
 
   /**
+   * Upload a single image directly to Cloudinary using signed request
+   */
+  async uploadSingleImageDirect(
+    file: File,
+    folder: string = 'avatars',
+  ): Promise<UploadedImageResult> {
+    const signature = await imageUploadService.getUploadSignature(folder);
+    return imageUploadService.uploadImageDirectToCloudinary(file, signature);
+  },
+
+  /**
    * Concurrently upload multiple images directly to Cloudinary using signed requests
    */
   async uploadMultipleImagesDirect(

@@ -5,7 +5,10 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -87,17 +90,18 @@ export class TasksController {
   @Post('occurrences/:occurrenceId/uncomplete')
   async uncompleteOccurrence(
     @CurrentUser() user: JwtUser,
-    @Param('occurrenceId') occurrenceId: string,
+    @Param('occurrenceId', ParseUUIDPipe) occurrenceId: string,
   ) {
     return this.taskService.uncompleteOccurrenceById(user.id, occurrenceId);
   }
 
   @Delete('occurrences/:occurrenceId')
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteOccurrence(
     @CurrentUser() user: JwtUser,
-    @Param('occurrenceId') occurrenceId: string,
+    @Param('occurrenceId', ParseUUIDPipe) occurrenceId: string,
   ) {
-    return this.taskService.deleteOccurrenceById(user.id, occurrenceId);
+    await this.taskService.deleteOccurrenceById(user.id, occurrenceId);
   }
 
   @Get('me/completed-last-7-days')
@@ -126,14 +130,15 @@ export class TasksController {
   }
 
   @Delete(':id')
-  async deleteTask(@Param('id') id: string) {
-    return this.taskService.deleteTask(id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteTask(@Param('id', ParseUUIDPipe) id: string) {
+    await this.taskService.deleteTask(id);
   }
 
   @Post(':id/occurrences/complete')
   async completeTaskOccurrence(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body?: CompleteTaskOccurrenceDto,
   ) {
     const scheduledDate = body?.scheduledDate
@@ -151,7 +156,7 @@ export class TasksController {
   @Post(':id/occurrences/uncomplete')
   async uncompleteTaskOccurrence(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.taskService.uncompleteTaskOccurrence(user.id, id);
   }
@@ -159,7 +164,7 @@ export class TasksController {
   @Post(':id/postpone')
   async postponeTask(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: PostponeTaskDto,
   ) {
     return this.taskService.postponeTask(
@@ -172,7 +177,7 @@ export class TasksController {
   @Patch(':id')
   async updateTask(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTaskDto: UpdateTaskDto,
   ) {
     return this.taskService.updateTask(id, updateTaskDto, user.id);
@@ -181,7 +186,7 @@ export class TasksController {
   @Patch(':id/reorder')
   async updateTaskOrder(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() { sectionId, prevId }: ReorderTaskDto,
   ) {
     await this.taskService.updateTaskOrder({

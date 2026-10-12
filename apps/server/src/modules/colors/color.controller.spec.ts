@@ -15,8 +15,6 @@ describe('ColorController', () => {
 
   const user: JwtUser = {
     id: '11111111-1111-1111-1111-111111111111',
-    email: 'user@example.com',
-    name: 'Test User',
   };
 
   beforeEach(async () => {

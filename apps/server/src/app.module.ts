@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { BullModule } from '@nestjs/bullmq';
 
 import { AppConfigModule } from './config/config.module';
@@ -23,6 +23,7 @@ import { ProductivityModule } from './modules/productivity/productivity.module';
 import { TrigramIndexModule } from './common/database/trigram-index.module';
 
 import { ZodValidationPipe } from 'nestjs-zod';
+import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filter';
 
 import { migrations } from './migrations';
 
@@ -73,6 +74,10 @@ import { migrations } from './migrations';
     {
       provide: APP_PIPE,
       useClass: ZodValidationPipe,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: TypeOrmExceptionFilter,
     },
   ],
 })

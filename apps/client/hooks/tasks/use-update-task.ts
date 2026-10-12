@@ -27,34 +27,45 @@ export function useUpdateTask(options?: UseUpdateTaskOptions) {
       taskService.updateTask(taskId, data),
     onMutate: async ({ taskId, data }) => {
       await queryClient.cancelQueries({ queryKey: taskQueryKeys.all });
-      const previousTasks = queryClient.getQueryData<Task[]>(taskQueryKeys.all);
+      const previousQueries = queryClient.getQueriesData<Task[]>({
+        queryKey: taskQueryKeys.all,
+      });
 
-      queryClient.setQueryData<Task[]>(taskQueryKeys.all, (old) =>
-        old?.map((t) => {
+      queryClient.setQueriesData<Task[]>({ queryKey: taskQueryKeys.all }, (old) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((t) => {
           if (t.id !== taskId) return t;
           const updatedReminders = (data.reminders ?? t.reminders ?? []).map(
-            (r, idx) => ({
-              id: r.id ?? t.reminders?.[idx]?.id ?? `temp-reminder-${idx}`,
-              taskId: t.id,
-              type: r.type,
-              minuteOffset: r.minuteOffset,
-              channel: r.channel,
-              remindAt: r.remindAt ?? null,
-            })
+            (r, idx) =>
+              r.type === "relative"
+                ? {
+                    id: r.id ?? t.reminders?.[idx]?.id ?? `temp-reminder-${idx}`,
+                    type: "relative" as const,
+                    minuteOffset: r.minuteOffset ?? 0,
+                    channel: r.channel,
+                  }
+                : {
+                    id: r.id ?? t.reminders?.[idx]?.id ?? `temp-reminder-${idx}`,
+                    type: "absolute" as const,
+                    remindAt: r.remindAt ?? new Date().toISOString(),
+                    channel: r.channel,
+                  }
           );
           return {
             ...t,
             ...data,
             reminders: updatedReminders,
           };
-        }) ?? []
-      );
+        });
+      });
 
-      return { previousTasks };
+      return { previousQueries };
     },
-    onError: (_err, _variables, onMutateResult) => {
-      if (onMutateResult?.previousTasks) {
-        queryClient.setQueryData<Task[]>(taskQueryKeys.all, onMutateResult.previousTasks);
+    onError: (_err, _variables, context) => {
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
       toast.add({
         title: "Error updating task",
@@ -72,10 +83,7 @@ export function useUpdateTask(options?: UseUpdateTaskOptions) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: productivityQueryKeys.goals() });
-      queryClient.invalidateQueries({
-        queryKey: productivityQueryKeys.completedLast7Days(),
-      });
+      queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
     },
   });
 }

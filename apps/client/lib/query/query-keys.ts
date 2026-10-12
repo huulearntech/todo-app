@@ -38,9 +38,10 @@ export const labelQueryKeys = {
 
 export const productivityQueryKeys = {
   all: ["productivity"] as const,
-  goals: () => ["productivity-goals"] as const,
-  history: () => ["productivity-history"] as const,
-  completedLast7Days: () => ["completed-tasks-last-7-days"] as const,
+  goals: () => [...productivityQueryKeys.all, "goals"] as const,
+  history: () => [...productivityQueryKeys.all, "history"] as const,
+  completedLast7Days: () =>
+    [...productivityQueryKeys.all, "completed-last-7-days"] as const,
 };
 
 export const searchQueryKeys = {

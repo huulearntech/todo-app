@@ -268,14 +268,14 @@ describe('TaskService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should return null if task does not exist', async () => {
+    it('should throw NotFoundException if task does not exist', async () => {
       taskRepository.findOne.mockResolvedValue(null);
 
-      const result = await service.updateTask('non-existent-id', {
-        title: 'New Title',
-      });
-
-      expect(result).toBeNull();
+      await expect(
+        service.updateTask('non-existent-id', {
+          title: 'New Title',
+        }),
+      ).rejects.toThrow(NotFoundException);
       expect(taskRepository.save).not.toHaveBeenCalled();
     });
 

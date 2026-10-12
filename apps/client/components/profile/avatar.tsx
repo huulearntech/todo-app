@@ -69,12 +69,12 @@ export default function Avatar({
 
     try {
       setIsUploading(true);
-      const [uploadedUrl] = await imageUploadService.uploadMultipleImagesDirect(
-        [file],
+      const uploaded = await imageUploadService.uploadSingleImageDirect(
+        file,
         "avatars"
       );
 
-      const newUrl = uploadedUrl.secure_url;
+      const newUrl = uploaded.secure_url;
       setCurrentAvatarUrl(newUrl);
 
       // Persist avatar change to backend

@@ -3,15 +3,34 @@ import { TaskPriority } from "../../enums/task-priority.enum.js";
 import { cursorPaginationSchema } from "./cursor-pagination.schema.js";
 import { rruleSchema } from "./rrule.schema.js";
 
-export const reminderSchema = z.object({
+const baseRelativeReminderSchema = z.object({
   id: z.uuid().optional(),
-  type: z.enum(["relative", "absolute"]),
-  minuteOffset: z.number().int().min(0).max(43200).nullable(),
-  remindAt: z.iso.datetime().nullable().optional(),
-  channel: z.enum(["email"]),
+  type: z.literal("relative"),
+  minuteOffset: z.number().int().min(0).max(43200),
+  remindAt: z.null().optional(),
+  channel: z.literal("email"),
 });
 
+const baseAbsoluteReminderSchema = z.object({
+  id: z.uuid().optional(),
+  type: z.literal("absolute"),
+  remindAt: z.iso.datetime(),
+  minuteOffset: z.null().optional(),
+  channel: z.literal("email"),
+});
+
+export const reminderSchema = z.discriminatedUnion("type", [
+  baseRelativeReminderSchema,
+  baseAbsoluteReminderSchema,
+]);
+
+export const reminderResponseSchema = z.discriminatedUnion("type", [
+  baseRelativeReminderSchema.extend({ id: z.uuid() }),
+  baseAbsoluteReminderSchema.extend({ id: z.uuid() }),
+]);
+
 export type ReminderDto = z.infer<typeof reminderSchema>;
+export type ReminderResponseDto = z.infer<typeof reminderResponseSchema>;
 
 export const REMINDER_PRESETS = [
   { label: "At time of task", minutes: 0 },
@@ -24,8 +43,14 @@ export const REMINDER_PRESETS = [
 ] as const;
 
 export const createTaskSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string(),
+  title: z
+    .string()
+    .trim()
+    .min(1, "Title is required")
+    .max(500, "Title must be at most 500 characters"),
+  description: z
+    .string()
+    .max(10_000, "Description must be at most 10000 characters"),
 
   timeRange: z
     .object({
@@ -57,6 +82,13 @@ export type CreateTaskDto = z.infer<typeof createTaskSchema>;
 export const updateTaskSchema = createTaskSchema.partial();
 export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
 // =====================================
+
+export const reorderTaskSchema = z.object({
+  sectionId: z.uuid("Section ID must be a valid UUID"),
+  prevId: z.uuid("Previous task ID must be a valid UUID").nullable(),
+});
+
+export type ReorderTaskDto = z.infer<typeof reorderTaskSchema>;
 
 
 export const taskFilterSchema = z.object({
@@ -102,9 +134,7 @@ export const taskResponseSchema = z.object({
   }).array(),
   completedAt: z.iso.datetime().nullable(),
   recurrence: rruleSchema.nullable(),
-  reminders: reminderSchema.extend({
-    id: z.uuid(),
-  }).array().default([]),
+  reminders: reminderResponseSchema.array().default([]),
 });
 
 export type TaskResponseDto = z.infer<typeof taskResponseSchema>;
@@ -112,7 +142,7 @@ export type TaskResponseDto = z.infer<typeof taskResponseSchema>;
 export const completedOccurrenceResponseSchema = taskResponseSchema.extend({
   occurrenceId: z.uuid(),
   scheduledDate: z.iso.datetime().nullable(),
-  completedAt: z.iso.datetime(),
+  completedAt: z.iso.datetime().nullable(),
   isLatestOccurrence: z.boolean().default(true),
 });
 

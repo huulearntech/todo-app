@@ -73,7 +73,10 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
       const result = await signInServerAction(data);
 
       if (!result.success) {
-        if (result.error.toLowerCase().includes("verify your email")) {
+        if (
+          result.code === "EMAIL_NOT_VERIFIED" ||
+          result.error.toLowerCase().includes("verify your email")
+        ) {
           setUnverifiedEmail(data.email);
         } else {
           setUnverifiedEmail(null);

@@ -7,6 +7,10 @@ import {
   Delete,
   Query,
   Param,
+  ParseUUIDPipe,
+  NotFoundException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -45,28 +49,36 @@ export class ProjectController {
   }
 
   @Get(':id')
-  async getProjectById(@Param('id') id: string) {
-    return this.projectService.getProjectById(id);
+  async getProjectById(@Param('id', ParseUUIDPipe) id: string) {
+    const project = await this.projectService.getProjectById(id);
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+    return project;
   }
 
   @Patch(':id')
   async updateProject(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateProjectDto,
   ) {
     return this.projectService.updateProject(id, body, user.id);
   }
 
   @Delete(':id')
-  async deleteProject(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    return this.projectService.deleteProject(id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteProject(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.projectService.deleteProject(id, user.id);
   }
 
   @Get(':id/tasks')
   async getTasksByProjectId(
     @CurrentUser() user: JwtUser,
-    @Param('id') projectId: string,
+    @Param('id', ParseUUIDPipe) projectId: string,
     @Query() filter: TaskFilterDto = {},
   ) {
     if (filter.status === 'completed') {
@@ -85,7 +97,7 @@ export class ProjectController {
   @Get(':id/sections')
   async getSectionsByProjectId(
     @CurrentUser() user: JwtUser,
-    @Param('id') projectId: string,
+    @Param('id', ParseUUIDPipe) projectId: string,
   ) {
     return this.sectionService.getMySections(user.id, { projectId });
   }

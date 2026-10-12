@@ -16,6 +16,13 @@ export function useDeleteTask() {
       await queryClient.cancelQueries({ queryKey: taskQueryKeys.all });
       await queryClient.cancelQueries({ queryKey: taskQueryKeys.completed() });
 
+      const previousTasks = queryClient.getQueriesData<Task[]>({
+        queryKey: taskQueryKeys.all,
+      });
+      const previousCompleted = queryClient.getQueryData<CompletedOccurrenceResponseDto[]>(
+        taskQueryKeys.completed(),
+      );
+
       // Optimistically remove from all pending queries
       queryClient.setQueriesData<Task[]>({ queryKey: taskQueryKeys.all }, (old) => {
         if (!old || !Array.isArray(old)) return old;
@@ -27,8 +34,18 @@ export function useDeleteTask() {
         taskQueryKeys.completed(),
         (old) => old?.filter((o) => o.id !== taskId) ?? [],
       );
+
+      return { previousTasks, previousCompleted };
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, _taskId, context) => {
+      if (context?.previousTasks) {
+        context.previousTasks.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      if (context?.previousCompleted) {
+        queryClient.setQueryData(taskQueryKeys.completed(), context.previousCompleted);
+      }
       toast.add({
         title: "Error",
         description: getErrorMessage(err, "Failed to delete task"),

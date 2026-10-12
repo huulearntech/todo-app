@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils/escape-html';
+
 interface BaseTemplateOptions {
   title: string;
   contentHtml: string;
@@ -12,7 +14,7 @@ function baseEmailTemplate({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -93,6 +95,7 @@ export function getWelcomeEmailTemplate(
   name: string,
   actionUrl?: string,
 ): string {
+  const safeName = escapeHtml(name);
   const buttonHtml = actionUrl
     ? `<a href="${actionUrl}" class="button">Verify Email Account</a>`
     : '';
@@ -100,7 +103,7 @@ export function getWelcomeEmailTemplate(
   return baseEmailTemplate({
     title: 'Welcome to Todo App!',
     contentHtml: `
-      <h2>Welcome, ${name}!</h2>
+      <h2>Welcome, ${safeName}!</h2>
       <p>Thank you for joining Todo App. We are excited to help you organize your daily tasks, stay focused, and achieve your goals effortlessly.</p>
       ${buttonHtml}
       <p>If you have any questions or feedback, feel free to reply to this email.</p>
@@ -112,11 +115,12 @@ export function getPasswordResetEmailTemplate(
   name: string,
   resetUrl: string,
 ): string {
+  const safeName = escapeHtml(name);
   return baseEmailTemplate({
     title: 'Reset your password',
     contentHtml: `
       <h2>Password Reset Request</h2>
-      <p>Hi ${name},</p>
+      <p>Hi ${safeName},</p>
       <p>We received a request to reset your password for your Todo App account.</p>
       <p>Click the button below to choose a new password:</p>
       <a href="${resetUrl}" class="button">Reset Password</a>
@@ -132,8 +136,11 @@ export function getTaskReminderEmailTemplate(
   projectName?: string,
   reminderOffsetMinutes?: number,
 ): string {
+  const safeUserName = escapeHtml(userName);
+  const safeTaskTitle = escapeHtml(taskTitle);
+  const safeDueTime = escapeHtml(dueTime);
   const projectInfo = projectName
-    ? `<p style="margin: 6px 0;"><strong>Project:</strong> ${projectName}</p>`
+    ? `<p style="margin: 6px 0;"><strong>Project:</strong> ${escapeHtml(projectName)}</p>`
     : '';
 
   const timingNote =
@@ -147,12 +154,12 @@ export function getTaskReminderEmailTemplate(
     title: `Task Reminder: ${taskTitle}`,
     contentHtml: `
       <h2>Task Reminder</h2>
-      <p>Hi ${userName},</p>
+      <p>Hi ${safeUserName},</p>
       <p>This is a reminder for your upcoming task:</p>
       <div class="highlight-box">
-        <h3 style="margin-top:0; color: #1e1b4b;">${taskTitle}</h3>
+        <h3 style="margin-top:0; color: #1e1b4b;">${safeTaskTitle}</h3>
         ${timingNote}
-        <p style="margin: 6px 0;"><strong>Scheduled Time:</strong> ${dueTime}</p>
+        <p style="margin: 6px 0;"><strong>Scheduled Time:</strong> ${safeDueTime}</p>
         ${projectInfo}
       </div>
       <a href="/" class="button">Open Task in App</a>
@@ -167,6 +174,10 @@ export function getRecurringReminderEmailTemplate(
   occurrenceTime: string,
   reminderOffsetMinutes?: number,
 ): string {
+  const safeUserName = escapeHtml(userName);
+  const safeTaskTitle = escapeHtml(taskTitle);
+  const safeOccurrenceTime = escapeHtml(occurrenceTime);
+
   const timingNote =
     reminderOffsetMinutes !== undefined
       ? reminderOffsetMinutes === 0
@@ -178,12 +189,12 @@ export function getRecurringReminderEmailTemplate(
     title: `Recurring Task Reminder: ${taskTitle}`,
     contentHtml: `
       <h2>Recurring Task Reminder</h2>
-      <p>Hi ${userName},</p>
+      <p>Hi ${safeUserName},</p>
       <p>You have an upcoming occurrence of your recurring task:</p>
       <div class="highlight-box">
-        <h3 style="margin-top:0; color: #1e1b4b;">${taskTitle}</h3>
+        <h3 style="margin-top:0; color: #1e1b4b;">${safeTaskTitle}</h3>
         ${timingNote}
-        <p style="margin: 6px 0;"><strong>Occurrence Time:</strong> ${occurrenceTime}</p>
+        <p style="margin: 6px 0;"><strong>Occurrence Time:</strong> ${safeOccurrenceTime}</p>
       </div>
       <a href="/" class="button">Open Task in App</a>
       <p style="margin-top: 16px;">Keep up the momentum!</p>
@@ -195,11 +206,12 @@ export function getMagicLinkEmailTemplate(
   name: string,
   magicLinkUrl: string,
 ): string {
+  const safeName = escapeHtml(name);
   return baseEmailTemplate({
     title: 'Verify your account',
     contentHtml: `
       <h2>Verify your account</h2>
-      <p>Hi ${name},</p>
+      <p>Hi ${safeName},</p>
       <p>Click the button below to verify your email address and securely sign in to your Todo App account:</p>
       <a href="${magicLinkUrl}" class="button">Verify &amp; Sign In</a>
       <div class="highlight-box">

@@ -12,3 +12,4 @@ export * from "./task-occurrence.schema.js";
 // NOTE: draft, need to check this
 export * from "./rrule.schema.js";
 export * from "./search.schema.js";
+export * from "./image-storage.schema.js";

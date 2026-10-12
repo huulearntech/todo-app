@@ -17,8 +17,14 @@ export const taskLabelService = {
 
   getTaskLabelById: async (id: string) => {
   },
-  updateTaskLabel: async (updateTaskLabelDto: UpdateTaskLabelDto) => {
-    return apiClient.patch<TaskLabelResponseDto>(`/task-labels/${updateTaskLabelDto.id}`, updateTaskLabelDto);
+  updateTaskLabel: async (
+    id: string,
+    updateTaskLabelDto: UpdateTaskLabelDto,
+  ) => {
+    return apiClient.patch<TaskLabelResponseDto>(
+      `/task-labels/${id}`,
+      updateTaskLabelDto,
+    );
   },
 
   deleteTaskLabel: async (id: string) => {

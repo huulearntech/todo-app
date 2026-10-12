@@ -23,6 +23,7 @@ import { Task } from '@/src/modules/tasks/entities/task.entity';
 import { TaskOccurrence } from '@/src/modules/tasks/entities/task-occurrence.entity';
 import { TaskReminder } from '@/src/modules/tasks/entities/task-reminder.entity';
 import { TaskOccurrenceStatus } from '@todo/shared';
+import { escapeHtml } from '../utils/escape-html';
 
 @Processor(EMAIL_QUEUE_NAME)
 @Injectable()
@@ -85,7 +86,7 @@ export class MailerProcessor extends WorkerHost {
 
       case 'custom':
       default:
-        html = `<p>${data.context.customBody ?? ''}</p>`;
+        html = `<p>${escapeHtml(data.context.customBody ?? '')}</p>`;
         break;
     }
 

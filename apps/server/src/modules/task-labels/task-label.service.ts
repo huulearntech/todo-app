@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { TaskLabel } from './task-label.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -93,8 +93,10 @@ export class TaskLabelService {
   }: {
     id: string;
     ownerId: string;
-  }): Promise<boolean> {
+  }): Promise<void> {
     const result = await this.taskLabelRepository.delete({ id, ownerId });
-    return result.affected !== 0;
+    if (result.affected === 0) {
+      throw new NotFoundException(`Task label with ID ${id} not found`);
+    }
   }
 }

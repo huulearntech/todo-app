@@ -2,13 +2,19 @@ import {
   Body,
   Controller,
   Delete,
-  NotFoundException,
+  HttpCode,
+  HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import { SectionService } from './section.service';
-import { CreateSectionDto, UpdateSectionDto } from './dto/create-section.dto';
+import {
+  CreateSectionDto,
+  ReorderSectionDto,
+  UpdateSectionDto,
+} from './dto/create-section.dto';
 import {
   CurrentUser,
   type JwtUser,
@@ -29,8 +35,8 @@ export class SectionController {
   @Patch(':id/reorder')
   async updateSectionOrder(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
-    @Body('prevId') prevId: string | null,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() { prevId }: ReorderSectionDto,
   ) {
     await this.sectionService.updateSectionOrder({
       ownerId: user.id,
@@ -42,22 +48,18 @@ export class SectionController {
   @Patch(':id')
   async updateSection(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateSectionDto,
   ) {
-    const updated = await this.sectionService.updateSection(user.id, id, body);
-    if (!updated) {
-      throw new NotFoundException('Section not found');
-    }
-    return updated;
+    return this.sectionService.updateSection(user.id, id, body);
   }
 
   @Delete(':id')
-  async deleteSection(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    const deleted = await this.sectionService.deleteSection(user.id, id);
-    if (!deleted) {
-      throw new NotFoundException('Section not found');
-    }
-    return { success: true };
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteSection(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.sectionService.deleteSection(user.id, id);
   }
 }

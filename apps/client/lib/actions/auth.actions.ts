@@ -58,7 +58,7 @@ function parseSetCookie(cookieStr: string) {
 
 export type SignInActionResult =
   | { success: true; user: UserResponseDto }
-  | { success: false; error: string };
+  | { success: false; error: string; code?: string };
 
 export async function signInServerAction(
   data: SignInDto,
@@ -83,21 +83,25 @@ export async function signInServerAction(
 
   if (!response.ok) {
     let errorMessage = "Invalid email or password. Please try again.";
+    let errorCode: string | undefined;
     try {
       const errorJson = (await response.json()) as {
         message?: string | string[];
+        code?: string;
       };
       if (typeof errorJson.message === "string") {
         errorMessage = errorJson.message;
       } else if (Array.isArray(errorJson.message)) {
         errorMessage = errorJson.message.join(", ");
       }
+      errorCode = errorJson.code;
     } catch {
       // Fallback message
     }
     return {
       success: false,
       error: errorMessage,
+      code: errorCode,
     };
   }
 

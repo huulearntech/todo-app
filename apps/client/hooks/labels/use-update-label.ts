@@ -9,27 +9,33 @@ export function useUpdateLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: UpdateTaskLabelDto) => taskLabelService.updateTaskLabel(data),
-    onMutate: async (newLabel) => {
+    mutationFn: ({ id, data }: { id: string; data: UpdateTaskLabelDto }) =>
+      taskLabelService.updateTaskLabel(id, data),
+    onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: labelQueryKeys.all });
 
-      const previousTaskLabels = queryClient.getQueryData<TaskLabelResponseDto[]>(
-        labelQueryKeys.all
-      );
+      const previousTaskLabels = queryClient.getQueryData<
+        TaskLabelResponseDto[]
+      >(labelQueryKeys.all);
 
       queryClient.setQueryData<TaskLabelResponseDto[]>(
         labelQueryKeys.all,
         (oldTaskLabels = []) =>
           oldTaskLabels.map((label) =>
-            label.id === newLabel.id ? ({ ...label, ...newLabel } as TaskLabelResponseDto) : label
-          )
+            label.id === id
+              ? ({ ...label, ...data } as TaskLabelResponseDto)
+              : label,
+          ),
       );
 
       return { previousTaskLabels };
     },
-    onError: (_error, _newLabel, onMutateResult) => {
+    onError: (_error, _variables, onMutateResult) => {
       if (onMutateResult?.previousTaskLabels) {
-        queryClient.setQueryData(labelQueryKeys.all, onMutateResult.previousTaskLabels);
+        queryClient.setQueryData(
+          labelQueryKeys.all,
+          onMutateResult.previousTaskLabels,
+        );
       }
     },
     onSettled: () => {

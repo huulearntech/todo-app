@@ -3,8 +3,11 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -40,7 +43,7 @@ export class TaskLabelController {
   }
 
   @Get(':id')
-  async getTaskLabelById(@Param('id') labelId: string) {
+  async getTaskLabelById(@Param('id', ParseUUIDPipe) labelId: string) {
     const label = await this.taskLabelService.getTaskLabelById(labelId);
     if (!label) {
       throw new NotFoundException(`Task label with ID ${labelId} not found`);
@@ -52,7 +55,7 @@ export class TaskLabelController {
   @Get(':id/tasks')
   async getTasksByTaskLabelId(
     @CurrentUser() user: JwtUser,
-    @Param('id') labelId: string,
+    @Param('id', ParseUUIDPipe) labelId: string,
     @Query() filter: TaskFilterDto = {},
   ) {
     const combinedFilter = { ...filter, taskLabelIds: [labelId] };
@@ -68,7 +71,7 @@ export class TaskLabelController {
   @Patch(':id')
   async updateTaskLabel(
     @CurrentUser() user: JwtUser,
-    @Param('id') labelId: string,
+    @Param('id', ParseUUIDPipe) labelId: string,
     @Body() body: UpdateTaskLabelDto,
   ) {
     const updatedTaskLabel = await this.taskLabelService.updateTaskLabel(
@@ -85,7 +88,11 @@ export class TaskLabelController {
   }
 
   @Delete(':id')
-  async deleteTaskLabel(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    return this.taskLabelService.deleteTaskLabel({ ownerId: user.id, id: id });
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteTaskLabel(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.taskLabelService.deleteTaskLabel({ ownerId: user.id, id });
   }
 }
