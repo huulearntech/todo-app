@@ -3,11 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
   DataSource,
   EntityManager,
+  In,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
@@ -29,6 +31,7 @@ import { calculateNextOccurrence } from '../utils/recurrence.util';
 
 import { User } from '@/src/modules/users/user.entity';
 import { TaskReminder } from '../entities/task-reminder.entity';
+import { TaskLabel } from '@/src/modules/task-labels/task-label.entity';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
 
 export const DEFAULT_REMINDER_OFFSET_MINUTES = 30;
@@ -62,6 +65,8 @@ function handleDatabaseOrderingError(error: unknown): never {
 
 @Injectable()
 export class TaskService {
+  private readonly logger = new Logger(TaskService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
@@ -69,6 +74,8 @@ export class TaskService {
     private readonly taskOccurrenceRepository: Repository<TaskOccurrence>,
     @InjectRepository(TaskReminder)
     private readonly taskReminderRepository: Repository<TaskReminder>,
+    @InjectRepository(TaskLabel)
+    private readonly taskLabelRepository: Repository<TaskLabel>,
     @InjectRepository(Section)
     private readonly sectionRepository: Repository<Section>,
     @InjectRepository(User)
@@ -96,49 +103,74 @@ export class TaskService {
       );
     }
 
-    try {
-      const [rawTask] = await this.dataSource.query<[RawTaskRow]>(
-        `
-          SELECT *
-          FROM create_task(
-            $1::uuid,
-            $2::uuid,
-            $3::uuid,
-            $4::text,
-            $5::text,
-            $6::text,
-            $7::timestamptz,
-            $8::timestamptz,
-            $9::uuid[]
-          );
-        `,
-        [
-          ownerId,
-          taskId,
-          createTaskDto.sectionId,
-          createTaskDto.title,
-          createTaskDto.description ?? '',
-          createTaskDto.priority ?? TaskPriority.LOW,
-          timeRangeStart,
-          timeRangeEnd,
-          labelIds,
-        ],
+    const section = await this.sectionRepository.findOne({
+      where: { id: createTaskDto.sectionId, project: { ownerId } },
+    });
+    if (!section) {
+      throw new NotFoundException(
+        `Section with ID ${createTaskDto.sectionId} not found`,
       );
+    }
 
-      const savedReminders: TaskReminder[] = [];
-      if (createTaskDto.reminders && createTaskDto.reminders.length > 0) {
-        for (const remDto of createTaskDto.reminders) {
-          const rem = this.taskReminderRepository.create({
-            taskId: rawTask.id,
-            userId: ownerId,
-            type: remDto.type,
-            minuteOffset: remDto.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
-            remindAt: remDto.remindAt ? new Date(remDto.remindAt) : null,
-            channel: remDto.channel,
-          });
-          savedReminders.push(await this.taskReminderRepository.save(rem));
-        }
+    if (labelIds && labelIds.length > 0) {
+      const ownedLabelsCount = await this.taskLabelRepository.count({
+        where: { id: In(labelIds), ownerId },
+      });
+      if (ownedLabelsCount !== labelIds.length) {
+        throw new ForbiddenException('One or more labels do not belong to you');
       }
+    }
+
+    try {
+      const { rawTask, savedReminders } = await this.dataSource.transaction(
+        async (manager) => {
+          const [raw] = await manager.query<[RawTaskRow]>(
+            `
+              SELECT *
+              FROM create_task(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::text,
+                $5::text,
+                $6::text,
+                $7::timestamptz,
+                $8::timestamptz,
+                $9::uuid[]
+              );
+            `,
+            [
+              ownerId,
+              taskId,
+              createTaskDto.sectionId,
+              createTaskDto.title,
+              createTaskDto.description ?? '',
+              createTaskDto.priority ?? TaskPriority.LOW,
+              timeRangeStart,
+              timeRangeEnd,
+              labelIds,
+            ],
+          );
+
+          const reminders: TaskReminder[] = [];
+          if (createTaskDto.reminders && createTaskDto.reminders.length > 0) {
+            const remEntities = createTaskDto.reminders.map((remDto) =>
+              manager.create(TaskReminder, {
+                taskId: raw.id,
+                userId: ownerId,
+                type: remDto.type,
+                minuteOffset:
+                  remDto.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
+                remindAt: remDto.remindAt ? new Date(remDto.remindAt) : null,
+                channel: remDto.channel,
+              }),
+            );
+            reminders.push(...(await manager.save(TaskReminder, remEntities)));
+          }
+
+          return { rawTask: raw, savedReminders: reminders };
+        },
+      );
 
       const createdTask = {
         id: rawTask.id,
@@ -158,33 +190,44 @@ export class TaskService {
       } as unknown as Task;
 
       if (timeRangeStart && savedReminders.length > 0) {
-        this.userRepository
-          .findOne({ where: { id: ownerId } })
-          .then((user) => {
-            if (user) {
-              const dueTime = new Date(timeRangeStart);
-              for (const rem of savedReminders) {
-                const offset = rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES;
-                const reminderTime = new Date(
-                  dueTime.getTime() - offset * 60 * 1000,
-                );
-                this.mailerSchedulerService
-                  .scheduleTaskReminder({
-                    taskId: createdTask.id,
-                    reminderId: rem.id,
-                    userId: ownerId,
-                    to: user.email,
-                    userName: user.name,
-                    taskTitle: createdTask.title,
-                    dueTime,
-                    reminderTime,
-                    reminderOffsetMinutes: offset,
-                  })
-                  .catch(() => {});
-              }
+        try {
+          const user = await this.userRepository.findOne({
+            where: { id: ownerId },
+          });
+          if (user) {
+            const dueTime = new Date(timeRangeStart);
+            for (const rem of savedReminders) {
+              const offset =
+                rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES;
+              const reminderTime = new Date(
+                dueTime.getTime() - offset * 60 * 1000,
+              );
+              await this.mailerSchedulerService
+                .scheduleTaskReminder({
+                  taskId: createdTask.id,
+                  reminderId: rem.id,
+                  userId: ownerId,
+                  to: user.email,
+                  userName: user.name,
+                  taskTitle: createdTask.title,
+                  dueTime,
+                  reminderTime,
+                  reminderOffsetMinutes: offset,
+                })
+                .catch((err) => {
+                  this.logger.error(
+                    `Failed to schedule task reminder ${rem.id}`,
+                    err,
+                  );
+                });
             }
-          })
-          .catch(() => {});
+          }
+        } catch (err) {
+          this.logger.error(
+            `Failed to find user ${ownerId} for scheduling reminders`,
+            err,
+          );
+        }
       }
 
       return createdTask;
@@ -398,9 +441,7 @@ export class TaskService {
         },
         labels: (task.labels ?? []).map((l) => ({ id: l.id })),
         timeRange: task.timeRange,
-        completedAt: occ.completedAt
-          ? occ.completedAt.toISOString()
-          : null,
+        completedAt: occ.completedAt ? occ.completedAt.toISOString() : null,
         recurrence: task.recurrence?.rrule ?? null,
         occurrenceId: occ.id,
         scheduledDate: occ.scheduledDate
@@ -525,9 +566,7 @@ export class TaskService {
         },
         labels: (task.labels ?? []).map((l) => ({ id: l.id })),
         timeRange: task.timeRange,
-        completedAt: occ.completedAt
-          ? occ.completedAt.toISOString()
-          : null,
+        completedAt: occ.completedAt ? occ.completedAt.toISOString() : null,
         recurrence: task.recurrence?.rrule ?? null,
         occurrenceId: occ.id,
         scheduledDate: occ.scheduledDate
@@ -560,20 +599,48 @@ export class TaskService {
     updatedTask: UpdateTaskDto,
     actingUserId?: string,
   ): Promise<Task> {
-    const task = await this.getTaskById(id);
+    const task = await this.taskRepository.findOne({
+      where: actingUserId
+        ? { id, section: { project: { ownerId: actingUserId } } }
+        : { id },
+      relations: {
+        section: { project: true },
+        labels: true,
+        recurrence: true,
+        reminders: true,
+      },
+    });
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    const section = await this.sectionRepository.findOne({
-      where: { id: updatedTask.sectionId || task.sectionId },
-      relations: { project: true },
-    });
-    const ownerId = actingUserId || section?.project?.ownerId;
+    const ownerId = actingUserId ?? task.section?.project?.ownerId;
+    if (!ownerId) {
+      throw new ForbiddenException('Cannot determine task owner');
+    }
 
-    const existingReminders = await this.taskReminderRepository.find({
-      where: { taskId: id },
-    });
+    if (updatedTask.sectionId && updatedTask.sectionId !== task.sectionId) {
+      const targetSection = await this.sectionRepository.findOne({
+        where: { id: updatedTask.sectionId, project: { ownerId } },
+      });
+      if (!targetSection) {
+        throw new NotFoundException(
+          `Target section with ID ${updatedTask.sectionId} not found`,
+        );
+      }
+    }
+
+    if (updatedTask.labels && updatedTask.labels.length > 0) {
+      const labelIds = updatedTask.labels.map((l) => l.id);
+      const ownedLabelsCount = await this.taskLabelRepository.count({
+        where: { id: In(labelIds), ownerId },
+      });
+      if (ownedLabelsCount !== labelIds.length) {
+        throw new ForbiddenException('One or more labels do not belong to you');
+      }
+    }
+
+    const existingReminders = task.reminders ?? [];
 
     const willHaveRelativeReminder =
       updatedTask.reminders !== undefined
@@ -593,41 +660,95 @@ export class TaskService {
       }
     }
 
-    const { reminders: remindersDto, ...taskFieldsToUpdate } = updatedTask;
+    const { reminders: remindersDto } = updatedTask;
 
-    if (remindersDto !== undefined && ownerId) {
-      const oldReminders = existingReminders;
-      for (const old of oldReminders) {
-        await this.mailerSchedulerService.cancelTaskReminder(old.id);
-        await this.mailerSchedulerService.cancelRecurringTaskReminder(old.id);
+    await this.dataSource.transaction(async (manager) => {
+      if (updatedTask.sectionId && updatedTask.sectionId !== task.sectionId) {
+        await manager.query(
+          `
+            SELECT move_task(
+              $1::uuid,
+              $2::uuid,
+              $3::uuid,
+              $4::uuid
+            );
+          `,
+          [ownerId, task.id, updatedTask.sectionId, null],
+        );
+        task.sectionId = updatedTask.sectionId;
       }
-      await this.taskReminderRepository.delete({ taskId: id });
 
-      const savedReminders: TaskReminder[] = [];
-      for (const remDto of remindersDto) {
-        const rem = this.taskReminderRepository.create({
-          taskId: id,
-          userId: ownerId,
-          type: remDto.type,
-          minuteOffset: remDto.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
-          remindAt: remDto.remindAt ? new Date(remDto.remindAt) : null,
-          channel: remDto.channel,
-        });
-        savedReminders.push(await this.taskReminderRepository.save(rem));
+      if (updatedTask.title !== undefined) {
+        task.title = updatedTask.title;
       }
-      task.reminders = savedReminders;
+      if (updatedTask.description !== undefined) {
+        task.description = updatedTask.description;
+      }
+      if (updatedTask.priority !== undefined) {
+        task.priority = updatedTask.priority;
+      }
+      if (updatedTask.timeRange !== undefined) {
+        task.timeRange = updatedTask.timeRange;
+      }
+      if (updatedTask.labels !== undefined) {
+        task.labels = updatedTask.labels.map(
+          (l) => ({ id: l.id }) as TaskLabel,
+        );
+      }
+
+      if (remindersDto !== undefined) {
+        await manager.delete(TaskReminder, { taskId: id });
+        if (remindersDto.length > 0) {
+          const remEntities = remindersDto.map((remDto) =>
+            manager.create(TaskReminder, {
+              taskId: id,
+              userId: ownerId,
+              type: remDto.type,
+              minuteOffset:
+                remDto.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
+              remindAt: remDto.remindAt ? new Date(remDto.remindAt) : null,
+              channel: remDto.channel,
+            }),
+          );
+          task.reminders = await manager.save(TaskReminder, remEntities);
+        } else {
+          task.reminders = [];
+        }
+      }
+
+      await manager.save(Task, task);
+    });
+
+    if (remindersDto !== undefined) {
+      for (const old of existingReminders) {
+        await this.mailerSchedulerService
+          .cancelTaskReminder(old.id)
+          .catch((err) =>
+            this.logger.error(`Failed to cancel reminder ${old.id}`, err),
+          );
+        await this.mailerSchedulerService
+          .cancelRecurringTaskReminder(old.id)
+          .catch((err) =>
+            this.logger.error(
+              `Failed to cancel recurring reminder ${old.id}`,
+              err,
+            ),
+          );
+      }
     }
 
-    Object.assign(task, taskFieldsToUpdate);
-    const savedTask = await this.taskRepository.save(task);
-
-    if (ownerId) {
-      await this.rescheduleTaskReminders(savedTask, ownerId);
+    try {
+      await this.rescheduleTaskReminders(task, ownerId);
+    } catch (err) {
+      this.logger.error(
+        `Failed to reschedule reminders for task ${task.id}`,
+        err,
+      );
     }
 
-    const refreshedTask = await this.getTaskById(savedTask.id);
+    const refreshedTask = await this.getTaskById(task.id);
     if (!refreshedTask) {
-      throw new NotFoundException(`Task with ID ${savedTask.id} not found`);
+      throw new NotFoundException(`Task with ID ${task.id} not found`);
     }
     return refreshedTask;
   }
@@ -660,20 +781,47 @@ export class TaskService {
     }
   }
 
-  async deleteTask(id: string): Promise<void> {
-    const reminders = await this.taskReminderRepository.find({
-      where: { taskId: id },
+  async deleteTask(id: string, ownerId?: string): Promise<void> {
+    const task = await this.taskRepository.findOne({
+      where: ownerId ? { id, section: { project: { ownerId } } } : { id },
+      relations: { reminders: true },
     });
-    for (const rem of reminders) {
-      await this.mailerSchedulerService.cancelTaskReminder(rem.id);
-      await this.mailerSchedulerService.cancelRecurringTaskReminder(rem.id);
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
     }
-    await this.mailerSchedulerService.cancelTaskReminder(id);
-    await this.mailerSchedulerService.cancelRecurringTaskReminder(id);
+
+    const reminders = task.reminders ?? [];
+
     const result = await this.taskRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
+
+    for (const rem of reminders) {
+      this.mailerSchedulerService
+        .cancelTaskReminder(rem.id)
+        .catch((err) =>
+          this.logger.error(`Failed to cancel reminder ${rem.id}`, err),
+        );
+      this.mailerSchedulerService
+        .cancelRecurringTaskReminder(rem.id)
+        .catch((err) =>
+          this.logger.error(
+            `Failed to cancel recurring reminder ${rem.id}`,
+            err,
+          ),
+        );
+    }
+    this.mailerSchedulerService
+      .cancelTaskReminder(id)
+      .catch((err) =>
+        this.logger.error(`Failed to cancel task reminder ${id}`, err),
+      );
+    this.mailerSchedulerService
+      .cancelRecurringTaskReminder(id)
+      .catch((err) =>
+        this.logger.error(`Failed to cancel recurring reminder ${id}`, err),
+      );
   }
 
   async completeTaskOccurrence(
@@ -693,104 +841,137 @@ export class TaskService {
   }> {
     const completedAt = options?.completedAt ?? new Date();
 
-    return this.dataSource.transaction(async (manager) => {
-      const task = await manager.findOne(Task, {
-        where: { id: taskId },
-        relations: {
-          recurrence: true,
-          section: { project: true },
-        },
-      });
+    const { result, taskToReschedule } = await this.dataSource.transaction(
+      async (manager) => {
+        const task = await manager.findOne(Task, {
+          where: { id: taskId },
+          relations: {
+            recurrence: true,
+            section: { project: true },
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
 
-      if (!task) {
-        throw new NotFoundException(`Task with ID ${taskId} not found`);
-      }
-      if (task.section?.project?.ownerId !== userId) {
-        throw new ForbiddenException(
-          'You do not have permission to modify this task',
-        );
-      }
-
-      const scheduledDate =
-        options?.scheduledDate ??
-        (task.timeRange?.start ? new Date(task.timeRange.start) : null);
-
-      // Record occurrence completion
-      const occurrence = manager.create(TaskOccurrence, {
-        taskId: task.id,
-        userId,
-        scheduledDate,
-        status: TaskOccurrenceStatus.COMPLETED,
-        completedAt,
-      });
-      const savedOccurrence = await manager.save(TaskOccurrence, occurrence);
-
-      let isRecurringAdvanced = false;
-      let nextDueTime: string | null = null;
-
-      if (task.recurrence?.rrule) {
-        const anchor = scheduledDate ?? completedAt;
-        const dtstart = task.timeRange?.start
-          ? new Date(task.timeRange.start)
-          : anchor;
-        const nextOccurrence = calculateNextOccurrence(
-          task.recurrence.rrule,
-          anchor,
-          dtstart,
-        );
-
-        if (nextOccurrence) {
-          let durationMs = 0;
-          if (task.timeRange?.start && task.timeRange?.end) {
-            durationMs =
-              new Date(task.timeRange.end).getTime() -
-              new Date(task.timeRange.start).getTime();
-          }
-
-          const nextStart = nextOccurrence;
-          const nextEnd =
-            durationMs > 0
-              ? new Date(nextStart.getTime() + durationMs)
-              : nextStart;
-
-          task.timeRange = {
-            start: nextStart.toISOString(),
-            end: nextEnd.toISOString(),
-          };
-          task.completedAt = null; // Remains active for next occurrence
-          isRecurringAdvanced = true;
-          nextDueTime = nextStart.toISOString();
-
-          await this.rescheduleTaskReminders(task, userId, manager);
-        } else {
-          // Recurrence series finished (e.g., COUNT or UNTIL exceeded)
-          task.completedAt = completedAt;
-          await this.rescheduleTaskReminders(task, userId, manager);
+        if (!task) {
+          throw new NotFoundException(`Task with ID ${taskId} not found`);
         }
-      } else {
-        // Non-recurring task: terminal completion
-        task.completedAt = completedAt;
-        await this.rescheduleTaskReminders(task, userId, manager);
+        if (task.section?.project?.ownerId !== userId) {
+          throw new ForbiddenException(
+            'You do not have permission to modify this task',
+          );
+        }
+
+        if (!task.recurrence && task.completedAt !== null) {
+          const existingOcc = await manager.findOne(TaskOccurrence, {
+            where: { taskId: task.id, status: TaskOccurrenceStatus.COMPLETED },
+            order: { completedAt: 'DESC' },
+          });
+          return {
+            result: {
+              occurrenceId: existingOcc ? existingOcc.id : taskId,
+              taskId: task.id,
+              isRecurringAdvanced: false,
+              status: TaskOccurrenceStatus.COMPLETED,
+              completedAt: (task.completedAt ?? completedAt).toISOString(),
+              nextDueTime: null,
+            },
+            taskToReschedule: null,
+          };
+        }
+
+        const scheduledDate =
+          options?.scheduledDate ??
+          (task.timeRange?.start ? new Date(task.timeRange.start) : null);
+
+        // Record occurrence completion
+        const occurrence = manager.create(TaskOccurrence, {
+          taskId: task.id,
+          userId,
+          scheduledDate,
+          status: TaskOccurrenceStatus.COMPLETED,
+          completedAt,
+        });
+        const savedOccurrence = await manager.save(TaskOccurrence, occurrence);
+
+        let isRecurringAdvanced = false;
+        let nextDueTime: string | null = null;
+
+        if (task.recurrence?.rrule) {
+          const anchor = scheduledDate ?? completedAt;
+          const dtstart = task.timeRange?.start
+            ? new Date(task.timeRange.start)
+            : anchor;
+          const nextOccurrence = calculateNextOccurrence(
+            task.recurrence.rrule,
+            anchor,
+            dtstart,
+          );
+
+          if (nextOccurrence) {
+            let durationMs = 0;
+            if (task.timeRange?.start && task.timeRange?.end) {
+              durationMs =
+                new Date(task.timeRange.end).getTime() -
+                new Date(task.timeRange.start).getTime();
+            }
+
+            const nextStart = nextOccurrence;
+            const nextEnd =
+              durationMs > 0
+                ? new Date(nextStart.getTime() + durationMs)
+                : nextStart;
+
+            task.timeRange = {
+              start: nextStart.toISOString(),
+              end: nextEnd.toISOString(),
+            };
+            task.completedAt = null; // Remains active for next occurrence
+            isRecurringAdvanced = true;
+            nextDueTime = nextStart.toISOString();
+          } else {
+            // Recurrence series finished (e.g., COUNT or UNTIL exceeded)
+            task.completedAt = completedAt;
+          }
+        } else {
+          // Non-recurring task: terminal completion
+          task.completedAt = completedAt;
+        }
+
+        await manager.save(Task, task);
+
+        return {
+          result: {
+            occurrenceId: savedOccurrence.id,
+            taskId: task.id,
+            isRecurringAdvanced,
+            status: TaskOccurrenceStatus.COMPLETED,
+            completedAt: completedAt.toISOString(),
+            nextDueTime,
+          },
+          taskToReschedule: task,
+        };
+      },
+    );
+
+    if (taskToReschedule) {
+      try {
+        await this.rescheduleTaskReminders(taskToReschedule, userId);
+      } catch (err) {
+        this.logger.error(
+          `Failed to reschedule reminders for completed task ${taskToReschedule.id}`,
+          err,
+        );
       }
+    }
 
-      await manager.save(Task, task);
-
-      return {
-        occurrenceId: savedOccurrence.id,
-        taskId: task.id,
-        isRecurringAdvanced,
-        status: TaskOccurrenceStatus.COMPLETED,
-        completedAt: completedAt.toISOString(),
-        nextDueTime,
-      };
-    });
+    return result;
   }
 
   async uncompleteOccurrenceById(
     userId: string,
     occurrenceId: string,
   ): Promise<Task> {
-    return this.dataSource.transaction(async (manager) => {
+    const savedTask = await this.dataSource.transaction(async (manager) => {
       const occurrence = await manager.findOne(TaskOccurrence, {
         where: { id: occurrenceId },
         relations: {
@@ -866,12 +1047,20 @@ export class TaskService {
         task.completedAt = null;
       }
 
-      const savedTask = await manager.save(Task, task);
-
-      await this.rescheduleTaskReminders(savedTask, userId, manager);
-
-      return savedTask;
+      const saved = await manager.save(Task, task);
+      return saved;
     });
+
+    try {
+      await this.rescheduleTaskReminders(savedTask, userId);
+    } catch (err) {
+      this.logger.error(
+        `Failed to reschedule reminders for uncompleted task ${savedTask.id}`,
+        err,
+      );
+    }
+
+    return savedTask;
   }
 
   async deleteOccurrenceById(
@@ -942,7 +1131,12 @@ export class TaskService {
     }
     task.completedAt = null;
     const saved = await this.taskRepository.save(task);
-    await this.rescheduleTaskReminders(saved, userId);
+    this.rescheduleTaskReminders(saved, userId).catch((err) =>
+      this.logger.error(
+        `Failed to reschedule reminders for uncompleted task ${saved.id}`,
+        err,
+      ),
+    );
     return saved;
   }
 
@@ -987,7 +1181,14 @@ export class TaskService {
     task.completedAt = null;
 
     const savedTask = await this.taskRepository.save(task);
-    await this.rescheduleTaskReminders(savedTask, userId);
+    try {
+      await this.rescheduleTaskReminders(savedTask, userId);
+    } catch (err) {
+      this.logger.error(
+        `Failed to reschedule reminders for postponed task ${savedTask.id}`,
+        err,
+      );
+    }
 
     return savedTask;
   }
@@ -1044,7 +1245,8 @@ export class TaskService {
             userName: user.name,
             taskTitle: task.title,
             rruleString: rruleStr,
-            reminderOffsetMinutes: rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
+            reminderOffsetMinutes:
+              rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
           })
           .catch(() => {});
       }

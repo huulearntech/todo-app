@@ -46,7 +46,9 @@ export function TrigramIndex(options?: TrigramIndexOptions): PropertyDecorator {
 /**
  * Retrieves all properties on an entity (walking through prototype inheritance) that are marked with @TrigramIndex().
  */
-export function getTrigramIndexMetadata(target: Function): TrigramIndexMetadataItem[] {
+export function getTrigramIndexMetadata(
+  target: Function,
+): TrigramIndexMetadataItem[] {
   const results: TrigramIndexMetadataItem[] = [];
   let current: any = target;
 

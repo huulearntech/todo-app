@@ -1,38 +1,28 @@
 import {
   Controller,
   Post,
-  Delete,
   Get,
   Param,
   Query,
   BadRequestException,
 } from '@nestjs/common';
 import { ImageStorageService } from './image_storage.service';
+import { GetImageUrlQueryDto } from './dto/image-storage.dto';
 import {
-  DeleteImageQueryDto,
-  GetImageUrlQueryDto,
-  GetUploadSignatureQueryDto,
-} from './dto/image-storage.dto';
+  CurrentUser,
+  type JwtUser,
+} from '../auth/decorators/current-user.decorator';
 
 @Controller('image-storage')
 export class ImageStorageController {
   constructor(private readonly imageStorageService: ImageStorageService) {}
 
   /**
-   * Client requests signed credentials to upload directly to Cloudinary
+   * Client requests signed credentials to upload their avatar directly to Cloudinary
    */
   @Post('signature')
-  async getUploadSignature(@Query() query: GetUploadSignatureQueryDto) {
-    return this.imageStorageService.getUploadSignature(
-      query.folder,
-      query.publicId,
-    );
-  }
-
-  @Delete()
-  async deleteImage(@Query() query: DeleteImageQueryDto) {
-    const success = await this.imageStorageService.deleteImage(query.publicId);
-    return { success, publicId: query.publicId };
+  async getUploadSignature(@CurrentUser() user: JwtUser) {
+    return this.imageStorageService.getUploadSignature(user.id);
   }
 
   @Get('url/*path')

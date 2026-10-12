@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { Project } from './project.entity';
+import { User } from '../users/user.entity';
 
 describe('ProjectService', () => {
   let service: ProjectService;
@@ -14,6 +16,9 @@ describe('ProjectService', () => {
     manager: {
       transaction: jest.Mock;
     };
+  };
+  let userRepository: {
+    findOne: jest.Mock;
   };
 
   const ownerId = '11111111-1111-1111-1111-111111111111';
@@ -32,12 +37,23 @@ describe('ProjectService', () => {
       },
     };
 
+    userRepository = {
+      findOne: jest.fn().mockResolvedValue({
+        id: ownerId,
+        defaultProjectId: 'default-inbox-id',
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProjectService,
         {
           provide: getRepositoryToken(Project),
           useValue: projectRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: userRepository,
         },
       ],
     }).compile();
@@ -123,6 +139,28 @@ describe('ProjectService', () => {
         }),
       );
       expect(result?.colorKey).toBe('sky');
+    });
+  });
+
+  describe('deleteProject', () => {
+    it('should throw ConflictException when trying to delete the default inbox project', async () => {
+      await expect(
+        service.deleteProject('default-inbox-id', ownerId),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should delete project successfully when not default inbox', async () => {
+      projectRepository.findOne.mockResolvedValue({
+        id: 'other-project-id',
+        ownerId,
+      });
+      projectRepository.delete.mockResolvedValue({ affected: 1 });
+
+      await service.deleteProject('other-project-id', ownerId);
+
+      expect(projectRepository.delete).toHaveBeenCalledWith({
+        id: 'other-project-id',
+      });
     });
   });
 });

@@ -7,10 +7,7 @@ import { Task } from '../tasks/entities/task.entity';
 import { TaskModule } from '../tasks/task.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([TaskLabel, Task]),
-    TaskModule,
-  ],
+  imports: [TypeOrmModule.forFeature([TaskLabel, Task]), TaskModule],
   controllers: [TaskLabelController],
   providers: [TaskLabelService],
   exports: [TaskLabelService],

@@ -6,9 +6,11 @@ import { Project } from './project.entity';
 import { TaskModule } from '../tasks/task.module';
 import { SectionModule } from '../sections/section.module';
 
+import { User } from '../users/user.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project]),
+    TypeOrmModule.forFeature([Project, User]),
     TaskModule,
     SectionModule,
   ],

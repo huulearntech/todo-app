@@ -25,13 +25,9 @@ export const imageUploadService = {
   /**
    * Step 1: Request signed upload credentials from our server
    */
-  async getUploadSignature(
-    folder: string = 'avatars',
-    publicId?: string,
-  ): Promise<SignedUploadSignature> {
+  async getUploadSignature(): Promise<SignedUploadSignature> {
     const response = await apiClient.post<SignedUploadSignature>(
-      `/image-storage/signature?folder=${encodeURIComponent(folder)}${publicId ? `&publicId=${encodeURIComponent(publicId)}` : ''
-      }`,
+      '/image-storage/signature',
     );
     return response.data;
   },
@@ -73,9 +69,8 @@ export const imageUploadService = {
    */
   async uploadSingleImageDirect(
     file: File,
-    folder: string = 'avatars',
   ): Promise<UploadedImageResult> {
-    const signature = await imageUploadService.getUploadSignature(folder);
+    const signature = await imageUploadService.getUploadSignature();
     return imageUploadService.uploadImageDirectToCloudinary(file, signature);
   },
 
@@ -84,12 +79,11 @@ export const imageUploadService = {
    */
   async uploadMultipleImagesDirect(
     files: File[],
-    folder: string = 'avatars',
   ): Promise<UploadedImageResult[]> {
     // Concurrently request upload signatures for files
     // NOTE: Requesting multiple signatures at once can slowdown the
     // operation. Consider requesting signature on-the-fly
-    const signaturePromises = files.map(() => imageUploadService.getUploadSignature(folder));
+    const signaturePromises = files.map(() => imageUploadService.getUploadSignature());
     const signatures = await Promise.all(signaturePromises);
 
     // Concurrently upload files directly to Cloudinary

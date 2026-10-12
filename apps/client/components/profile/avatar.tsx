@@ -69,10 +69,7 @@ export default function Avatar({
 
     try {
       setIsUploading(true);
-      const uploaded = await imageUploadService.uploadSingleImageDirect(
-        file,
-        "avatars"
-      );
+      const uploaded = await imageUploadService.uploadSingleImageDirect(file);
 
       const newUrl = uploaded.secure_url;
       setCurrentAvatarUrl(newUrl);

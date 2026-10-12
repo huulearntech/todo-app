@@ -7,23 +7,25 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './services/auth.service';
 import type { Response, Request } from 'express';
 
 import { SignInDto } from './dto/sign-in.dto';
 import { SignUpDto } from './dto/sign-up.dto';
-import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
+import {
+  MagicLinkRequestDto,
+  MagicLinkVerifyDto,
+} from './dto/magic-link-request.dto';
 
 import { Public } from './decorators/public.decorator';
 import { CurrentUser, type JwtUser } from './decorators/current-user.decorator';
 
 import { TypedConfigService } from '../../config/typed-config.service';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
-import { MagicLinkGuard } from './guards/magic-link.guard';
 import { UserService } from '../users/user.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { GuestGuard } from './guards/guest.guard';
-import { User } from '../users/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -36,6 +38,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('sign-up')
   async signUp(@Body() signUpDto: SignUpDto) {
     const user = await this.authService.signUp(signUpDto);
@@ -62,8 +65,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      maxAge:
-        this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000,
+      maxAge: this.configService.get('JWT_SECRET_EXPIRATION_SECONDS') * 1000,
       path: '/',
     });
   }
@@ -88,6 +90,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('sign-in')
   async signIn(
     @Body() signInDto: SignInDto,
@@ -106,15 +109,22 @@ export class AuthController {
   @Post('sign-out')
   async signOut(
     @CurrentUser() user: JwtUser,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await this.authService.signOut(user.id);
+    const refreshToken = request.cookies?.['refresh_token'];
+    if (refreshToken) {
+      await this.refreshTokenService.revokeToken(refreshToken);
+    } else {
+      await this.authService.signOut(user.id);
+    }
     this.clearAuthCookies(response);
     return { message: 'Signed out' };
   }
 
   @Public()
   @UseGuards(RefreshTokenGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post('refresh-token')
   async refreshToken(
     @Req() request: Request,
@@ -130,49 +140,62 @@ export class AuthController {
 
     this.setAuthCookies(response, accessToken, newRefreshToken);
 
-    return { accessToken };
+    return { success: true };
   }
 
   @Public()
   @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('magic-link')
   async requestMagicLink(@Body() body: MagicLinkRequestDto) {
     return this.authService.sendMagicLink(body.email);
   }
 
+  /**
+   * Legacy / direct GET callback from email scanner protection:
+   * Do NOT consume or invalidate the token on GET. Redirect to frontend landing page.
+   */
   @Public()
-  @UseGuards(MagicLinkGuard)
   @Get('magic-link/callback')
   async magicLinkCallback(@Req() request: Request, @Res() response: Response) {
-    const user = request.user as User;
+    const token = request.query?.['token'];
+    const frontendBaseUrl =
+      this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
+    return response.redirect(
+      `${frontendBaseUrl}/auth/verify?token=${encodeURIComponent(String(token || ''))}`,
+    );
+  }
 
-    // Generate tokens
+  /**
+   * Explicit POST verification from frontend landing page.
+   * Consumes token and sets authentication cookies.
+   */
+  @Public()
+  @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('magic-link/verify')
+  async verifyMagicLink(
+    @Body() body: MagicLinkVerifyDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const user = await this.authService.validateMagicLinkToken(body.token);
+
     const { accessToken, refreshToken } =
       await this.refreshTokenService.generatePairOfTokens(user.id);
     await this.refreshTokenService.createRefreshToken(user.id, refreshToken);
 
     this.setAuthCookies(response, accessToken, refreshToken);
 
-    const isJsonRequest =
-      request.headers['accept']?.includes('application/json');
-
-    if (isJsonRequest) {
-      return response.status(200).json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          avatarUrl: user.avatarUrl,
-          defaultProjectId: user.defaultProjectId,
-          isEmailVerified: user.isEmailVerified,
-        },
-        accessToken,
-      });
-    }
-
-    const frontendBaseUrl =
-      this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
-    return response.redirect(`${frontendBaseUrl}/`);
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        defaultProjectId: user.defaultProjectId,
+        isEmailVerified: user.isEmailVerified,
+      },
+    };
   }
 
   @Get('me')

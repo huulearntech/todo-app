@@ -48,17 +48,23 @@ export class ProductivityService {
     });
 
     if (!goal) {
-      goal = this.userGoalRepository.create({
-        userId,
-        dailyGoal: 5,
-        weeklyGoal: 20,
-        effectiveFrom: new Date(),
-        effectiveTo: null,
+      await this.dataSource.query(
+        `
+          INSERT INTO user_goals (id, user_id, daily_goal, weekly_goal, effective_from, effective_to)
+          VALUES (gen_random_uuid(), $1, 5, 20, NOW(), NULL)
+          ON CONFLICT (user_id) WHERE effective_to IS NULL
+          DO NOTHING
+        `,
+        [userId],
+      );
+
+      goal = await this.userGoalRepository.findOne({
+        where: { userId, effectiveTo: IsNull() },
+        order: { effectiveFrom: 'DESC' },
       });
-      goal = await this.userGoalRepository.save(goal);
     }
 
-    return goal;
+    return goal!;
   }
 
   async getGoalProgress(

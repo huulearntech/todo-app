@@ -4,8 +4,6 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Patch,
 } from '@nestjs/common';
 import { UserService } from './user.service';
@@ -19,10 +17,10 @@ import {
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Delete(':id')
+  @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteUser(@Param('id', ParseUUIDPipe) id: string) {
-    await this.userService.deleteUser(id);
+  async deleteCurrentUser(@CurrentUser() user: JwtUser) {
+    await this.userService.deleteUser(user.id);
   }
 
   @Patch('me')
@@ -31,13 +29,5 @@ export class UserController {
     @Body() updateUserDto: UpdateUserDto,
   ) {
     return this.userService.updateUser(user.id, updateUserDto);
-  }
-
-  @Patch(':id')
-  async updateUser(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    return this.userService.updateUser(id, updateUserDto);
   }
 }

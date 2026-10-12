@@ -141,9 +141,9 @@ export class AuthService {
 
     await this.magicLinkTokenRepository.save(tokenEntity);
 
-    const backendBaseUrl =
-      this.configService.get('BACKEND_URL') || 'http://localhost:4000';
-    const magicLinkUrl = `${backendBaseUrl}/auth/magic-link/callback?token=${rawToken}`;
+    const frontendBaseUrl =
+      this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
+    const magicLinkUrl = `${frontendBaseUrl}/auth/verify?token=${rawToken}`;
 
     await this.mailerSchedulerService.sendImmediateEmail({
       to: user.email,

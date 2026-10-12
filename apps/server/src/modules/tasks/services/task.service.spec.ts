@@ -20,6 +20,7 @@ import {
 } from '@todo/shared';
 
 import { User } from '@/src/modules/users/user.entity';
+import { TaskLabel } from '@/src/modules/task-labels/task-label.entity';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
 
 describe('TaskService', () => {
@@ -55,15 +56,48 @@ describe('TaskService', () => {
   };
 
   beforeEach(async () => {
+    const defaultManager = {
+      query: jest.fn((...args) => dataSource.query(...args)),
+      findOne: jest.fn((cls, opts) => {
+        if (cls === User || cls?.name === 'User')
+          return userRepository.findOne(opts);
+        if (cls === Task || cls?.name === 'Task')
+          return taskRepository.findOne(opts);
+        if (cls === TaskOccurrence || cls?.name === 'TaskOccurrence')
+          return taskOccurrenceRepository.findOne(opts);
+        if (cls === TaskReminder || cls?.name === 'TaskReminder')
+          return taskReminderRepository.find(opts);
+        return null;
+      }),
+      create: jest.fn((cls, val) => {
+        if (cls === TaskReminder || cls?.name === 'TaskReminder')
+          return taskReminderRepository.create(val);
+        return val;
+      }),
+      save: jest.fn((cls, val) => {
+        if (cls === TaskReminder || cls?.name === 'TaskReminder')
+          return taskReminderRepository.save(val);
+        if (cls === Task || cls?.name === 'Task')
+          return taskRepository.save(val);
+        return Promise.resolve(val ?? cls);
+      }),
+      delete: jest.fn((cls, val) => {
+        if (cls === TaskReminder || cls?.name === 'TaskReminder')
+          return taskReminderRepository.delete(val);
+        return Promise.resolve({ affected: 1 });
+      }),
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+
     dataSource = {
       query: jest.fn(),
-      transaction: jest.fn(),
+      transaction: jest.fn((cb) => cb(defaultManager)),
     };
     taskRepository = {
       find: jest.fn(),
       findOne: jest.fn(),
       save: jest.fn(),
-      delete: jest.fn(),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     taskOccurrenceRepository = {
       create: jest.fn().mockImplementation((dto) => dto),
@@ -102,6 +136,11 @@ describe('TaskService', () => {
       scheduleRecurringTaskReminder: jest.fn().mockResolvedValue(undefined),
       cancelRecurringTaskReminder: jest.fn().mockResolvedValue(undefined),
     };
+    const taskLabelRepository = {
+      count: jest.fn().mockResolvedValue(0),
+      find: jest.fn(),
+      findOne: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -129,6 +168,10 @@ describe('TaskService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: userRepository,
+        },
+        {
+          provide: getRepositoryToken(TaskLabel),
+          useValue: taskLabelRepository,
         },
         {
           provide: MailerSchedulerService,
@@ -249,6 +292,9 @@ describe('TaskService', () => {
         id: 'task-1',
         title: 'Task without date',
         sectionId: 'section-1',
+        section: {
+          project: { ownerId: '11111111-1111-1111-1111-111111111111' },
+        },
         timeRange: null,
         recurrence: null,
       };
@@ -285,6 +331,9 @@ describe('TaskService', () => {
         title: 'Old Title',
         completedAt: null,
         sectionId: 'section-1',
+        section: {
+          project: { ownerId: '11111111-1111-1111-1111-111111111111' },
+        },
       };
       const savedTask = {
         ...existingTask,
@@ -313,17 +362,6 @@ describe('TaskService', () => {
       expect(taskRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'New Title' }),
       );
-      expect(taskRepository.findOne).toHaveBeenLastCalledWith({
-        where: { id: 'task-1' },
-        relations: {
-          section: {
-            project: true,
-          },
-          labels: true,
-          recurrence: true,
-          reminders: true,
-        },
-      });
       expect(result).toEqual(populatedTask);
     });
 
@@ -332,6 +370,7 @@ describe('TaskService', () => {
         id: 'task-1',
         title: 'Task with date',
         sectionId: 'section-1',
+        section: { project: { ownerId: 'user-1' } },
         timeRange: {
           start: '2026-10-10T10:00:00.000Z',
           end: '2026-10-10T11:00:00.000Z',

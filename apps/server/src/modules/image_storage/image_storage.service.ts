@@ -13,10 +13,9 @@ export class ImageStorageService {
   ) {}
 
   async getUploadSignature(
-    folder: string = 'avatars',
-    publicId?: string,
+    userId: string,
   ): Promise<SignedUploadSignatureResponse> {
-    return this.storageProvider.generateUploadSignature(folder, publicId);
+    return this.storageProvider.generateUploadSignature('avatars', userId);
   }
 
   async deleteImage(publicId: string): Promise<boolean> {

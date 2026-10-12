@@ -8,6 +8,7 @@ import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { SignUpDto } from '../auth/dto/sign-up.dto';
 import { User } from './user.entity';
 import { Project } from '../projects/project.entity';
+import { UserGoal } from './entities/user-goal.entity';
 
 @Injectable()
 export class UserService {
@@ -37,6 +38,14 @@ export class UserService {
           name: 'Inbox',
           owner: savedUser,
           colorKey: 'slate',
+        });
+
+        await transactionalEntityManager.save(UserGoal, {
+          userId: savedUser.id,
+          dailyGoal: 5,
+          weeklyGoal: 20,
+          effectiveFrom: new Date(),
+          effectiveTo: null,
         });
 
         return {

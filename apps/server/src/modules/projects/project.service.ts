@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -13,6 +17,8 @@ export class ProjectService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async createProject(
@@ -70,9 +76,9 @@ export class ProjectService {
     );
   }
 
-  async getProjectById(id: string): Promise<Project | null> {
+  async getProjectById(id: string, ownerId?: string): Promise<Project | null> {
     return this.projectRepository.findOne({
-      where: { id },
+      where: ownerId ? { id, ownerId } : { id },
     });
   }
 
@@ -81,8 +87,8 @@ export class ProjectService {
     updatedProject: Partial<UpdateProjectDto>,
     ownerId?: string,
   ): Promise<Project> {
-    const project = await this.getProjectById(id);
-    if (!project || (ownerId && project.ownerId !== ownerId)) {
+    const project = await this.getProjectById(id, ownerId);
+    if (!project) {
       throw new NotFoundException('Project not found');
     }
 
@@ -99,12 +105,17 @@ export class ProjectService {
     }
 
     await this.projectRepository.save(project);
-    return (await this.getProjectById(id)) ?? project;
+    return (await this.getProjectById(id, ownerId)) ?? project;
   }
 
-  async deleteProject(id: string, ownerId?: string): Promise<void> {
+  async deleteProject(id: string, ownerId: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: ownerId } });
+    if (user && user.defaultProjectId === id) {
+      throw new ConflictException('Cannot delete default inbox project');
+    }
+
     const project = await this.projectRepository.findOne({
-      where: ownerId ? { id, ownerId } : { id },
+      where: { id, ownerId },
     });
     if (!project) {
       throw new NotFoundException('Project not found');

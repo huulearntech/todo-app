@@ -49,8 +49,11 @@ export class ProjectController {
   }
 
   @Get(':id')
-  async getProjectById(@Param('id', ParseUUIDPipe) id: string) {
-    const project = await this.projectService.getProjectById(id);
+  async getProjectById(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const project = await this.projectService.getProjectById(id, user.id);
     if (!project) {
       throw new NotFoundException('Project not found');
     }

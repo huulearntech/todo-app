@@ -15,6 +15,8 @@ import { MailerModule } from '../mailer/mailer.module';
 
 import { User } from '../users/user.entity';
 
+import { TaskLabel } from '../task-labels/task-label.entity';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -23,6 +25,7 @@ import { User } from '../users/user.entity';
       TaskOccurrence,
       TaskReminder,
       User,
+      TaskLabel,
     ]),
     SectionModule,
     MailerModule,

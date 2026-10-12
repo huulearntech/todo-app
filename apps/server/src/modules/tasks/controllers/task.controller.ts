@@ -131,8 +131,11 @@ export class TasksController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteTask(@Param('id', ParseUUIDPipe) id: string) {
-    await this.taskService.deleteTask(id);
+  async deleteTask(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.taskService.deleteTask(id, user.id);
   }
 
   @Post(':id/occurrences/complete')

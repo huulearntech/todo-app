@@ -13,4 +13,3 @@ export type CompleteTaskOccurrenceInput = CompleteTaskOccurrencePayload;
 
 export class PostponeTaskDto extends createZodDto(postponeTaskInputSchema) {}
 export type PostponeTaskInput = PostponeTaskPayload;
-

@@ -11,8 +11,7 @@ import {
 export class GetUploadSignatureQueryDto extends createZodDto(
   getUploadSignatureQuerySchema,
 ) {}
-export interface GetUploadSignatureQueryDto
-  extends GetUploadSignatureQueryPayload {}
+export interface GetUploadSignatureQueryDto extends GetUploadSignatureQueryPayload {}
 
 export class DeleteImageQueryDto extends createZodDto(deleteImageQuerySchema) {}
 export interface DeleteImageQueryDto extends DeleteImageQueryPayload {}

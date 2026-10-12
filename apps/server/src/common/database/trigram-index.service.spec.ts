@@ -135,7 +135,9 @@ describe('TrigramIndexService', () => {
       const createIndexCall = queryMock.mock.calls.find(
         (args) =>
           typeof args[0] === 'string' &&
-          args[0].includes('CREATE INDEX IF NOT EXISTS "idx_test_articles_summary_col_trgm"'),
+          args[0].includes(
+            'CREATE INDEX IF NOT EXISTS "idx_test_articles_summary_col_trgm"',
+          ),
       );
       expect(createIndexCall).toBeDefined();
       expect(createIndexCall[0]).toContain(
@@ -146,15 +148,16 @@ describe('TrigramIndexService', () => {
       const dropIndexCall = queryMock.mock.calls.find(
         (args) =>
           typeof args[0] === 'string' &&
-          args[0].includes('DROP INDEX IF EXISTS "idx_test_articles_old_col_trgm"'),
+          args[0].includes(
+            'DROP INDEX IF EXISTS "idx_test_articles_old_col_trgm"',
+          ),
       );
       expect(dropIndexCall).toBeDefined();
 
       // Check lock released
-      expect(queryMock).toHaveBeenCalledWith(
-        'SELECT pg_advisory_unlock($1);',
-        [TrigramIndexService.ADVISORY_LOCK_ID],
-      );
+      expect(queryMock).toHaveBeenCalledWith('SELECT pg_advisory_unlock($1);', [
+        TrigramIndexService.ADVISORY_LOCK_ID,
+      ]);
     });
   });
 });

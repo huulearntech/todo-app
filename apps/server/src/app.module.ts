@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AppConfigModule } from './config/config.module';
 import { TypedConfigService } from './config/typed-config.service';
@@ -29,6 +30,12 @@ import { migrations } from './migrations';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [AppConfigModule],
       inject: [TypedConfigService],
@@ -36,7 +43,7 @@ import { migrations } from './migrations';
         type: 'postgres',
         url: configService.get('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true, // set to false in production to avoid data loss!
+        synchronize: false,
         migrations,
         migrationsRun: true,
       }),
@@ -78,6 +85,10 @@ import { migrations } from './migrations';
     {
       provide: APP_FILTER,
       useClass: TypeOrmExceptionFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

@@ -145,9 +145,7 @@ describe('AuthService - Magic Link & Sign Up', () => {
           templateType: 'magic-link',
           context: expect.objectContaining({
             name: mockUser.name,
-            actionUrl: expect.stringContaining(
-              '/auth/magic-link/callback?token=',
-            ),
+            actionUrl: expect.stringContaining('/auth/verify?token='),
           }),
         }),
       );
@@ -196,9 +194,7 @@ describe('AuthService - Magic Link & Sign Up', () => {
           templateType: 'magic-link',
           context: {
             name: mockUser.name,
-            actionUrl: expect.stringContaining(
-              '/auth/magic-link/callback?token=',
-            ),
+            actionUrl: expect.stringContaining('/auth/verify?token='),
           },
         }),
       );

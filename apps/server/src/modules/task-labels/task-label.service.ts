@@ -51,9 +51,12 @@ export class TaskLabelService {
     });
   }
 
-  async getTaskLabelById(id: string): Promise<TaskLabel | null> {
+  async getTaskLabelById(
+    id: string,
+    ownerId?: string,
+  ): Promise<TaskLabel | null> {
     return this.taskLabelRepository.findOne({
-      where: { id },
+      where: ownerId ? { id, ownerId } : { id },
     });
   }
 
@@ -62,7 +65,7 @@ export class TaskLabelService {
     updatedTaskLabel: Partial<UpdateTaskLabelDto>,
     ownerId?: string,
   ): Promise<TaskLabel | null> {
-    const taskLabel = await this.getTaskLabelById(id);
+    const taskLabel = await this.getTaskLabelById(id, ownerId);
     if (!taskLabel) {
       return null;
     }

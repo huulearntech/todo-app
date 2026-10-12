@@ -25,6 +25,10 @@ export class RefreshToken {
   @Column({ type: 'boolean', name: 'is_revoked', default: false })
   isRevoked!: boolean;
 
+  @Column({ type: 'uuid', name: 'family_id', nullable: true })
+  @Index()
+  familyId?: string;
+
   // Optional but recommended metadata for tracking sessions
   @Column({ type: 'varchar', name: 'ip_address', nullable: true })
   ipAddress?: string;

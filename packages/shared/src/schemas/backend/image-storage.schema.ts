@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-export const getUploadSignatureQuerySchema = z.object({
-  folder: z.string().trim().max(100).optional(),
-  publicId: z.string().trim().max(255).optional(),
-});
+export const getUploadSignatureQuerySchema = z.object({});
 export type GetUploadSignatureQueryDto = z.infer<
   typeof getUploadSignatureQuerySchema
 >;

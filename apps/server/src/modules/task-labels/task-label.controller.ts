@@ -43,8 +43,14 @@ export class TaskLabelController {
   }
 
   @Get(':id')
-  async getTaskLabelById(@Param('id', ParseUUIDPipe) labelId: string) {
-    const label = await this.taskLabelService.getTaskLabelById(labelId);
+  async getTaskLabelById(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) labelId: string,
+  ) {
+    const label = await this.taskLabelService.getTaskLabelById(
+      labelId,
+      user.id,
+    );
     if (!label) {
       throw new NotFoundException(`Task label with ID ${labelId} not found`);
     }

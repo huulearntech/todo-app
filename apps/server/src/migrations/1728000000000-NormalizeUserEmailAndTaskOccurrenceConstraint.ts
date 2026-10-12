@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class NormalizeUserEmailAndTaskOccurrenceConstraint1728000000000
-  implements MigrationInterface
-{
+export class NormalizeUserEmailAndTaskOccurrenceConstraint1728000000000 implements MigrationInterface {
   name = 'NormalizeUserEmailAndTaskOccurrenceConstraint1728000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

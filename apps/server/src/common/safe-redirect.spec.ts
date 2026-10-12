@@ -40,6 +40,8 @@ describe('getSafeRedirectUrl', () => {
   });
 
   it('should safely allow paths with http in pathname without protocol', () => {
-    expect(getSafeRedirectUrl('/http://example.com')).toBe('/http://example.com');
+    expect(getSafeRedirectUrl('/http://example.com')).toBe(
+      '/http://example.com',
+    );
   });
 });

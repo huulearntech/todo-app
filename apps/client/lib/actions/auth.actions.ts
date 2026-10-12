@@ -167,3 +167,51 @@ export async function resendVerificationEmailAction(
     };
   }
 }
+
+export async function verifyMagicLinkAction(
+  token: string,
+): Promise<{ success: boolean; user?: UserResponseDto; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/magic-link/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Verification link is invalid or has expired.";
+      try {
+        const errorJson = (await response.json()) as { message?: string };
+        if (errorJson.message) errorMessage = errorJson.message;
+      } catch {
+        // fallback
+      }
+      return { success: false, error: errorMessage };
+    }
+
+    const data = (await response.json()) as { user: UserResponseDto };
+    const cookieStore = await cookies();
+    const setCookies = response.headers.getSetCookie();
+
+    for (const cookieStr of setCookies) {
+      const parsedCookie = parseSetCookie(cookieStr);
+      if (parsedCookie) {
+        cookieStore.set(
+          parsedCookie.name,
+          parsedCookie.value,
+          parsedCookie.options,
+        );
+      }
+    }
+
+    return { success: true, user: data.user };
+  } catch {
+    return {
+      success: false,
+      error: "An unexpected error occurred during verification.",
+    };
+  }
+}

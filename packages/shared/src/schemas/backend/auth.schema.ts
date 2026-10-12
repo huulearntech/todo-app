@@ -20,7 +20,7 @@ export const signUpSchema = z.object({
     .max(100, "Name must be at most 100 characters long"),
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters long")
+    .min(8, "Password must be at least 8 characters long")
     .max(100, "Password must be at most 100 characters long"),
 });
 
@@ -39,4 +39,10 @@ export const magicLinkCallbackQuerySchema = z.object({
 export type MagicLinkCallbackQueryDto = z.infer<
   typeof magicLinkCallbackQuerySchema
 >;
+
+export const magicLinkVerifySchema = z.object({
+  token: z.string().min(1, "Token is required"),
+});
+
+export type MagicLinkVerifyDto = z.infer<typeof magicLinkVerifySchema>;
 

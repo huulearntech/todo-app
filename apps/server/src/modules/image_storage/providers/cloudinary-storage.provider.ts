@@ -33,10 +33,12 @@ export class CloudinaryStorageProvider implements IImageStorageProvider {
     const paramsToSign: SignApiOptions = {
       folder,
       timestamp,
+      allowed_formats: 'jpg,png,webp',
     };
 
     if (publicId) {
       paramsToSign.public_id = publicId;
+      paramsToSign.overwrite = true;
     }
 
     const signature = cloudinary.utils.api_sign_request(

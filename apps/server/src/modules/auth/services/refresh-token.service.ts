@@ -3,12 +3,11 @@ import * as crypto from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { MoreThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { TypedConfigService } from '@config/typed-config.service';
 
-// NOTE: This does not handle the case where a user has multiple refresh tokens (e.g., from different devices). In a real-world application, you might want to associate refresh tokens with specific devices or sessions and handle them accordingly.
 @Injectable()
 export class RefreshTokenService {
   constructor(
@@ -24,7 +23,6 @@ export class RefreshTokenService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  // NOTE: This not save the refresh token. @Temporary @Fix
   async generatePairOfTokens(
     userId: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
@@ -45,24 +43,45 @@ export class RefreshTokenService {
     const oldHash = this.hashToken(oldToken);
     const now = new Date();
 
-    const oldTokenEntity = await this.tokenRepository.findOne({
-      where: {
-        token: oldHash,
-        isRevoked: false,
-        expiresAt: MoreThan(now),
-      }, // NOTE: if revoked, may be someone is trying to hack
+    const existingToken = await this.tokenRepository.findOne({
+      where: { token: oldHash },
     });
 
-    // 1. Check if token exists, is expired, or already revoked
-    if (!oldTokenEntity) {
+    if (!existingToken) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    // 2. Revoke the old token (Token Rotation)
-    oldTokenEntity.isRevoked = true;
+    // Reuse detection: if an already-revoked token is used again, revoke the entire token family!
+    if (existingToken.isRevoked) {
+      if (existingToken.familyId) {
+        await this.tokenRepository.update(
+          { familyId: existingToken.familyId },
+          { isRevoked: true },
+        );
+      }
+      throw new UnauthorizedException(
+        'Refresh token reuse detected. All sessions in this chain have been revoked.',
+      );
+    }
+
+    if (existingToken.expiresAt.getTime() <= now.getTime()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Atomic rotation: mark old token as revoked only if it wasn't already revoked
+    const updateResult = await this.tokenRepository
+      .createQueryBuilder()
+      .update(RefreshToken)
+      .set({ isRevoked: true })
+      .where('id = :id AND is_revoked = false', { id: existingToken.id })
+      .execute();
+
+    if (updateResult.affected === 0) {
+      throw new UnauthorizedException('Refresh token already rotated');
+    }
 
     const { accessToken, refreshToken } = await this.generatePairOfTokens(
-      oldTokenEntity.userId,
+      existingToken.userId,
     );
     const hashedNewToken = this.hashToken(refreshToken);
 
@@ -73,22 +92,23 @@ export class RefreshTokenService {
     );
 
     const newTokenEntity = this.tokenRepository.create({
-      userId: oldTokenEntity.userId,
+      userId: existingToken.userId,
       token: hashedNewToken,
+      familyId: existingToken.familyId || crypto.randomUUID(),
       expiresAt: newTokenExpiresAt,
       isRevoked: false,
     });
 
-    await this.tokenRepository.save([
-      oldTokenEntity, // Revoke the old token
-      newTokenEntity, // Save the new token
-    ]);
+    await this.tokenRepository.save(newTokenEntity);
 
     return { accessToken, refreshToken };
   }
 
-  // TODO: @Temporary @Cleanup @Robustness
-  async createRefreshToken(userId: string, refreshToken: string) {
+  async createRefreshToken(
+    userId: string,
+    refreshToken: string,
+    familyId?: string,
+  ): Promise<RefreshToken> {
     const hashedToken = this.hashToken(refreshToken);
     const expiresAt = new Date();
     expiresAt.setSeconds(
@@ -99,15 +119,23 @@ export class RefreshTokenService {
     const tokenEntity = this.tokenRepository.create({
       userId,
       token: hashedToken,
+      familyId: familyId ?? crypto.randomUUID(),
       expiresAt,
       isRevoked: false,
     });
 
-    await this.tokenRepository.save(tokenEntity);
+    return this.tokenRepository.save(tokenEntity);
   }
 
-  // NOTE: not handle multiple refresh tokens yet
-  async revokeAllUserTokens(userId: string) {
+  async revokeToken(token: string): Promise<void> {
+    const hashedToken = this.hashToken(token);
+    await this.tokenRepository.update(
+      { token: hashedToken, isRevoked: false },
+      { isRevoked: true },
+    );
+  }
+
+  async revokeAllUserTokens(userId: string): Promise<void> {
     await this.tokenRepository.update(
       { userId, isRevoked: false },
       { isRevoked: true },

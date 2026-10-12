@@ -156,6 +156,8 @@ export class TrigramIndexService implements OnApplicationBootstrap {
       `);
 
     // Ensure we only treat indexes with trigram ops as managed trigram indexes
-    return rows.filter((row) => row.indexdef.toLowerCase().includes('_trgm_ops'));
+    return rows.filter((row) =>
+      row.indexdef.toLowerCase().includes('_trgm_ops'),
+    );
   }
 }

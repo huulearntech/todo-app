@@ -34,6 +34,7 @@ describe('ProductivityService', () => {
     };
 
     mockDataSource = {
+      query: jest.fn().mockResolvedValue([]),
       transaction: jest.fn(async (cb) => {
         const manager = {
           save: jest.fn((_entity, val) => Promise.resolve(val)),
@@ -107,18 +108,26 @@ describe('ProductivityService', () => {
     });
 
     it('creates default goal (5 daily, 20 weekly) if none exists', async () => {
-      mockUserGoalRepo.findOne.mockResolvedValue(null);
+      const fallbackGoal = {
+        id: 'goal-uuid',
+        userId: 'user-1',
+        dailyGoal: 5,
+        weeklyGoal: 20,
+        effectiveFrom: new Date(),
+        effectiveTo: null,
+      };
+      mockUserGoalRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(fallbackGoal);
       mockQueryBuilder.getCount.mockResolvedValue(0);
 
       const result = await service.getGoalProgress('user-1', 'UTC');
 
-      expect(mockUserGoalRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-1',
-          dailyGoal: 5,
-          weeklyGoal: 20,
-          effectiveTo: null,
-        }),
+      expect(mockDataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'ON CONFLICT (user_id) WHERE effective_to IS NULL',
+        ),
+        ['user-1'],
       );
       expect(result.daily.target).toBe(5);
       expect(result.weekly.target).toBe(20);

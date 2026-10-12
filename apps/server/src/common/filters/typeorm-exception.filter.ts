@@ -34,8 +34,8 @@ export class TypeOrmExceptionFilter implements ExceptionFilter {
       });
     }
 
-    const driverError = (exception as QueryFailedError)
-      .driverError as PostgresDriverError | undefined;
+    const driverError = exception.driverError as
+      PostgresDriverError | undefined;
     const code = driverError?.code;
 
     switch (code) {
