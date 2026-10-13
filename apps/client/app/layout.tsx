@@ -10,7 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar/app-sidebar";
 import Script from "next/script";
 
 import { MyStoreProvider } from "@/providers/MyStoreProvider";
-import EditTaskDialog from "@/app/inbox/edit-task-dialog";
+import EditTaskDialog from "@/components/inbox/edit-task-dialog";
 import AddTaskForm from "@/components/(home)/add-task-form";
 import { EditProjectProvider } from "@/providers/EditProjectProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";

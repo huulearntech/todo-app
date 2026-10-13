@@ -31,7 +31,7 @@ import { SectionResponseDto } from "@todo/shared"
 
 import { AddTaskFormTrigger } from "./add-task-form"
 
-import AddSectionForm from "../../app/projects/add-section-form";
+import AddSectionForm from "@/components/projects/add-section-form";
 import { projectService } from "@/services/project.service"
 import { Skeleton } from "../ui/skeleton"
 

@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ProjectHeader from "./project-header";
-import { ProjectViewProvider } from "./project-view-context";
+import ProjectHeader from "@/components/projects/project-header";
+import { ProjectViewProvider } from "@/components/projects/project-view-context";
 import { getProjectById } from "@/lib/server/api/project";
 
 interface ProjectLayoutProps {

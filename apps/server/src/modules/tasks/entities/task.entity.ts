@@ -26,10 +26,9 @@ import {
 } from '../../../common/transformers/tstzrange.transformer';
 import { TrigramIndex } from '@/src/common/decorators/trigram-index.decorator';
 
-// TODO: Lexorank: Implement Lexorank reordering cronjob
+// NOTE: Lexorank: Do I need to implement Lexorank reordering cronjob (see the migration file in directory `migrations`)
 
 // TODO: add feature streak of days that meet the goal of completing tasks.
-
 @Entity('tasks')
 @Index('tasks_section_lexorank_uq', ['sectionId', 'lexorank'], {
   unique: true,

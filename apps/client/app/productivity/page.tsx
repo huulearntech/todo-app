@@ -1,7 +1,7 @@
 "use client";
 
-import CompletedStackedBarChart from "./completed-stacked-bar-chart";
-import GoalProgressCard from "./goal-progress-card";
+import CompletedStackedBarChart from "@/components/productivity/completed-stacked-bar-chart";
+import GoalProgressCard from "@/components/productivity/goal-progress-card";
 import { useAuth } from "@/providers/AuthProvider";
 import { TrendingUpIcon } from "lucide-react";
 

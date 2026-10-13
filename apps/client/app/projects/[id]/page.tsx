@@ -1,4 +1,4 @@
-import ProjectContent from "./project-content";
+import ProjectContent from "@/components/projects/project-content";
 
 // NOTE: Consider adding parameters like "year=", "month=", "week=",...
 export default async function ProjectPage({

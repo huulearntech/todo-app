@@ -1,4 +1,4 @@
-import LabelHeader from "./label-header";
+import LabelHeader from "@/components/labels/label-header";
 import type { Metadata } from "next";
 
 export default function LabelsDetailLayout({ children }: { children: React.ReactNode }) {

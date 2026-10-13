@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import type { ProjectResponseDto as Project } from "@todo/shared";
-import EditProjectDialog from "@/app/projects/edit-project-dialog";
+import EditProjectDialog from "@/components/projects/edit-project-dialog";
 
 interface EditProjectContextType {
   projectToEdit: Project | null;

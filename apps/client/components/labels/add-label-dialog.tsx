@@ -1,4 +1,3 @@
-// TODO: move this to components
 "use client";
 
 import { useState } from "react";
@@ -37,13 +36,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon, Plus } from "lucide-react";
 
-import { createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
+import { ColorResponseDto, createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
 
+const EMPTY_COLORS: ColorResponseDto[] = []
 
-export default function Dialog_AddLabel() {
+export default function AddLabelDialog() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: colors = [] } = useColors();
+  const { data: colors = EMPTY_COLORS } = useColors();
 
   const { control, handleSubmit, reset, formState: { isLoading } } = useForm<CreateTaskLabelDto>({
     resolver: zodResolver(createTaskLabelSchema),

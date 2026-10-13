@@ -34,8 +34,8 @@ import { useMoveTasks } from "@/hooks/tasks/use-move-tasks"
 import { useMoveSection } from "@/hooks/sections/use-move-section"
 import { useDeleteSection } from "@/hooks/sections/use-delete-section"
 import { AddTaskFormTrigger } from "./add-task-form"
-import AddSectionForm, { type AddSectionFormHandle } from "../../app/projects/add-section-form"
-import EditSectionDialog from "../../app/projects/edit-section-dialog"
+import AddSectionForm, { type AddSectionFormHandle } from "@/components/projects/add-section-form";
+import EditSectionDialog from "@/components/projects/edit-section-dialog";
 import { getColorConfig } from "@/lib/color-palette"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "../ui/skeleton"

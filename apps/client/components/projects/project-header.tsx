@@ -31,7 +31,7 @@ import {
   CalendarIcon,
   CheckIcon,
 } from "lucide-react";
-import { useProjectView } from "./project-view-context";
+import { useProjectView } from "@/components/projects/project-view-context";
 import Link from "next/link";
 
 

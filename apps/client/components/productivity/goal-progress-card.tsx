@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { CircularProgressIndicator } from "./circular-progress-indicator";
+import { CircularProgressIndicator } from "@/components/productivity/circular-progress-indicator";
 
 export default function GoalProgressCard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

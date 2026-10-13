@@ -37,7 +37,7 @@ import {
 import { toast } from "@/components/ui/toast";
 
 import { MoreHorizontalIcon, PencilIcon, Trash2Icon, TagIcon } from "lucide-react";
-import EditLabelDialog from "../(root)/edit-label-dialog";
+import EditLabelDialog from "@/components/labels/edit-label-dialog";
 
 export default function LabelHeader() {
   const params = useParams();

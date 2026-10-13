@@ -1,6 +1,6 @@
 "use client";
 
-import { UpcomingEventCalendar } from "./upcoming-event-calendar";
+import { UpcomingEventCalendar } from "@/components/upcoming/upcoming-event-calendar";
 import { useAuth } from "@/providers/AuthProvider";
 
 export default function UpcomingPage() {

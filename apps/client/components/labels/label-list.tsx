@@ -37,8 +37,8 @@ import {
   TagsIcon,
 } from "lucide-react";
 
-import Dialog_AddLabel from "./add-label-form";
-import EditLabelDialog from "./edit-label-dialog";
+import AddLabelDialog from "@/components/labels/add-label-dialog";
+import EditLabelDialog from "@/components/labels/edit-label-dialog";
 import { useLabels } from "@/hooks/labels/use-labels";
 import { getColorConfig } from "@/lib/color-palette";
 
@@ -169,7 +169,7 @@ export default function LabelList() {
             </p>
           </div>
         </div>
-        <Dialog_AddLabel />
+        <AddLabelDialog />
       </div>
 
       {/* Search Input */}

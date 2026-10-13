@@ -6,7 +6,7 @@ import { useProjects } from "@/hooks/projects/use-projects";
 import { useAuth } from "@/providers/AuthProvider";
 import { getColorConfig } from "@/lib/color-palette";
 import Header from "@/components/header";
-import AddProjectDialog from "./add-project-form";
+import AddProjectDialog from "@/components/projects/add-project-dialog";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
