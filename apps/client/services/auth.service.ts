@@ -18,6 +18,14 @@ export const authService = {
     await apiClient.post("/auth/sign-out");
   },
 
+  async verifyMagicLink(token: string) {
+    const response = await apiClient.post<{ user: UserResponseDto }>(
+      "/auth/magic-link/verify",
+      { token },
+    );
+    return response.data;
+  },
+
   async getCurrentUser() {
     const response = await apiClient.get<UserResponseDto>("/auth/me");
     return response.data;

@@ -12,6 +12,8 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { User } from '../users/user.entity';
 import { ProjectFilterDto } from './dto/project-filter.dto';
 
+import { ColorService } from '../colors/color.service';
+
 @Injectable()
 export class ProjectService {
   constructor(
@@ -26,7 +28,7 @@ export class ProjectService {
     createProjectDto: CreateProjectDto,
   ): Promise<Project> {
     const { name, description, colorKey } = createProjectDto;
-    const key = (colorKey || 'slate').toLowerCase().trim();
+    const key = ColorService.resolveColor(colorKey, 'slate');
 
     const project = this.projectRepository.create({
       ownerId,
@@ -101,7 +103,7 @@ export class ProjectService {
     }
 
     if (updatedProject.colorKey !== undefined) {
-      project.colorKey = updatedProject.colorKey.toLowerCase().trim();
+      project.colorKey = ColorService.resolveColor(updatedProject.colorKey);
     }
 
     await this.projectRepository.save(project);

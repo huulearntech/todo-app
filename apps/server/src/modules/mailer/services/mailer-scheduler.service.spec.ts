@@ -75,7 +75,7 @@ describe('MailerSchedulerService', () => {
           taskTitle: 'Important Task',
         }),
         expect.objectContaining({
-          jobId: 'task-reminder:task-1',
+          jobId: 'task-reminder-task-1',
         }),
       );
     });

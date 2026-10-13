@@ -180,6 +180,7 @@ export class ProductivityService {
     days = 7,
   ): Promise<DayGoalHistoryItem[]> {
     const nowInUserTz = this.parseUserTimezone(timezone);
+    const tzName = nowInUserTz.zoneName ?? 'UTC';
     const historyList: DayGoalHistoryItem[] = [];
 
     // Pre-fetch all goal history versions for this user
@@ -188,6 +189,32 @@ export class ProductivityService {
       order: { effectiveFrom: 'ASC' },
     });
 
+    const rangeStart = nowInUserTz.minus({ days }).startOf('day').toJSDate();
+    const rangeEnd = nowInUserTz.minus({ days: 1 }).endOf('day').toJSDate();
+
+    // Single grouped query across the entire date window
+    const groupedCounts: Array<{ day_str: string; count: string | number }> =
+      await this.taskOccurrenceRepository.query(
+        `
+          SELECT to_char(completed_at AT TIME ZONE $1, 'YYYY-MM-DD') AS day_str,
+                 COUNT(*)::int AS count
+          FROM task_occurrences
+          WHERE user_id = $2
+            AND status = $3
+            AND completed_at >= $4
+            AND completed_at <= $5
+          GROUP BY day_str
+        `,
+        [tzName, userId, TaskOccurrenceStatus.COMPLETED, rangeStart, rangeEnd],
+      );
+
+    const countsMap = new Map<string, number>();
+    if (Array.isArray(groupedCounts)) {
+      for (const row of groupedCounts) {
+        countsMap.set(row.day_str, Number(row.count));
+      }
+    }
+
     for (let i = days; i >= 1; i--) {
       const dayDate = nowInUserTz.minus({ days: i });
       const dayStart = dayDate.startOf('day').toJSDate();
@@ -195,17 +222,7 @@ export class ProductivityService {
       const dateString = dayDate.toFormat('yyyy-MM-dd');
       const dayName = dayDate.toFormat('ccc');
 
-      const completedCount = await this.taskOccurrenceRepository
-        .createQueryBuilder('to')
-        .where('to.userId = :userId', { userId })
-        .andWhere('to.status = :status', {
-          status: TaskOccurrenceStatus.COMPLETED,
-        })
-        .andWhere('to.completedAt >= :dayStart AND to.completedAt <= :dayEnd', {
-          dayStart,
-          dayEnd,
-        })
-        .getCount();
+      const completedCount = countsMap.get(dateString) ?? 0;
 
       // Match the goal that was active during this day
       const matchedGoal =

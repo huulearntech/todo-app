@@ -4,6 +4,8 @@ import { TaskLabel } from './task-label.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateTaskLabelDto, UpdateTaskLabelDto } from './task-label.dto';
 
+import { ColorService } from '../colors/color.service';
+
 @Injectable()
 export class TaskLabelService {
   constructor(
@@ -13,31 +15,15 @@ export class TaskLabelService {
 
   async createTaskLabel(
     ownerId: string,
-    dtoOrName: CreateTaskLabelDto | string,
-    description?: string,
-    rawColorKey?: string,
+    createTaskLabelDto: CreateTaskLabelDto,
   ): Promise<TaskLabel> {
-    let name: string;
-    let desc: string | undefined;
-    let key = 'slate';
-
-    if (typeof dtoOrName === 'string') {
-      name = dtoOrName;
-      desc = description;
-      if (rawColorKey) key = rawColorKey;
-    } else {
-      name = dtoOrName.name;
-      desc = dtoOrName.description;
-      if (dtoOrName.colorKey) key = dtoOrName.colorKey;
-    }
-
-    const normalizedKey = key.toLowerCase().trim();
+    const key = ColorService.resolveColor(createTaskLabelDto.colorKey, 'slate');
 
     const taskLabel = this.taskLabelRepository.create({
       ownerId,
-      name: name.trim(),
-      description: desc?.trim(),
-      colorKey: normalizedKey,
+      name: createTaskLabelDto.name.trim(),
+      description: createTaskLabelDto.description?.trim(),
+      colorKey: key,
     });
 
     const saved = await this.taskLabelRepository.save(taskLabel);
@@ -83,7 +69,9 @@ export class TaskLabelService {
     }
 
     if (updatedTaskLabel.colorKey !== undefined) {
-      taskLabel.colorKey = updatedTaskLabel.colorKey.toLowerCase().trim();
+      taskLabel.colorKey = ColorService.resolveColor(
+        updatedTaskLabel.colorKey,
+      );
     }
 
     await this.taskLabelRepository.save(taskLabel);

@@ -48,20 +48,7 @@ interface RawTaskRow {
   completed_at: Date | null;
 }
 
-interface DatabaseError extends Error {
-  code?: string;
-}
-
-function handleDatabaseOrderingError(error: unknown): never {
-  const dbError = error as DatabaseError;
-  if (dbError?.code === 'P0002') {
-    throw new NotFoundException(dbError.message);
-  }
-  if (dbError?.code === '22000' || dbError?.code === 'P0001') {
-    throw new BadRequestException(dbError.message);
-  }
-  throw error;
-}
+import { handleDatabaseOrderingError } from '../../../common/utils/database-error.util';
 
 @Injectable()
 export class TaskService {
@@ -196,31 +183,41 @@ export class TaskService {
           });
           if (user) {
             const dueTime = new Date(timeRangeStart);
-            for (const rem of savedReminders) {
-              const offset =
-                rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES;
-              const reminderTime = new Date(
-                dueTime.getTime() - offset * 60 * 1000,
-              );
-              await this.mailerSchedulerService
-                .scheduleTaskReminder({
-                  taskId: createdTask.id,
-                  reminderId: rem.id,
-                  userId: ownerId,
-                  to: user.email,
-                  userName: user.name,
-                  taskTitle: createdTask.title,
-                  dueTime,
-                  reminderTime,
-                  reminderOffsetMinutes: offset,
-                })
-                .catch((err) => {
-                  this.logger.error(
-                    `Failed to schedule task reminder ${rem.id}`,
-                    err,
+            await Promise.all(
+              savedReminders.map((rem) => {
+                let reminderTime: Date;
+                let offset: number;
+                if (rem.type === 'absolute' && rem.remindAt) {
+                  reminderTime = new Date(rem.remindAt);
+                  offset = Math.round(
+                    (dueTime.getTime() - reminderTime.getTime()) / (60 * 1000),
                   );
-                });
-            }
+                } else {
+                  offset = rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES;
+                  reminderTime = new Date(
+                    dueTime.getTime() - offset * 60 * 1000,
+                  );
+                }
+                return this.mailerSchedulerService
+                  .scheduleTaskReminder({
+                    taskId: createdTask.id,
+                    reminderId: rem.id,
+                    userId: ownerId,
+                    to: user.email,
+                    userName: user.name,
+                    taskTitle: createdTask.title,
+                    dueTime,
+                    reminderTime,
+                    reminderOffsetMinutes: offset,
+                  })
+                  .catch((err) => {
+                    this.logger.error(
+                      `Failed to schedule task reminder ${rem.id}`,
+                      err,
+                    );
+                  });
+              }),
+            );
           }
         } catch (err) {
           this.logger.error(
@@ -271,94 +268,24 @@ export class TaskService {
     });
   }
 
-  async getTasksByOwnerIdProjectIdAndFilter(
+  private baseTaskQuery(
+    managerOrRepo: EntityManager | Repository<Task>,
     ownerId: string,
-    projectId: string,
-    filter: TaskFilterDto,
-  ): Promise<Task[]> {
-    // TODO: pagination
-    return this.dataSource.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query(
-        `SET LOCAL pg_trgm.similarity_threshold = 0.2;`,
-      );
+  ): SelectQueryBuilder<Task> {
+    const qb =
+      managerOrRepo instanceof EntityManager
+        ? managerOrRepo.createQueryBuilder(Task, 'task')
+        : (managerOrRepo as Repository<Task>).createQueryBuilder('task');
 
-      const queryBuilder = transactionalEntityManager
-        .createQueryBuilder(Task, 'task')
-        .innerJoin('task.section', 'section')
-        .innerJoin(
-          'section.project',
-          'project',
-          'project.id = :projectId AND project.ownerId = :ownerId',
-          { projectId, ownerId },
-        )
-        .leftJoin('task.recurrence', 'recurrence')
-        .leftJoin('task.reminders', 'reminder')
-        .where('task.completedAt IS NULL');
-
-      if (filter.title) {
-        queryBuilder.andWhere('task.title % :title', { title: filter.title });
-        queryBuilder.orderBy('similarity(task.title, :title)', 'DESC');
-      } else {
-        queryBuilder
-          .orderBy('task.sectionId', 'ASC')
-          .addOrderBy('task.lexorank COLLATE "C"', 'ASC');
-      }
-
-      this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
-      queryBuilder.leftJoin('task.labels', 'label');
-
-      // NOTE: If there is some way to keep this and the zod schema in sync, that would be great. But for now, this is just manual.
-      queryBuilder.select([
-        'task',
-        'section.id',
-        'section.name',
-        'project.name',
-        'label.id',
-        'recurrence.id',
-        'recurrence.rrule',
-        'reminder.id',
-        'reminder.type',
-        'reminder.minuteOffset',
-        'reminder.remindAt',
-        'reminder.channel',
-      ]);
-
-      return queryBuilder.getMany();
-    });
-  }
-
-  // TODO: @Cleanup @Temporary
-  async getTasksByOwnerIdAndFilter(
-    ownerId: string,
-    filter: TaskFilterDto,
-  ): Promise<Task[]> {
-    return this.dataSource.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.query(
-        `SET LOCAL pg_trgm.similarity_threshold = 0.2;`,
-      );
-
-      const queryBuilder = transactionalEntityManager
-        .createQueryBuilder(Task, 'task')
-        .innerJoin('task.section', 'section')
-        .innerJoin('section.project', 'project')
-        .andWhere('project.ownerId = :ownerId', { ownerId })
-        .leftJoin('task.recurrence', 'recurrence')
-        .leftJoin('task.reminders', 'reminder')
-        .andWhere('task.completedAt IS NULL');
-
-      if (filter.title) {
-        queryBuilder.andWhere('task.title % :title', { title: filter.title });
-        queryBuilder.orderBy('similarity(task.title, :title)', 'DESC');
-      } else {
-        queryBuilder
-          .orderBy('task.sectionId', 'ASC')
-          .addOrderBy('task.lexorank COLLATE "C"', 'ASC');
-      }
-
-      this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
-      queryBuilder.leftJoin('task.labels', 'label');
-
-      queryBuilder.select([
+    return qb
+      .innerJoin('task.section', 'section')
+      .innerJoin('section.project', 'project', 'project.ownerId = :ownerId', {
+        ownerId,
+      })
+      .leftJoin('task.recurrence', 'recurrence')
+      .leftJoin('task.reminders', 'reminder')
+      .leftJoin('task.labels', 'label')
+      .select([
         'task',
         'section.id',
         'section.name',
@@ -373,8 +300,141 @@ export class TaskService {
         'reminder.remindAt',
         'reminder.channel',
       ]);
+  }
 
-      return queryBuilder.getMany();
+  private applyFilter(
+    queryBuilder: SelectQueryBuilder<Task>,
+    filter?: TaskFilterDto,
+  ): SelectQueryBuilder<Task> {
+    if (!filter) return queryBuilder;
+
+    if (filter.projectId) {
+      queryBuilder.andWhere('section.projectId = :projectId', {
+        projectId: filter.projectId,
+      });
+    }
+
+    if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
+      this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
+    }
+
+    if (filter.title) {
+      queryBuilder.andWhere('task.title % :title', { title: filter.title });
+      queryBuilder.orderBy('similarity(task.title, :title)', 'DESC');
+    } else {
+      queryBuilder
+        .orderBy('task.sectionId', 'ASC')
+        .addOrderBy('task.lexorank COLLATE "C"', 'ASC');
+    }
+
+    if (filter.pagination?.limit) {
+      queryBuilder.take(filter.pagination.limit);
+    }
+
+    return queryBuilder;
+  }
+
+  private toCompletedOccurrenceDto(
+    occ: TaskOccurrence,
+    isLatest: boolean,
+  ): CompletedOccurrenceResponseDto {
+    const task = occ.task;
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description ?? '',
+      priority: task.priority,
+      sectionId: task.sectionId,
+      section: {
+        id: task.section.id,
+        name: task.section.name,
+        project: {
+          id: task.section.project.id,
+          name: task.section.project.name,
+        },
+      },
+      labels: (task.labels ?? []).map((l) => ({ id: l.id })),
+      timeRange: task.timeRange,
+      completedAt: occ.completedAt ? occ.completedAt.toISOString() : null,
+      recurrence: task.recurrence?.rrule ?? null,
+      occurrenceId: occ.id,
+      scheduledDate: occ.scheduledDate
+        ? occ.scheduledDate.toISOString()
+        : null,
+      isLatestOccurrence: isLatest,
+      reminders: (task.reminders ?? []).map((r) =>
+        r.type === 'relative'
+          ? {
+              id: r.id,
+              type: 'relative' as const,
+              minuteOffset: r.minuteOffset ?? 0,
+              channel: r.channel,
+            }
+          : {
+              id: r.id,
+              type: 'absolute' as const,
+              remindAt: r.remindAt
+                ? r.remindAt.toISOString()
+                : new Date().toISOString(),
+              channel: r.channel,
+            },
+      ),
+    };
+  }
+
+  private shiftTimeRange(
+    currentTimeRange: { start: string; end: string } | null,
+    newStart: Date,
+  ): { start: string; end: string } {
+    let durationMs = 0;
+    if (currentTimeRange?.start && currentTimeRange?.end) {
+      durationMs =
+        new Date(currentTimeRange.end).getTime() -
+        new Date(currentTimeRange.start).getTime();
+    }
+    const newEnd =
+      durationMs > 0 ? new Date(newStart.getTime() + durationMs) : newStart;
+    return {
+      start: newStart.toISOString(),
+      end: newEnd.toISOString(),
+    };
+  }
+
+  async getTasksByOwnerIdProjectIdAndFilter(
+    ownerId: string,
+    projectId: string,
+    filter: TaskFilterDto,
+  ): Promise<Task[]> {
+    return this.dataSource.transaction(async (transactionalEntityManager) => {
+      await transactionalEntityManager.query(
+        `SET LOCAL pg_trgm.similarity_threshold = 0.2;`,
+      );
+
+      const qb = this.baseTaskQuery(transactionalEntityManager, ownerId)
+        .where('task.completedAt IS NULL')
+        .andWhere('section.projectId = :projectId', { projectId });
+
+      this.applyFilter(qb, filter);
+
+      return qb.getMany();
+    });
+  }
+
+  async getTasksByOwnerIdAndFilter(
+    ownerId: string,
+    filter: TaskFilterDto,
+  ): Promise<Task[]> {
+    return this.dataSource.transaction(async (transactionalEntityManager) => {
+      await transactionalEntityManager.query(
+        `SET LOCAL pg_trgm.similarity_threshold = 0.2;`,
+      );
+
+      const qb = this.baseTaskQuery(transactionalEntityManager, ownerId)
+        .where('task.completedAt IS NULL');
+
+      this.applyFilter(qb, filter);
+
+      return qb.getMany();
     });
   }
 
@@ -409,63 +469,37 @@ export class TaskService {
       });
     }
 
-    queryBuilder.orderBy('occurrence.completedAt', 'DESC').take(100);
+    const limit = filter.pagination?.limit ?? 100;
+    queryBuilder.orderBy('occurrence.completedAt', 'DESC').take(limit);
 
     const occurrences = await queryBuilder.getMany();
 
-    const latestOccurrencesByTask = new Map<string, string>();
-    for (const occ of occurrences) {
-      if (!latestOccurrencesByTask.has(occ.taskId)) {
-        latestOccurrencesByTask.set(occ.taskId, occ.id);
-      }
+    const recurringTaskIds = Array.from(
+      new Set(
+        occurrences.filter((o) => o.task?.recurrence).map((o) => o.taskId),
+      ),
+    );
+
+    let latestOccurrenceIds = new Set<string>();
+    if (recurringTaskIds.length > 0) {
+      const latestRows: Array<{ id: string }> =
+        await this.taskOccurrenceRepository
+          .createQueryBuilder('to')
+          .select('DISTINCT ON (to.taskId) to.id', 'id')
+          .where('to.taskId IN (:...recurringTaskIds)', { recurringTaskIds })
+          .andWhere('to.status = :status', {
+            status: TaskOccurrenceStatus.COMPLETED,
+          })
+          .orderBy('to.taskId')
+          .addOrderBy('to.completedAt', 'DESC')
+          .getRawMany();
+      latestOccurrenceIds = new Set(latestRows.map((r) => r.id));
     }
 
     return occurrences.map((occ) => {
       const task = occ.task;
-      const isLatest =
-        !task.recurrence || latestOccurrencesByTask.get(task.id) === occ.id;
-
-      return {
-        id: task.id,
-        title: task.title,
-        description: task.description ?? '',
-        priority: task.priority,
-        sectionId: task.sectionId,
-        section: {
-          id: task.section.id,
-          name: task.section.name,
-          project: {
-            id: task.section.project.id,
-            name: task.section.project.name,
-          },
-        },
-        labels: (task.labels ?? []).map((l) => ({ id: l.id })),
-        timeRange: task.timeRange,
-        completedAt: occ.completedAt ? occ.completedAt.toISOString() : null,
-        recurrence: task.recurrence?.rrule ?? null,
-        occurrenceId: occ.id,
-        scheduledDate: occ.scheduledDate
-          ? occ.scheduledDate.toISOString()
-          : null,
-        isLatestOccurrence: isLatest,
-        reminders: (task.reminders ?? []).map((r) =>
-          r.type === 'relative'
-            ? {
-                id: r.id,
-                type: 'relative' as const,
-                minuteOffset: r.minuteOffset ?? 0,
-                channel: r.channel,
-              }
-            : {
-                id: r.id,
-                type: 'absolute' as const,
-                remindAt: r.remindAt
-                  ? r.remindAt.toISOString()
-                  : new Date().toISOString(),
-                channel: r.channel,
-              },
-        ),
-      };
+      const isLatest = !task.recurrence || latestOccurrenceIds.has(occ.id);
+      return this.toCompletedOccurrenceDto(occ, isLatest);
     });
   }
 
@@ -474,41 +508,19 @@ export class TaskService {
     rangeStartISO8601: string,
     rangeEndISO8601: string,
   ): Promise<Task[]> {
-    return this.taskRepository
-      .createQueryBuilder('task')
-      .innerJoin('task.section', 'section')
-      .innerJoin('section.project', 'project', 'project.ownerId = :ownerId', {
-        ownerId,
-      })
-      .leftJoin('task.labels', 'label')
-      .leftJoin('task.recurrence', 'recurrence')
-      .leftJoin('task.reminders', 'reminder')
+    const qb = this.baseTaskQuery(this.taskRepository, ownerId)
       .where('task.completedAt IS NULL')
       .andWhere(
-        'upper(task.timeRange) BETWEEN :rangeStart::timestamptz AND :rangeEnd::timestamptz',
+        'task.time_range && tstzrange(:rangeStart::timestamptz, :rangeEnd::timestamptz, \'[]\')',
         {
           rangeStart: rangeStartISO8601,
           rangeEnd: rangeEndISO8601,
         },
       )
-      .select([
-        'task',
-        'section.id',
-        'section.name',
-        'project.name',
-        'label.id',
-        'label.name',
-        'recurrence.id',
-        'recurrence.rrule',
-        'reminder.id',
-        'reminder.type',
-        'reminder.minuteOffset',
-        'reminder.remindAt',
-        'reminder.channel',
-      ])
       .orderBy('task.sectionId', 'ASC')
-      .addOrderBy('task.lexorank COLLATE "C"', 'ASC')
-      .getMany();
+      .addOrderBy('task.lexorank COLLATE "C"', 'ASC');
+
+    return qb.getMany();
   }
 
   async getTasksByOwnerIdThatCompletedInTimeRange(
@@ -538,59 +550,32 @@ export class TaskService {
       .orderBy('occurrence.completedAt', 'DESC')
       .getMany();
 
-    const latestOccurrencesByTask = new Map<string, string>();
-    for (const occ of occurrences) {
-      if (!latestOccurrencesByTask.has(occ.taskId)) {
-        latestOccurrencesByTask.set(occ.taskId, occ.id);
-      }
+    const recurringTaskIds = Array.from(
+      new Set(
+        occurrences.filter((o) => o.task?.recurrence).map((o) => o.taskId),
+      ),
+    );
+
+    let latestOccurrenceIds = new Set<string>();
+    if (recurringTaskIds.length > 0) {
+      const latestRows: Array<{ id: string }> =
+        await this.taskOccurrenceRepository
+          .createQueryBuilder('to')
+          .select('DISTINCT ON (to.taskId) to.id', 'id')
+          .where('to.taskId IN (:...recurringTaskIds)', { recurringTaskIds })
+          .andWhere('to.status = :status', {
+            status: TaskOccurrenceStatus.COMPLETED,
+          })
+          .orderBy('to.taskId')
+          .addOrderBy('to.completedAt', 'DESC')
+          .getRawMany();
+      latestOccurrenceIds = new Set(latestRows.map((r) => r.id));
     }
 
     return occurrences.map((occ) => {
       const task = occ.task;
-      const isLatest =
-        !task.recurrence || latestOccurrencesByTask.get(task.id) === occ.id;
-
-      return {
-        id: task.id,
-        title: task.title,
-        description: task.description ?? '',
-        priority: task.priority,
-        sectionId: task.sectionId,
-        section: {
-          id: task.section.id,
-          name: task.section.name,
-          project: {
-            id: task.section.project.id,
-            name: task.section.project.name,
-          },
-        },
-        labels: (task.labels ?? []).map((l) => ({ id: l.id })),
-        timeRange: task.timeRange,
-        completedAt: occ.completedAt ? occ.completedAt.toISOString() : null,
-        recurrence: task.recurrence?.rrule ?? null,
-        occurrenceId: occ.id,
-        scheduledDate: occ.scheduledDate
-          ? occ.scheduledDate.toISOString()
-          : null,
-        isLatestOccurrence: isLatest,
-        reminders: (task.reminders ?? []).map((r) =>
-          r.type === 'relative'
-            ? {
-                id: r.id,
-                type: 'relative' as const,
-                minuteOffset: r.minuteOffset ?? 0,
-                channel: r.channel,
-              }
-            : {
-                id: r.id,
-                type: 'absolute' as const,
-                remindAt: r.remindAt
-                  ? r.remindAt.toISOString()
-                  : new Date().toISOString(),
-                channel: r.channel,
-              },
-        ),
-      };
+      const isLatest = !task.recurrence || latestOccurrenceIds.has(occ.id);
+      return this.toCompletedOccurrenceDto(occ, isLatest);
     });
   }
 
@@ -720,21 +705,23 @@ export class TaskService {
     });
 
     if (remindersDto !== undefined) {
-      for (const old of existingReminders) {
-        await this.mailerSchedulerService
-          .cancelTaskReminder(old.id)
-          .catch((err) =>
-            this.logger.error(`Failed to cancel reminder ${old.id}`, err),
-          );
-        await this.mailerSchedulerService
-          .cancelRecurringTaskReminder(old.id)
-          .catch((err) =>
-            this.logger.error(
-              `Failed to cancel recurring reminder ${old.id}`,
-              err,
+      await Promise.all(
+        existingReminders.flatMap((old) => [
+          this.mailerSchedulerService
+            .cancelTaskReminder(old.id)
+            .catch((err) =>
+              this.logger.error(`Failed to cancel reminder ${old.id}`, err),
             ),
-          );
-      }
+          this.mailerSchedulerService
+            .cancelRecurringTaskReminder(old.id)
+            .catch((err) =>
+              this.logger.error(
+                `Failed to cancel recurring reminder ${old.id}`,
+                err,
+              ),
+            ),
+        ]),
+      );
     }
 
     try {
@@ -797,31 +784,23 @@ export class TaskService {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    for (const rem of reminders) {
-      this.mailerSchedulerService
-        .cancelTaskReminder(rem.id)
-        .catch((err) =>
-          this.logger.error(`Failed to cancel reminder ${rem.id}`, err),
-        );
-      this.mailerSchedulerService
-        .cancelRecurringTaskReminder(rem.id)
-        .catch((err) =>
-          this.logger.error(
-            `Failed to cancel recurring reminder ${rem.id}`,
-            err,
+    await Promise.all(
+      reminders.flatMap((rem) => [
+        this.mailerSchedulerService
+          .cancelTaskReminder(rem.id)
+          .catch((err) =>
+            this.logger.error(`Failed to cancel reminder ${rem.id}`, err),
           ),
-        );
-    }
-    this.mailerSchedulerService
-      .cancelTaskReminder(id)
-      .catch((err) =>
-        this.logger.error(`Failed to cancel task reminder ${id}`, err),
-      );
-    this.mailerSchedulerService
-      .cancelRecurringTaskReminder(id)
-      .catch((err) =>
-        this.logger.error(`Failed to cancel recurring reminder ${id}`, err),
-      );
+        this.mailerSchedulerService
+          .cancelRecurringTaskReminder(rem.id)
+          .catch((err) =>
+            this.logger.error(
+              `Failed to cancel recurring reminder ${rem.id}`,
+              err,
+            ),
+          ),
+      ]),
+    );
   }
 
   async completeTaskOccurrence(
@@ -843,22 +822,25 @@ export class TaskService {
 
     const { result, taskToReschedule } = await this.dataSource.transaction(
       async (manager) => {
-        const task = await manager.findOne(Task, {
+        const lockedTask = await manager.findOne(Task, {
           where: { id: taskId },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!lockedTask) {
+          throw new NotFoundException(`Task with ID ${taskId} not found`);
+        }
+
+        const task = await manager.findOne(Task, {
+          where: { id: taskId, section: { project: { ownerId: userId } } },
           relations: {
             recurrence: true,
             section: { project: true },
           },
-          lock: { mode: 'pessimistic_write' },
         });
 
         if (!task) {
           throw new NotFoundException(`Task with ID ${taskId} not found`);
-        }
-        if (task.section?.project?.ownerId !== userId) {
-          throw new ForbiddenException(
-            'You do not have permission to modify this task',
-          );
         }
 
         if (!task.recurrence && task.completedAt !== null) {
@@ -905,29 +887,17 @@ export class TaskService {
             task.recurrence.rrule,
             anchor,
             dtstart,
+            task.recurrence.timezone ?? 'UTC',
           );
 
           if (nextOccurrence) {
-            let durationMs = 0;
-            if (task.timeRange?.start && task.timeRange?.end) {
-              durationMs =
-                new Date(task.timeRange.end).getTime() -
-                new Date(task.timeRange.start).getTime();
-            }
-
-            const nextStart = nextOccurrence;
-            const nextEnd =
-              durationMs > 0
-                ? new Date(nextStart.getTime() + durationMs)
-                : nextStart;
-
-            task.timeRange = {
-              start: nextStart.toISOString(),
-              end: nextEnd.toISOString(),
-            };
+            task.timeRange = this.shiftTimeRange(
+              task.timeRange,
+              nextOccurrence,
+            );
             task.completedAt = null; // Remains active for next occurrence
             isRecurringAdvanced = true;
-            nextDueTime = nextStart.toISOString();
+            nextDueTime = task.timeRange.start;
           } else {
             // Recurrence series finished (e.g., COUNT or UNTIL exceeded)
             task.completedAt = completedAt;
@@ -1024,23 +994,10 @@ export class TaskService {
         await manager.remove(TaskOccurrence, occurrence);
 
         if (occurrence.scheduledDate) {
-          let durationMs = 0;
-          if (task.timeRange?.start && task.timeRange?.end) {
-            durationMs =
-              new Date(task.timeRange.end).getTime() -
-              new Date(task.timeRange.start).getTime();
-          }
-
-          const revertedStart = occurrence.scheduledDate;
-          const revertedEnd =
-            durationMs > 0
-              ? new Date(revertedStart.getTime() + durationMs)
-              : revertedStart;
-
-          task.timeRange = {
-            start: revertedStart.toISOString(),
-            end: revertedEnd.toISOString(),
-          };
+          task.timeRange = this.shiftTimeRange(
+            task.timeRange,
+            occurrence.scheduledDate,
+          );
         }
       } else {
         await manager.remove(TaskOccurrence, occurrence);
@@ -1114,7 +1071,7 @@ export class TaskService {
     }
 
     const task = await this.taskRepository.findOne({
-      where: { id: taskId },
+      where: { id: taskId, section: { project: { ownerId: userId } } },
       relations: {
         recurrence: true,
         section: { project: true },
@@ -1123,11 +1080,6 @@ export class TaskService {
     });
     if (!task) {
       throw new NotFoundException(`Task with ID ${taskId} not found`);
-    }
-    if (task.section?.project?.ownerId !== userId) {
-      throw new ForbiddenException(
-        'You do not have permission to modify this task',
-      );
     }
     task.completedAt = null;
     const saved = await this.taskRepository.save(task);
@@ -1146,7 +1098,7 @@ export class TaskService {
     postponeTo: Date,
   ): Promise<Task> {
     const task = await this.taskRepository.findOne({
-      where: { id: taskId },
+      where: { id: taskId, section: { project: { ownerId: userId } } },
       relations: {
         recurrence: true,
         section: { project: true },
@@ -1157,27 +1109,8 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException(`Task with ID ${taskId} not found`);
     }
-    if (task.section?.project?.ownerId !== userId) {
-      throw new ForbiddenException(
-        'You do not have permission to modify this task',
-      );
-    }
 
-    let durationMs = 0;
-    if (task.timeRange?.start && task.timeRange?.end) {
-      durationMs =
-        new Date(task.timeRange.end).getTime() -
-        new Date(task.timeRange.start).getTime();
-    }
-
-    const newStart = postponeTo;
-    const newEnd =
-      durationMs > 0 ? new Date(newStart.getTime() + durationMs) : newStart;
-
-    task.timeRange = {
-      start: newStart.toISOString(),
-      end: newEnd.toISOString(),
-    };
+    task.timeRange = this.shiftTimeRange(task.timeRange, postponeTo);
     task.completedAt = null;
 
     const savedTask = await this.taskRepository.save(task);
@@ -1204,27 +1137,23 @@ export class TaskService {
         : this.taskReminderRepository;
     const reminders = await repo.find({ where: { taskId: task.id } });
 
-    if (task.completedAt !== null) {
-      await this.mailerSchedulerService.cancelTaskReminder(task.id);
-      await this.mailerSchedulerService.cancelRecurringTaskReminder(task.id);
-      for (const rem of reminders) {
-        await this.mailerSchedulerService.cancelTaskReminder(rem.id);
-        await this.mailerSchedulerService.cancelRecurringTaskReminder(rem.id);
-      }
+    if (task.completedAt !== null || (!task.recurrence?.rrule && !task.timeRange?.start)) {
+      await Promise.all([
+        this.mailerSchedulerService.cancelTaskReminder(task.id).catch(() => {}),
+        this.mailerSchedulerService
+          .cancelRecurringTaskReminder(task.id)
+          .catch(() => {}),
+        ...reminders.flatMap((rem) => [
+          this.mailerSchedulerService.cancelTaskReminder(rem.id).catch(() => {}),
+          this.mailerSchedulerService
+            .cancelRecurringTaskReminder(rem.id)
+            .catch(() => {}),
+        ]),
+      ]);
       return;
     }
 
     if (!reminders.length) return;
-
-    if (!task.recurrence?.rrule && !task.timeRange?.start) {
-      await this.mailerSchedulerService.cancelTaskReminder(task.id);
-      await this.mailerSchedulerService.cancelRecurringTaskReminder(task.id);
-      for (const rem of reminders) {
-        await this.mailerSchedulerService.cancelTaskReminder(rem.id);
-        await this.mailerSchedulerService.cancelRecurringTaskReminder(rem.id);
-      }
-      return;
-    }
 
     const userRepo =
       manager && typeof manager.getRepository === 'function'
@@ -1235,40 +1164,57 @@ export class TaskService {
 
     if (task.recurrence?.rrule) {
       const rruleStr = formatRRuleString(task.recurrence.rrule);
-      for (const rem of reminders) {
-        await this.mailerSchedulerService
-          .scheduleRecurringTaskReminder({
-            taskId: task.id,
-            reminderId: rem.id,
-            userId: user.id,
-            to: user.email,
-            userName: user.name,
-            taskTitle: task.title,
-            rruleString: rruleStr,
-            reminderOffsetMinutes:
-              rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
-          })
-          .catch(() => {});
-      }
+      await Promise.all(
+        reminders.map((rem) =>
+          this.mailerSchedulerService
+            .scheduleRecurringTaskReminder({
+              taskId: task.id,
+              reminderId: rem.id,
+              userId: user.id,
+              to: user.email,
+              userName: user.name,
+              taskTitle: task.title,
+              rruleString: rruleStr,
+              reminderOffsetMinutes:
+                rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
+              dtstart: task.timeRange?.start
+                ? new Date(task.timeRange.start)
+                : undefined,
+              timezone: task.recurrence?.timezone ?? 'UTC',
+            })
+            .catch(() => {}),
+        ),
+      );
     } else if (task.timeRange?.start) {
       const dueTime = new Date(task.timeRange.start);
-      for (const rem of reminders) {
-        const offset = rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES;
-        const reminderTime = new Date(dueTime.getTime() - offset * 60 * 1000);
-        await this.mailerSchedulerService
-          .scheduleTaskReminder({
-            taskId: task.id,
-            reminderId: rem.id,
-            userId: user.id,
-            to: user.email,
-            userName: user.name,
-            taskTitle: task.title,
-            dueTime,
-            reminderTime,
-            reminderOffsetMinutes: offset,
-          })
-          .catch(() => {});
-      }
+      await Promise.all(
+        reminders.map((rem) => {
+          let reminderTime: Date;
+          let offset: number;
+          if (rem.type === 'absolute' && rem.remindAt) {
+            reminderTime = new Date(rem.remindAt);
+            offset = Math.round(
+              (dueTime.getTime() - reminderTime.getTime()) / (60 * 1000),
+            );
+          } else {
+            offset = rem.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES;
+            reminderTime = new Date(dueTime.getTime() - offset * 60 * 1000);
+          }
+          return this.mailerSchedulerService
+            .scheduleTaskReminder({
+              taskId: task.id,
+              reminderId: rem.id,
+              userId: user.id,
+              to: user.email,
+              userName: user.name,
+              taskTitle: task.title,
+              dueTime,
+              reminderTime,
+              reminderOffsetMinutes: offset,
+            })
+            .catch(() => {});
+        }),
+      );
     }
   }
 }

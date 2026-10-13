@@ -22,6 +22,7 @@ describe('ProductivityService', () => {
   beforeEach(async () => {
     mockTaskOccurrenceRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+      query: jest.fn().mockResolvedValue([]),
     };
 
     mockUserGoalRepo = {

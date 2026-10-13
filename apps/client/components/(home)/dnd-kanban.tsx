@@ -1,7 +1,6 @@
 "use client"
 
-import dynamic from "next/dynamic"
-import { ComponentProps, useState, Fragment, useEffect, useRef } from "react"
+import { ComponentProps, useState, useMemo, Fragment, useRef } from "react"
 import { Badge } from "@/components/reui/badge"
 import {
   Kanban,
@@ -224,49 +223,66 @@ function TaskColumn({
 
 const EMPTY_LABELS: LabelItem[] = [];
 
+function groupBySection(
+  sections: SectionResponseDto[] | undefined,
+  tasks: Task[] | undefined,
+  selectedPriorities: TaskPriority[],
+  selectedLabelIds: string[]
+): Record<string, Task[]> {
+  const acc: Record<string, Task[]> = {};
+  if (!sections) return acc;
+
+  for (const section of sections) {
+    acc[section.id] = [];
+  }
+
+  if (!tasks) return acc;
+
+  for (const task of tasks) {
+    if (
+      selectedPriorities.length > 0 &&
+      !selectedPriorities.includes(task.priority)
+    ) {
+      continue;
+    }
+    if (selectedLabelIds.length > 0) {
+      const hasMatch = task.labels?.some((tl) =>
+        selectedLabelIds.includes(tl.id)
+      );
+      if (!hasMatch) continue;
+    }
+    (acc[task.sectionId] ??= []).push(task);
+  }
+
+  return acc;
+}
+
 function DndKanban({ projectId }: { projectId: string }) {
   const addSectionRef = useRef<AddSectionFormHandle>(null);
   const {
     data: projectTasks,
     isLoading: tasksLoading,
+    isError: isTasksError,
+    refetch: refetchTasks,
   } = useProjectTasks(projectId);
-  const { data: sections, isLoading: sectionsLoading } = useSections(projectId);
-  const isLoading = tasksLoading || sectionsLoading || projectTasks === undefined;
+  const {
+    data: sections,
+    isLoading: sectionsLoading,
+    isError: isSectionsError,
+    refetch: refetchSections,
+  } = useSections(projectId);
+  const isLoading = tasksLoading || sectionsLoading;
 
   const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const { data: availableLabels = EMPTY_LABELS } = useLabels();
 
-  const [columns, setColumns] = useState<Record<string, Task[]>>({});
-
-  useEffect(() => {
-    const acc: Record<string, Task[]> = {};
-    if (!sections || !projectTasks) return;
-
-    for (const section of sections) {
-      acc[section.id] = [];
-    }
-
-    for (const task of projectTasks) {
-      if (
-        selectedPriorities.length > 0 &&
-        !selectedPriorities.includes(task.priority)
-      ) {
-        continue;
-      }
-      if (selectedLabelIds.length > 0) {
-        const hasMatch = task.labels?.some((tl) =>
-          selectedLabelIds.includes(tl.id)
-        );
-        if (!hasMatch) continue;
-      }
-      (acc[task.sectionId] ??= []).push(task);
-    }
-
-    // Sync external query data & filter criteria into local draggable columns state
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setColumns(acc);
-  }, [sections, projectTasks, selectedPriorities, selectedLabelIds]);
+  const serverColumns = useMemo(
+    () => groupBySection(sections, projectTasks, selectedPriorities, selectedLabelIds),
+    [sections, projectTasks, selectedPriorities, selectedLabelIds]
+  );
+  const [dragColumns, setDragColumns] = useState<Record<string, Task[]> | null>(null);
+  const columns: Record<string, Task[]> = dragColumns ?? serverColumns;
 
   const handleTogglePriority = (priority: TaskPriority) => {
     setSelectedPriorities((prev) =>
@@ -299,43 +315,65 @@ function DndKanban({ projectId }: { projectId: string }) {
     addSectionRef.current?.focus();
   };
 
-  const handleValueCommit = (finalColumns: Record<string, Task[]>, meta: KanbanCommitMeta<Task>) => {
-    if (meta.kind == "column") { // Move section
-      const {
-        activeContainer: movedItemId,
-        activeIndex,
-        overIndex
-      } = meta;
-      if (activeIndex === overIndex) return;
+  const handleValueCommit = (
+    finalColumns: Record<string, Task[]>,
+    meta: KanbanCommitMeta<Task>
+  ) => {
+    setDragColumns(finalColumns);
+
+    if (meta.kind === "column") {
+      const { activeContainer: movedItemId, activeIndex, overIndex } = meta;
+      if (activeIndex === overIndex) {
+        setDragColumns(null);
+        return;
+      }
 
       const newIndex = overIndex;
-
       const payload = {
         sectionId: movedItemId,
-        prevId: newIndex > 0
-          ? Object.keys(finalColumns)[newIndex - 1]
-          : null,
+        prevId: newIndex > 0 ? Object.keys(finalColumns)[newIndex - 1] : null,
       };
-      moveSectionMutation.mutate(payload);
+      moveSectionMutation.mutate(payload, {
+        onSettled: () => setDragColumns(null),
+      });
 
       return;
     }
 
-    { // Move task
-      const newIndex = meta.overIndex;
-      const targetSectionId = meta.overContainer;
+    const newIndex = meta.overIndex;
+    const targetSectionId = meta.overContainer;
 
-      const payload = {
-        sectionId: targetSectionId,
-        taskId: meta.event.active.id.toString(),
-        prevId: newIndex > 0
-          ? finalColumns[targetSectionId][newIndex - 1].id
-          : null,
-      }
-      moveTasksMutation.mutate(payload);
+    const payload = {
+      sectionId: targetSectionId,
+      taskId: meta.event.active.id.toString(),
+      prevId: newIndex > 0 ? finalColumns[targetSectionId][newIndex - 1].id : null,
+    };
+    moveTasksMutation.mutate(payload, {
+      onSettled: () => setDragColumns(null),
+    });
+  };
 
-      return;
-    }
+  if (isTasksError || isSectionsError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center h-full min-h-[300px]">
+        <div className="text-destructive font-semibold mb-2 text-lg">
+          Failed to load board data
+        </div>
+        <p className="text-muted-foreground text-sm mb-4">
+          An error occurred while loading tasks or sections.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (isTasksError) refetchTasks();
+            if (isSectionsError) refetchSections();
+          }}
+        >
+          Try Again
+        </Button>
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -363,10 +401,12 @@ function DndKanban({ projectId }: { projectId: string }) {
 
       <section className="flex-1 min-h-0 min-w-0 h-full w-full overflow-auto p-4 bg-secondary custom-kanban-scroll">
         <Kanban
+          id="kanban-board"
           className="min-w-max min-h-full flex"
           value={columns}
-          onValueChange={setColumns}
+          onValueChange={setDragColumns}
           onValueCommit={handleValueCommit}
+          onDragCancel={() => setDragColumns(null)}
           getItemValue={(item) => item.id}
         >
           <KanbanBoard className="min-w-max flex *:data-[slot=kanban-column]:w-80 gap-4 pb-6">
@@ -438,6 +478,4 @@ function KanbanBoardSkeleton() {
   )
 }
 
-export default dynamic(() => Promise.resolve(DndKanban), {
-  ssr: false,
-})
+export default DndKanban;

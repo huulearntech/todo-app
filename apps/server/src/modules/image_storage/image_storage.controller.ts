@@ -37,7 +37,7 @@ export class ImageStorageController {
     if (query.width) options.width = query.width;
     if (query.height) options.height = query.height;
 
-    const url = await this.imageStorageService.getImageUrl(publicId, options);
+    const url = this.imageStorageService.getImageUrl(publicId, options);
     return { public_id: publicId, url };
   }
 }

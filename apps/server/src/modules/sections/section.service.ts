@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 
 import { Section } from './section.entity';
-import { Project } from '../projects/project.entity';
 import {
   SectionFilterDto,
   type CreateSectionDto,
 } from './dto/create-section.dto';
-import { Lexorank } from '../../common/utils/lexorank.util';
+import { handleDatabaseOrderingError } from '../../common/utils/database-error.util';
 
 @Injectable()
 export class SectionService {
@@ -21,35 +21,46 @@ export class SectionService {
     ownerId: string,
     createSectionDto: CreateSectionDto,
   ): Promise<Section> {
-    const { projectId, name, description } = createSectionDto;
-    const exists = await this.sectionRepository.manager.exists(Project, {
-      where: { id: projectId, ownerId },
-    });
+    const { projectId, name, description, colorKey } = createSectionDto;
+    const sectionId = randomUUID();
 
-    if (!exists) {
-      throw new NotFoundException('Project not found');
+    try {
+      const [raw] = await this.sectionRepository.query(
+        `
+          SELECT *
+          FROM create_section(
+            $1::uuid,
+            $2::uuid,
+            $3::uuid,
+            $4::text,
+            $5::text,
+            $6::text
+          );
+        `,
+        [
+          ownerId,
+          sectionId,
+          projectId,
+          name,
+          description ?? '',
+          colorKey ? colorKey.toLowerCase().trim() : null,
+        ],
+      );
+
+      return this.sectionRepository.create({
+        id: raw.id,
+        projectId: raw.project_id ?? raw.projectId,
+        ownerId: raw.owner_id ?? raw.ownerId,
+        name: raw.name,
+        description: raw.description,
+        colorKey: raw.color_key ?? raw.colorKey,
+        lexorank: raw.lexorank,
+        createdAt: raw.created_at ?? raw.createdAt,
+        updatedAt: raw.updated_at ?? raw.updatedAt,
+      });
+    } catch (error: unknown) {
+      handleDatabaseOrderingError(error);
     }
-
-    const sectionWithHighestLexorank = await this.sectionRepository.findOne({
-      where: { projectId },
-      select: { id: true, lexorank: true },
-      order: { lexorank: 'DESC' },
-    });
-
-    const highestLexorank = sectionWithHighestLexorank?.lexorank || '';
-    const newRank = Lexorank.getMidpoint(highestLexorank, ''); // passing '' means no upper limit
-
-    const section = this.sectionRepository.create({
-      projectId,
-      ownerId,
-      name,
-      description,
-      colorKey: createSectionDto.colorKey
-        ? createSectionDto.colorKey.toLowerCase().trim()
-        : null,
-      lexorank: newRank,
-    });
-    return this.sectionRepository.save(section);
   }
 
   // TODO: Returning the whole entity should be prohibited. use a DTO instead. @Cleanup @Robustness
@@ -107,7 +118,6 @@ export class SectionService {
     return this.sectionRepository.save(section);
   }
 
-  // NOTE: this function might be optimizable.
   async updateSectionOrder({
     ownerId,
     id,
@@ -117,58 +127,20 @@ export class SectionService {
     id: string;
     prevId: string | null;
   }): Promise<void> {
-    const sectionToMove = await this.sectionRepository.findOne({
-      where: { id, project: { ownerId } },
-      select: { id: true, lexorank: true, projectId: true },
-    });
-    if (!sectionToMove) {
-      throw new NotFoundException('Section not found');
-    }
-
-    if (!prevId) {
-      // If prevId is null, it means the task is being moved to the top of the list.
-      // So we need to find the first task in the section to get its lexorank.
-      const firstSectionInProject = await this.sectionRepository.findOne({
-        where: { projectId: sectionToMove.projectId },
-        select: { id: true, lexorank: true },
-        order: { lexorank: 'ASC' },
-      });
-
-      await this.sectionRepository.update(
-        { id },
-        {
-          lexorank: Lexorank.getMidpoint(
-            '',
-            firstSectionInProject?.lexorank || '',
-          ),
-        },
+    try {
+      await this.sectionRepository.query(
+        `
+          SELECT move_section(
+            $1::uuid,
+            $2::uuid,
+            $3::uuid
+          );
+        `,
+        [ownerId, id, prevId ?? null],
       );
-      return;
+    } catch (error: unknown) {
+      handleDatabaseOrderingError(error);
     }
-
-    const prevSection = await this.sectionRepository.findOne({
-      where: { id: prevId, projectId: sectionToMove.projectId },
-      select: { id: true, lexorank: true },
-    });
-    if (!prevSection) {
-      throw new NotFoundException('Previous section not found');
-    }
-
-    const nextSection = await this.sectionRepository.findOne({
-      where: {
-        projectId: sectionToMove.projectId,
-        lexorank: MoreThan(prevSection.lexorank),
-      },
-      select: { id: true, lexorank: true },
-      order: { lexorank: 'ASC' },
-    });
-
-    const newLexorank = Lexorank.getMidpoint(
-      prevSection.lexorank,
-      nextSection?.lexorank || '',
-    );
-
-    await this.sectionRepository.update({ id }, { lexorank: newLexorank });
   }
 
   async deleteSection(ownerId: string, id: string): Promise<void> {

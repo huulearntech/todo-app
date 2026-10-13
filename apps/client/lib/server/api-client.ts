@@ -15,22 +15,30 @@ const API_BASE_URL =
 export async function serverFetch<T>(
   path: string,
   options: RequestInit = {},
+  isRetry = false,
 ): Promise<T> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token")?.value;
+  const refreshToken = cookieStore.get("refresh_token")?.value;
 
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
+  const cookieList: string[] = [];
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
-    const existingCookie = headers.get("Cookie");
-    const tokenCookie = `access_token=${accessToken}`;
+    cookieList.push(`access_token=${accessToken}`);
+  }
+  if (refreshToken) {
+    cookieList.push(`refresh_token=${refreshToken}`);
+  }
+  if (cookieList.length > 0) {
+    const existing = headers.get("Cookie");
     headers.set(
       "Cookie",
-      existingCookie ? `${existingCookie}; ${tokenCookie}` : tokenCookie,
+      existing ? `${existing}; ${cookieList.join("; ")}` : cookieList.join("; "),
     );
   }
 
@@ -41,6 +49,33 @@ export async function serverFetch<T>(
     headers,
     cache: options.cache ?? "no-store",
   });
+
+  if (response.status === 401 && !isRetry && refreshToken) {
+    try {
+      const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: `refresh_token=${refreshToken}`,
+        },
+        cache: "no-store",
+      });
+
+      if (refreshRes.ok) {
+        const setCookies = refreshRes.headers.getSetCookie();
+        for (const cStr of setCookies) {
+          const [nameVal] = cStr.split(";");
+          const [name, val] = nameVal.split("=");
+          if (name && val) {
+            cookieStore.set(name.trim(), val.trim(), { path: "/" });
+          }
+        }
+        return serverFetch<T>(path, options, true);
+      }
+    } catch {
+      // Fall through to 401
+    }
+  }
 
   if (!response.ok) {
     let errorBody: unknown;

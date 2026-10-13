@@ -39,6 +39,8 @@ export interface RecurringTaskReminderEmailData {
   occurrenceTime: string;
   rruleString: string;
   reminderOffsetMinutes: number;
+  dtstart?: string;
+  timezone?: string;
 }
 
 export type EmailJobPayload =

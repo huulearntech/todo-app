@@ -32,7 +32,6 @@ export async function getOptionalUser(): Promise<UserResponseDto | null> {
     if (error instanceof UnauthorizedError) {
       return null;
     }
-    // Return null on failure to prevent entire root layout from breaking
-    return null;
+    throw error;
   }
 }

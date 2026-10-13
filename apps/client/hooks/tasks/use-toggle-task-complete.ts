@@ -1,6 +1,7 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskService } from "@/services/task.service";
 import { taskQueryKeys, productivityQueryKeys } from "@/lib/query/query-keys";
 import { toast } from "@/components/ui/toast";
@@ -17,26 +18,113 @@ interface PendingCompletion {
   timeoutId: ReturnType<typeof setTimeout>;
   task: Task;
   toastId: string;
+  scheduledDate?: string;
 }
 
+// Global registry of pending delayed completions so separate components don't clash on the same task
 const pendingCompletions = new Map<string, PendingCompletion>();
 
-// Flush any pending completions if the browser tab closes or unloads
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
-    for (const [taskId, { timeoutId, task }] of pendingCompletions.entries()) {
-      clearTimeout(timeoutId);
-      const scheduledDate = task.timeRange?.start ?? undefined;
-      taskService
-        .completeTaskOccurrence(taskId, { scheduledDate })
-        .catch(() => {});
+function flushPendingWithKeepalive() {
+  for (const [taskId, { timeoutId, scheduledDate }] of pendingCompletions.entries()) {
+    clearTimeout(timeoutId);
+    try {
+      fetch(`/api/tasks/${taskId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledDate }),
+        keepalive: true,
+      });
+    } catch {
+      // Ignore errors during tab unload
     }
-    pendingCompletions.clear();
-  });
+  }
+  pendingCompletions.clear();
 }
 
 export function useToggleTaskComplete() {
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      flushPendingWithKeepalive();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  const completeMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      scheduledDate,
+    }: {
+      taskId: string;
+      scheduledDate?: string;
+    }) => {
+      return await taskService.completeTaskOccurrence(taskId, { scheduledDate });
+    },
+    onSuccess: (result) => {
+      if (result?.isRecurringAdvanced) {
+        toast.add({
+          title: "Occurrence completed",
+          description: `Next occurrence scheduled for ${
+            result.nextDueTime
+              ? new Date(result.nextDueTime).toLocaleDateString()
+              : "future date"
+          }.`,
+          type: "info",
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast.add({
+        title: "Error",
+        description: getErrorMessage(err, "Failed to complete task"),
+        type: "error",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
+      queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
+    },
+  });
+
+  const uncompleteMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      occurrenceId,
+    }: {
+      taskId: string;
+      occurrenceId?: string;
+    }) => {
+      if (occurrenceId) {
+        return await taskService.uncompleteOccurrenceById(occurrenceId);
+      }
+      return await taskService.uncompleteTaskOccurrence(taskId);
+    },
+    onSuccess: () => {
+      toast.add({
+        title: "Occurrence restored",
+        description: "Task restored as incomplete.",
+        type: "info",
+      });
+    },
+    onError: (err: any) => {
+      toast.add({
+        title: "Error",
+        description: getErrorMessage(err, "Failed to restore task"),
+        type: "error",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
+      queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
+    },
+  });
 
   const mutate = async ({
     task,
@@ -72,32 +160,12 @@ export function useToggleTaskComplete() {
         pendingCompletions.delete(task.id);
 
         try {
-          const result = await taskService.completeTaskOccurrence(task.id, {
+          await completeMutation.mutateAsync({
+            taskId: task.id,
             scheduledDate,
           });
-
-          // Refresh task queries, productivity stats, and completed list
-          queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-          queryClient.invalidateQueries({
-            queryKey: taskQueryKeys.completed(),
-          });
-          queryClient.invalidateQueries({
-            queryKey: productivityQueryKeys.all,
-          });
-
-          if (result?.isRecurringAdvanced) {
-            toast.add({
-              title: "Occurrence completed",
-              description: `Next occurrence scheduled for ${
-                result.nextDueTime
-                  ? new Date(result.nextDueTime).toLocaleDateString()
-                  : "future date"
-              }.`,
-              type: "info",
-            });
-          }
-        } catch (err: any) {
-          // Rollback: restore the task into active queries
+        } catch {
+          // Restore task into active queries on failure
           queryClient.setQueriesData<Task[]>(
             { queryKey: taskQueryKeys.all },
             (old) => {
@@ -106,12 +174,6 @@ export function useToggleTaskComplete() {
               return [task, ...old];
             },
           );
-
-          toast.add({
-            title: "Error",
-            description: getErrorMessage(err, "Failed to complete task"),
-            type: "error",
-          });
         }
       }, 4000);
 
@@ -150,10 +212,14 @@ export function useToggleTaskComplete() {
         },
       });
 
-      pendingCompletions.set(task.id, { timeoutId, task, toastId });
+      pendingCompletions.set(task.id, {
+        timeoutId,
+        task,
+        toastId,
+        scheduledDate,
+      });
     } else {
       // Uncompleting a task occurrence
-      // If there was a pending completion in flight for this task, cancel it
       const existing = pendingCompletions.get(task.id);
       if (existing) {
         clearTimeout(existing.timeoutId);
@@ -174,37 +240,16 @@ export function useToggleTaskComplete() {
         return;
       }
 
-      try {
-        if (occurrenceId) {
-          await taskService.uncompleteOccurrenceById(occurrenceId);
-        } else {
-          await taskService.uncompleteTaskOccurrence(task.id);
-        }
-
-        toast.add({
-          title: "Occurrence restored",
-          description: `"${task.title}" restored as incomplete.`,
-          type: "info",
-        });
-      } catch (err: any) {
-        toast.add({
-          title: "Error",
-          description: getErrorMessage(err, "Failed to restore task"),
-          type: "error",
-        });
-      } finally {
-        queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-        queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
-        queryClient.invalidateQueries({
-          queryKey: productivityQueryKeys.all,
-        });
-      }
+      await uncompleteMutation.mutateAsync({
+        taskId: task.id,
+        occurrenceId,
+      });
     }
   };
 
   return {
     mutate,
     mutateAsync: mutate,
-    isPending: false,
+    isPending: completeMutation.isPending || uncompleteMutation.isPending,
   };
 }

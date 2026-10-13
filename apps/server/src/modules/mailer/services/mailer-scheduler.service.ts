@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { RRule } from 'rrule';
+import { parseRRuleString } from '@todo/shared';
+import { calculateNextOccurrence } from '../../tasks/utils/recurrence.util';
 import {
   EMAIL_QUEUE_NAME,
   EmailJobType,
@@ -43,6 +44,8 @@ export interface ScheduleRecurringTaskReminderParams {
   taskTitle: string;
   rruleString: string;
   reminderOffsetMinutes: number;
+  dtstart?: Date;
+  timezone?: string;
 }
 
 @Injectable()
@@ -85,7 +88,7 @@ export class MailerSchedulerService {
   ): Promise<void> {
     const delay = params.reminderTime.getTime() - Date.now();
     const identifier = params.reminderId || params.taskId;
-    const jobId = `task-reminder:${identifier}`;
+    const jobId = `task-reminder-${identifier}`;
 
     // Cancel existing reminder if present
     await this.cancelTaskReminder(identifier);
@@ -125,7 +128,7 @@ export class MailerSchedulerService {
    * Cancel a scheduled one-time task reminder.
    */
   async cancelTaskReminder(identifier: string): Promise<void> {
-    const jobId = `task-reminder:${identifier}`;
+    const jobId = `task-reminder-${identifier}`;
     try {
       const job = await this.emailQueue.getJob(jobId);
       if (job) {
@@ -144,34 +147,53 @@ export class MailerSchedulerService {
     params: ScheduleRecurringTaskReminderParams,
   ): Promise<void> {
     const identifier = params.reminderId || params.taskId;
-    const jobId = `task-recurring-reminder:${identifier}`;
 
-    // Cancel existing recurrence job if present
+    // Cancel existing recurrence jobs for this identifier if present
     await this.cancelRecurringTaskReminder(identifier);
 
     try {
-      const rule = RRule.fromString(params.rruleString);
       const now = new Date();
-      const nextOccurrence = rule.after(now);
+      const dtstart = params.dtstart ?? now;
+      const zone = params.timezone ?? 'UTC';
+      const parsedRule = parseRRuleString(params.rruleString);
 
-      if (!nextOccurrence) {
+      let currentAnchor = now;
+      let targetOccurrence: Date | null = null;
+      let delay = 0;
+
+      for (let i = 0; i < 50; i++) {
+        const nextOccurrence = calculateNextOccurrence(
+          parsedRule,
+          currentAnchor,
+          dtstart,
+          zone,
+        );
+
+        if (!nextOccurrence) break;
+
+        const reminderTime = new Date(
+          nextOccurrence.getTime() - params.reminderOffsetMinutes * 60 * 1000,
+        );
+        const calculatedDelay = reminderTime.getTime() - now.getTime();
+
+        if (calculatedDelay > 0) {
+          targetOccurrence = nextOccurrence;
+          delay = calculatedDelay;
+          break;
+        }
+
+        currentAnchor = nextOccurrence;
+      }
+
+      if (!targetOccurrence) {
         this.logger.log(
-          `No upcoming occurrences for recurring task ${params.taskId}.`,
+          `No upcoming future occurrences for recurring task ${params.taskId}.`,
         );
         return;
       }
 
-      const reminderTime = new Date(
-        nextOccurrence.getTime() - params.reminderOffsetMinutes * 60 * 1000,
-      );
-      const delay = reminderTime.getTime() - now.getTime();
-
-      if (delay <= 0) {
-        // If the calculated reminder time for the immediate occurrence has passed,
-        // search for the subsequent occurrence
-        const subsequentOccurrence = rule.after(now, true);
-        if (!subsequentOccurrence) return;
-      }
+      const occurrenceISO = targetOccurrence.toISOString();
+      const jobId = `reminder-${identifier}-${targetOccurrence.getTime()}`;
 
       const data: RecurringTaskReminderEmailData = {
         taskId: params.taskId,
@@ -180,20 +202,22 @@ export class MailerSchedulerService {
         to: params.to,
         userName: params.userName,
         taskTitle: params.taskTitle,
-        occurrenceTime: nextOccurrence.toISOString(),
+        occurrenceTime: occurrenceISO,
         rruleString: params.rruleString,
         reminderOffsetMinutes: params.reminderOffsetMinutes,
+        dtstart: dtstart.toISOString(),
+        timezone: zone,
       };
 
       await this.emailQueue.add(EmailJobType.RECURRING_TASK_REMINDER, data, {
         jobId,
-        delay: Math.max(0, delay),
+        delay,
         removeOnComplete: { age: 3600 },
         removeOnFail: { age: 86400 },
       });
 
       this.logger.log(
-        `Scheduled recurring reminder for task ${params.taskId} at ${nextOccurrence.toISOString()} (JobId: ${jobId})`,
+        `Scheduled recurring reminder for task ${params.taskId} at ${occurrenceISO} (JobId: ${jobId})`,
       );
     } catch (error) {
       this.logger.error(
@@ -206,16 +230,24 @@ export class MailerSchedulerService {
    * Cancel a scheduled recurring task reminder.
    */
   async cancelRecurringTaskReminder(identifier: string): Promise<void> {
-    const jobId = `task-recurring-reminder:${identifier}`;
+    const legacyJobId = `task-recurring-reminder-${identifier}`;
+    const prefix = `reminder-${identifier}-`;
     try {
-      const job = await this.emailQueue.getJob(jobId);
+      const job = await this.emailQueue.getJob(legacyJobId);
       if (job) {
         await job.remove();
-        this.logger.log(`Cancelled recurring task reminder job ${jobId}`);
+        this.logger.log(`Cancelled recurring task reminder job ${legacyJobId}`);
+      }
+      const delayedJobs = await this.emailQueue.getJobs(['delayed', 'waiting']);
+      for (const j of delayedJobs) {
+        if (j.id?.startsWith(prefix) || j.id === legacyJobId) {
+          await j.remove().catch(() => {});
+          this.logger.log(`Cancelled recurring task reminder job ${j.id}`);
+        }
       }
     } catch (err) {
       this.logger.warn(
-        `Could not cancel recurring task reminder ${jobId}: ${err}`,
+        `Could not cancel recurring task reminder ${identifier}: ${err}`,
       );
     }
   }

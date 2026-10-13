@@ -58,7 +58,7 @@ export class AuthController {
       sameSite: 'lax',
       maxAge:
         this.configService.get('JWT_REFRESH_SECRET_EXPIRATION_SECONDS') * 1000,
-      path: '/auth/refresh-token',
+      path: '/',
     });
 
     response.cookie('access_token', accessToken, {
@@ -77,7 +77,7 @@ export class AuthController {
       httpOnly: true,
       sameSite: 'lax',
       secure: isProduction,
-      path: '/auth/refresh-token',
+      path: '/',
     });
 
     response.clearCookie('access_token', {

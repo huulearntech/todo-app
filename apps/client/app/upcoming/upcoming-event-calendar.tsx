@@ -25,8 +25,11 @@ import { addDays, startOfDay } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PlusIcon } from 'lucide-react'
-import { useProjectTasks } from "@/hooks/tasks/use-project-tasks"
+import { useProjectTasks, EMPTY_TASKS } from "@/hooks/tasks/use-project-tasks"
 import { useSections } from "@/hooks/sections/use-sections"
+import type { SectionResponseDto } from "@todo/shared"
+
+const EMPTY_SECTIONS: SectionResponseDto[] = [];
 import { useCreateSection } from "@/hooks/sections/use-create-section"
 import { useUpdateCalendarEvent } from "@/hooks/tasks/use-update-calendar-event"
 import { toast } from "@/components/ui/toast"
@@ -122,8 +125,8 @@ export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
   const apiRef = useRef<EventCalendarApi<Task> | null>(null);
   const isDragUpdatingRef = useRef(false);
 
-  const { data: tasks = [] } = useProjectTasks(projectId);
-  const { data: sections = [] } = useSections(projectId);
+  const { data: tasks = EMPTY_TASKS } = useProjectTasks(projectId);
+  const { data: sections = EMPTY_SECTIONS } = useSections(projectId);
 
   const handleNewTask = async () => {
     let targetSectionId = sections[0]?.id || tasks[0]?.sectionId;

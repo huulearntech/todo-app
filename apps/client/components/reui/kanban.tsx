@@ -166,6 +166,7 @@ export interface KanbanRootProps<T> extends Omit<
   useRender.ComponentProps<"div">,
   "children" | "onDragStart" | "onDragEnd"
 > {
+  id?: string
   value: Record<string, T[]>
   onValueChange: (value: Record<string, T[]>) => void
   getItemValue: (item: T) => string
@@ -184,6 +185,7 @@ export interface KanbanRootProps<T> extends Omit<
 }
 
 function Kanban<T>({
+  id,
   value,
   onValueChange,
   getItemValue,
@@ -638,6 +640,7 @@ function Kanban<T>({
   return (
     <KanbanContext.Provider value={contextValue}>
       <DndContext
+        id={id ?? "kanban-dnd-context"}
         sensors={sensors}
         modifiers={modifiers}
         accessibility={accessibility}

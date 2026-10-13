@@ -5,7 +5,10 @@ import axios, {
 } from "axios";
 
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL:
+    typeof window === "undefined"
+      ? (process.env.API_BASE_URL || "http://localhost:4000")
+      : "/api",
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -23,15 +26,14 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-
 let refreshPromise: Promise<void> | null = null;
 
 async function refreshAccessToken(): Promise<void> {
-  await axios.post(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh-token`,
-    {},
-    { withCredentials: true },
-  );
+  const url =
+    typeof window === "undefined"
+      ? `${process.env.API_BASE_URL || "http://localhost:4000"}/auth/refresh-token`
+      : "/api/auth/refresh-token";
+  await axios.post(url, {}, { withCredentials: true });
 }
 
 apiClient.interceptors.response.use(

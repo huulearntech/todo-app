@@ -33,7 +33,11 @@ export const metadata: Metadata = {
   description: "Personal task management and productivity application.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+import { getOptionalUser } from "@/lib/server/auth";
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const initialUser = await getOptionalUser();
+
   return (
     <html
       lang="en"
@@ -48,31 +52,31 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           disableTransitionOnChange
         >
           <QueryProvider>
-          <AuthProvider>
-            <MyStoreProvider>
-              <EditProjectProvider>
-                <TooltipProvider>
-                  <SidebarProvider
-                    defaultOpen={false}
-                    className="h-svh max-h-svh overflow-hidden"
-                    style={
-                      {
-                        "--sidebar-width": "350px",
-                      } as React.CSSProperties
-                    }
-                  >
-                    <AppSidebar />
-                    {children}
-                    <Toaster />
-                    <EditTaskDialog />
-                    <AddTaskForm />
+            <AuthProvider initialUser={initialUser}>
+              <MyStoreProvider>
+                <EditProjectProvider>
+                  <TooltipProvider>
+                    <SidebarProvider
+                      defaultOpen={false}
+                      className="h-svh max-h-svh overflow-hidden"
+                      style={
+                        {
+                          "--sidebar-width": "350px",
+                        } as React.CSSProperties
+                      }
+                    >
+                      {initialUser && <AppSidebar />}
+                      {children}
+                      <Toaster />
+                      {initialUser && <EditTaskDialog />}
+                      {initialUser && <AddTaskForm />}
 
-                  </SidebarProvider>
-                </TooltipProvider>
-              </EditProjectProvider>
-            </MyStoreProvider>
-          </AuthProvider>
-        </QueryProvider>
+                    </SidebarProvider>
+                  </TooltipProvider>
+                </EditProjectProvider>
+              </MyStoreProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === "development" && (
           <Script

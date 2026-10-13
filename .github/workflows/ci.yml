@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @todo/shared build
+
+      - name: Typecheck backend
+        run: pnpm --filter server exec tsc --noEmit
+
+      - name: Typecheck frontend
+        run: pnpm --filter client exec tsc --noEmit
+
+      - name: Run backend unit tests
+        run: pnpm --filter server test
+
+      - name: Run frontend unit tests
+        run: pnpm --filter client test

@@ -71,7 +71,7 @@ import { migrations } from './migrations';
     MailerModule,
     SearchModule,
     ProductivityModule,
-    ImageStorageModule.register(),
+    ImageStorageModule,
     AppConfigModule,
     TrigramIndexModule,
   ],

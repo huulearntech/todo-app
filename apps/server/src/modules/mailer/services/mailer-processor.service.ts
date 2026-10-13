@@ -220,6 +220,8 @@ export class MailerProcessor extends WorkerHost {
       taskTitle: data.taskTitle,
       rruleString: data.rruleString,
       reminderOffsetMinutes: data.reminderOffsetMinutes,
+      dtstart: data.dtstart ? new Date(data.dtstart) : undefined,
+      timezone: data.timezone,
     });
 
     return { success: true };
