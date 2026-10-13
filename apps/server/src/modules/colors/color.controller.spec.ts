@@ -1,29 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ColorController } from './color.controller';
 import { ColorService } from './color.service';
-import { JwtUser } from '../auth/decorators/current-user.decorator';
 
 describe('ColorController', () => {
   let controller: ColorController;
   let service: {
-    createColor: jest.Mock;
-    getMyColors: jest.Mock;
+    getColors: jest.Mock;
     getColorByKey: jest.Mock;
-    updateColor: jest.Mock;
-    deleteColor: jest.Mock;
-  };
-
-  const user: JwtUser = {
-    id: '11111111-1111-1111-1111-111111111111',
   };
 
   beforeEach(async () => {
     service = {
-      createColor: jest.fn(),
-      getMyColors: jest.fn(),
+      getColors: jest.fn(),
       getColorByKey: jest.fn(),
-      updateColor: jest.fn(),
-      deleteColor: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -39,57 +28,23 @@ describe('ColorController', () => {
     controller = module.get<ColorController>(ColorController);
   });
 
-  it('createColor should call service.createColor', async () => {
-    const dto = { key: 'sky' as const, name: 'Sky Blue' };
-    const expected = { ownerId: user.id, ...dto };
-    service.createColor.mockResolvedValue(expected);
+  it('getColors should call service.getColors', async () => {
+    const expected = [{ key: 'sky', name: 'Sky Blue' }];
+    service.getColors.mockResolvedValue(expected);
 
-    const res = await controller.createColor(user, dto);
+    const res = await controller.getColors();
 
-    expect(service.createColor).toHaveBeenCalledWith(user.id, dto);
-    expect(res).toEqual(expected);
-  });
-
-  it('getMyColors should call service.getMyColors', async () => {
-    const expected = [{ ownerId: user.id, key: 'sky', name: 'Sky Blue' }];
-    service.getMyColors.mockResolvedValue(expected);
-
-    const res = await controller.getMyColors(user);
-
-    expect(service.getMyColors).toHaveBeenCalledWith(user.id);
+    expect(service.getColors).toHaveBeenCalledWith();
     expect(res).toEqual(expected);
   });
 
   it('getColorByKey should call service.getColorByKey', async () => {
-    const expected = { ownerId: user.id, key: 'sky', name: 'Sky Blue' };
+    const expected = { key: 'sky', name: 'Sky Blue' };
     service.getColorByKey.mockResolvedValue(expected);
 
-    const res = await controller.getColorByKey(user, 'sky');
+    const res = await controller.getColorByKey('sky');
 
-    expect(service.getColorByKey).toHaveBeenCalledWith(user.id, 'sky');
+    expect(service.getColorByKey).toHaveBeenCalledWith('sky');
     expect(res).toEqual(expected);
-  });
-
-  it('updateColor should call service.updateColor', async () => {
-    const dto = { name: 'Deep Sky Blue' };
-    const expected = {
-      ownerId: user.id,
-      key: 'sky',
-      name: 'Deep Sky Blue',
-    };
-    service.updateColor.mockResolvedValue(expected);
-
-    const res = await controller.updateColor(user, 'sky', dto);
-
-    expect(service.updateColor).toHaveBeenCalledWith(user.id, 'sky', dto);
-    expect(res).toEqual(expected);
-  });
-
-  it('deleteColor should call service.deleteColor', async () => {
-    service.deleteColor.mockResolvedValue(undefined);
-
-    await controller.deleteColor(user, 'sky');
-
-    expect(service.deleteColor).toHaveBeenCalledWith(user.id, 'sky');
   });
 });

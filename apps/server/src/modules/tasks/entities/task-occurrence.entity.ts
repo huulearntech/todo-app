@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -13,9 +14,17 @@ import { User } from '../../users/user.entity';
 import { TaskOccurrenceStatus } from '@todo/shared';
 
 @Entity('task_occurrences')
+@Check(
+  'chk_task_occurrences_completed_at',
+  "status <> 'completed' OR completed_at IS NOT NULL",
+)
 @Index('idx_task_occurrences_user_completed_at', ['userId', 'completedAt'])
 @Index('idx_task_occurrences_task_id', ['taskId'])
 @Index('idx_task_occurrences_task_scheduled', ['taskId', 'scheduledDate'])
+@Index('uq_task_occurrences_completed', ['taskId', 'scheduledDate'], {
+  unique: true,
+  where: "status = 'completed' AND scheduled_date IS NOT NULL",
+})
 export class TaskOccurrence {
   @PrimaryGeneratedColumn('uuid')
   id: string;

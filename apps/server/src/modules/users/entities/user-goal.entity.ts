@@ -12,6 +12,10 @@ import { User } from '../user.entity';
 
 @Entity('user_goals')
 @Index('idx_user_goals_user_effective', ['userId', 'effectiveFrom'])
+@Index('uq_user_goals_active', ['userId'], {
+  unique: true,
+  where: 'effective_to IS NULL',
+})
 export class UserGoal {
   @PrimaryGeneratedColumn('uuid')
   id: string;

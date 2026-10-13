@@ -54,7 +54,6 @@ export class ProjectService {
 
         const queryBuilder = transactionalEntityManager
           .createQueryBuilder(Project, 'project')
-          .leftJoinAndSelect('project.color', 'color')
           .where('project.ownerId = :ownerId', { ownerId });
 
         if (filter.isDefault !== undefined) {

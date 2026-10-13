@@ -57,6 +57,7 @@ export class Task {
   })
   completedAt: Date | null; // NOTE: null for incomplete tasks, timestamptz for completed tasks
 
+  @Index('tasks_time_range_gist_idx', { type: 'gist' })
   @Column({
     type: 'tstzrange',
     name: 'time_range',

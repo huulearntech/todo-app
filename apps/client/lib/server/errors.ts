@@ -36,3 +36,11 @@ export class InternalServerError extends ApiError {
     this.name = "InternalServerError";
   }
 }
+
+export class ServiceUnavailableError extends ApiError {
+  constructor(message = "Service Unavailable", responseData?: unknown) {
+    super(503, message, responseData);
+    this.name = "ServiceUnavailableError";
+  }
+}
+

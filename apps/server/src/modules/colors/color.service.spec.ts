@@ -1,11 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { ColorService } from './color.service';
 import { PALETTE_COLORS } from '@todo/shared';
 
 describe('ColorService', () => {
   let service: ColorService;
-  const ownerId = '11111111-1111-1111-1111-111111111111';
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -15,11 +14,11 @@ describe('ColorService', () => {
     service = module.get<ColorService>(ColorService);
   });
 
-  describe('getMyColors', () => {
-    it('should return all system palette colors for ownerId', async () => {
-      const colors = await service.getMyColors(ownerId);
+  describe('getColors', () => {
+    it('should return all system palette colors without ownerId', async () => {
+      const colors = await service.getColors();
       expect(colors.length).toBe(PALETTE_COLORS.length);
-      expect(colors[0]).toHaveProperty('ownerId', ownerId);
+      expect(colors[0]).not.toHaveProperty('ownerId');
       expect(colors[0]).toHaveProperty('key');
       expect(colors[0]).toHaveProperty('name');
     });
@@ -27,9 +26,8 @@ describe('ColorService', () => {
 
   describe('getColorByKey', () => {
     it('should return color for valid key case-insensitively', async () => {
-      const color = await service.getColorByKey(ownerId, 'RED');
+      const color = await service.getColorByKey('RED');
       expect(color).toEqual({
-        ownerId,
         key: 'red',
         name: 'Red',
       });
@@ -37,28 +35,24 @@ describe('ColorService', () => {
 
     it('should throw NotFoundException for unknown key', async () => {
       await expect(
-        service.getColorByKey(ownerId, 'non-existent-color'),
+        service.getColorByKey('non-existent-color'),
       ).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('mutating methods', () => {
-    it('createColor should throw BadRequestException', async () => {
-      await expect(
-        service.createColor(ownerId, { key: 'red' as any, name: 'Red' }),
-      ).rejects.toThrow(BadRequestException);
+  describe('resolveColor', () => {
+    it('should resolve valid palette color', () => {
+      expect(ColorService.resolveColor('blue')).toBe('blue');
+      expect(service.resolveColor('EMERALD ')).toBe('emerald');
     });
 
-    it('updateColor should throw BadRequestException', async () => {
-      await expect(
-        service.updateColor(ownerId, 'red', { name: 'Red' }),
-      ).rejects.toThrow(BadRequestException);
+    it('should fallback when key is null or undefined', () => {
+      expect(ColorService.resolveColor(null)).toBe('slate');
+      expect(ColorService.resolveColor(undefined, 'amber')).toBe('amber');
     });
 
-    it('deleteColor should throw BadRequestException', async () => {
-      await expect(service.deleteColor(ownerId, 'red')).rejects.toThrow(
-        BadRequestException,
-      );
+    it('should fallback when key is not in palette', () => {
+      expect(ColorService.resolveColor('unknown-color', 'green')).toBe('green');
     });
   });
 });

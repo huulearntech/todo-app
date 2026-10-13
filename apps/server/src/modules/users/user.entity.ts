@@ -3,6 +3,8 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -19,7 +21,13 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column({
+    unique: true,
+    transformer: {
+      to: (value: string) => (value ? value.trim().toLowerCase() : value),
+      from: (value: string) => value,
+    },
+  })
   email: string;
 
   @Column()
@@ -39,6 +47,13 @@ export class User {
 
   @Column({ type: 'uuid', name: 'default_project_id', update: false })
   defaultProjectId: string;
+
+  @ManyToOne(() => Project, {
+    onDelete: 'RESTRICT',
+    deferrable: 'INITIALLY DEFERRED',
+  })
+  @JoinColumn({ name: 'default_project_id' })
+  defaultProject?: Project;
 
   @Column({ name: 'is_email_verified', default: false })
   isEmailVerified!: boolean;

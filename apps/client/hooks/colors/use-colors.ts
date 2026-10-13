@@ -7,7 +7,7 @@ import { colorQueryKeys } from "@/lib/query/query-keys";
 export function useColors() {
   return useQuery({
     queryKey: colorQueryKeys.all,
-    queryFn: colorService.getMyColors,
+    queryFn: colorService.getColors,
     staleTime: 1000 * 60 * 10, // Colors are rarely changed
   });
 }

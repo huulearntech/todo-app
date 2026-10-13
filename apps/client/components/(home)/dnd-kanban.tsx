@@ -67,7 +67,6 @@ interface TaskCardProps extends Omit<
   isOverlay?: boolean
 }
 
-// NOTE: I have tried to replace this with dummy card, the performance still sucks. So it should be in the kanban
 function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
   const Wrapper = (asHandle && !isOverlay) ? KanbanItemHandle : Fragment
 
@@ -75,8 +74,6 @@ function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
     <KanbanItem value={task.id} {...props}>
       <Wrapper>
         <TaskItemListView task={task} />
-        {/* <div className="w-20 h-20 border">
-        </div> */}
       </Wrapper>
     </KanbanItem>
   )
@@ -434,7 +431,7 @@ function DndKanban({ projectId }: { projectId: string }) {
       </section>
 
       {/* Floating Action Button */}
-      {/* <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
+      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
         <Button
           type="button"
           size="lg"
@@ -445,7 +442,7 @@ function DndKanban({ projectId }: { projectId: string }) {
           <PlusIcon className="size-4.5" />
           <span className="font-semibold text-xs sm:text-sm">New Section</span>
         </Button>
-      </div> */}
+      </div>
 
       {/* Edit Section Dialog */}
       <EditSectionDialog

@@ -4,6 +4,7 @@ import {
   ForbiddenError,
   InternalServerError,
   NotFoundError,
+  ServiceUnavailableError,
   UnauthorizedError,
 } from "./errors";
 import { getBackendApiUrl } from "./config";
@@ -13,7 +14,6 @@ const API_BASE_URL = getBackendApiUrl();
 export async function serverFetch<T>(
   path: string,
   options: RequestInit = {},
-  isRetry = false,
 ): Promise<T> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token")?.value;
@@ -42,37 +42,20 @@ export async function serverFetch<T>(
 
   const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    cache: options.cache ?? "no-store",
-  });
-
-  if (response.status === 401 && !isRetry && refreshToken) {
-    try {
-      const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: `refresh_token=${refreshToken}`,
-        },
-        cache: "no-store",
-      });
-
-      if (refreshRes.ok) {
-        const setCookies = refreshRes.headers.getSetCookie();
-        for (const cStr of setCookies) {
-          const [nameVal] = cStr.split(";");
-          const [name, val] = nameVal.split("=");
-          if (name && val) {
-            cookieStore.set(name.trim(), val.trim(), { path: "/" });
-          }
-        }
-        return serverFetch<T>(path, options, true);
-      }
-    } catch {
-      // Fall through to 401
-    }
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      cache: options.cache ?? "no-store",
+    });
+  } catch (error) {
+    throw new ServiceUnavailableError(
+      `Failed to connect to backend service at ${url}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      error,
+    );
   }
 
   if (!response.ok) {
