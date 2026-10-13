@@ -9,9 +9,8 @@ async function bootstrap() {
   app.use(cookieParser()); // Use cookie-parser middleware to parse cookies
 
   const configService = app.get(TypedConfigService);
-  const frontendUrl =
-    configService.get('FRONTEND_URL') || 'http://localhost:3000';
-  const port = configService.get('PORT') || 4000;
+  const frontendUrl = configService.get('FRONTEND_URL');
+  const port = configService.get('PORT');
 
   // Enable CORS for frontend URL
   app.enableCors({

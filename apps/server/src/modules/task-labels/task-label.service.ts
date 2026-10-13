@@ -69,9 +69,7 @@ export class TaskLabelService {
     }
 
     if (updatedTaskLabel.colorKey !== undefined) {
-      taskLabel.colorKey = ColorService.resolveColor(
-        updatedTaskLabel.colorKey,
-      );
+      taskLabel.colorKey = ColorService.resolveColor(updatedTaskLabel.colorKey);
     }
 
     await this.taskLabelRepository.save(taskLabel);

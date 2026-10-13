@@ -275,7 +275,7 @@ export class TaskService {
     const qb =
       managerOrRepo instanceof EntityManager
         ? managerOrRepo.createQueryBuilder(Task, 'task')
-        : (managerOrRepo as Repository<Task>).createQueryBuilder('task');
+        : managerOrRepo.createQueryBuilder('task');
 
     return qb
       .innerJoin('task.section', 'section')
@@ -358,9 +358,7 @@ export class TaskService {
       completedAt: occ.completedAt ? occ.completedAt.toISOString() : null,
       recurrence: task.recurrence?.rrule ?? null,
       occurrenceId: occ.id,
-      scheduledDate: occ.scheduledDate
-        ? occ.scheduledDate.toISOString()
-        : null,
+      scheduledDate: occ.scheduledDate ? occ.scheduledDate.toISOString() : null,
       isLatestOccurrence: isLatest,
       reminders: (task.reminders ?? []).map((r) =>
         r.type === 'relative'
@@ -429,8 +427,9 @@ export class TaskService {
         `SET LOCAL pg_trgm.similarity_threshold = 0.2;`,
       );
 
-      const qb = this.baseTaskQuery(transactionalEntityManager, ownerId)
-        .where('task.completedAt IS NULL');
+      const qb = this.baseTaskQuery(transactionalEntityManager, ownerId).where(
+        'task.completedAt IS NULL',
+      );
 
       this.applyFilter(qb, filter);
 
@@ -511,7 +510,7 @@ export class TaskService {
     const qb = this.baseTaskQuery(this.taskRepository, ownerId)
       .where('task.completedAt IS NULL')
       .andWhere(
-        'task.time_range && tstzrange(:rangeStart::timestamptz, :rangeEnd::timestamptz, \'[]\')',
+        "task.time_range && tstzrange(:rangeStart::timestamptz, :rangeEnd::timestamptz, '[]')",
         {
           rangeStart: rangeStartISO8601,
           rangeEnd: rangeEndISO8601,
@@ -1137,14 +1136,19 @@ export class TaskService {
         : this.taskReminderRepository;
     const reminders = await repo.find({ where: { taskId: task.id } });
 
-    if (task.completedAt !== null || (!task.recurrence?.rrule && !task.timeRange?.start)) {
+    if (
+      task.completedAt !== null ||
+      (!task.recurrence?.rrule && !task.timeRange?.start)
+    ) {
       await Promise.all([
         this.mailerSchedulerService.cancelTaskReminder(task.id).catch(() => {}),
         this.mailerSchedulerService
           .cancelRecurringTaskReminder(task.id)
           .catch(() => {}),
         ...reminders.flatMap((rem) => [
-          this.mailerSchedulerService.cancelTaskReminder(rem.id).catch(() => {}),
+          this.mailerSchedulerService
+            .cancelTaskReminder(rem.id)
+            .catch(() => {}),
           this.mailerSchedulerService
             .cancelRecurringTaskReminder(rem.id)
             .catch(() => {}),

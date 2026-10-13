@@ -3,11 +3,12 @@ import axios, {
   AxiosInstance,
   AxiosResponse,
 } from "axios";
+import { getBackendApiUrl } from "./server/config";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL:
     typeof window === "undefined"
-      ? (process.env.API_BASE_URL || "http://localhost:4000")
+      ? getBackendApiUrl()
       : "/api",
   timeout: 10000,
   withCredentials: true,
@@ -31,7 +32,7 @@ let refreshPromise: Promise<void> | null = null;
 async function refreshAccessToken(): Promise<void> {
   const url =
     typeof window === "undefined"
-      ? `${process.env.API_BASE_URL || "http://localhost:4000"}/auth/refresh-token`
+      ? `${getBackendApiUrl()}/auth/refresh-token`
       : "/api/auth/refresh-token";
   await axios.post(url, {}, { withCredentials: true });
 }

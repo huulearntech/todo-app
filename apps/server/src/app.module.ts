@@ -53,9 +53,9 @@ import { migrations } from './migrations';
       imports: [AppConfigModule],
       useFactory: (configService: TypedConfigService) => ({
         connection: {
-          host: configService.get('REDIS_HOST') || 'localhost',
-          port: configService.get('REDIS_PORT') || 6379,
-          password: configService.get('REDIS_PASSWORD') || undefined,
+          host: configService.get('REDIS_HOST'),
+          port: configService.get('REDIS_PORT'),
+          password: configService.get('REDIS_PASSWORD'),
         },
       }),
       inject: [TypedConfigService],

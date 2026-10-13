@@ -159,8 +159,7 @@ export class AuthController {
   @Get('magic-link/callback')
   async magicLinkCallback(@Req() request: Request, @Res() response: Response) {
     const token = request.query?.['token'];
-    const frontendBaseUrl =
-      this.configService.get('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendBaseUrl = this.configService.get('FRONTEND_URL');
     return response.redirect(
       `${frontendBaseUrl}/auth/verify?token=${encodeURIComponent(String(token || ''))}`,
     );

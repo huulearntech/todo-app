@@ -55,7 +55,14 @@ describe('SectionService', () => {
 
       expect(mockSectionRepo.query).toHaveBeenCalledWith(
         expect.stringContaining('create_section('),
-        expect.arrayContaining(['user-1', expect.any(String), 'proj-1', 'Section 1', '', 'red']),
+        expect.arrayContaining([
+          'user-1',
+          expect.any(String),
+          'proj-1',
+          'Section 1',
+          '',
+          'red',
+        ]),
       );
       expect(result.id).toBe('sec-1');
       expect(result.colorKey).toBe('red');
@@ -92,7 +99,9 @@ describe('SectionService', () => {
     });
 
     it('should throw BadRequestException if bounds invalid (22000)', async () => {
-      const error: any = new Error('A section cannot be positioned after itself');
+      const error: any = new Error(
+        'A section cannot be positioned after itself',
+      );
       error.code = '22000';
       mockSectionRepo.query.mockRejectedValue(error);
 

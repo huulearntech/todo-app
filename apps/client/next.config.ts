@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
+import { getBackendApiUrl } from "./lib/server/config";
 
-const backendBaseUrl =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:4000";
+const backendBaseUrl = getBackendApiUrl();
 
 const nextConfig: NextConfig = {
   /* config options here */

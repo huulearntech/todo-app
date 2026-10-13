@@ -338,10 +338,18 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP FUNCTION IF EXISTS move_section(uuid, uuid, uuid);`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS create_section(uuid, uuid, uuid, text, text, text);`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS rebalance_project_sections(uuid);`);
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS move_section(uuid, uuid, uuid);`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS create_section(uuid, uuid, uuid, text, text, text);`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS rebalance_project_sections(uuid);`,
+    );
     await queryRunner.query(`DROP FUNCTION IF EXISTS project_lock_key(uuid);`);
-    await queryRunner.query(`DROP INDEX IF EXISTS sections_project_lexorank_uq;`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS sections_project_lexorank_uq;`,
+    );
   }
 }

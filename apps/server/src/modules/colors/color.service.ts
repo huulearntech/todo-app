@@ -37,7 +37,10 @@ const COLOR_NAMES: Record<PaletteColor, string> = {
 
 @Injectable()
 export class ColorService {
-  resolveColor(rawKey?: string | null, fallback: PaletteColor = 'slate'): PaletteColor {
+  resolveColor(
+    rawKey?: string | null,
+    fallback: PaletteColor = 'slate',
+  ): PaletteColor {
     return ColorService.resolveColor(rawKey, fallback);
   }
 

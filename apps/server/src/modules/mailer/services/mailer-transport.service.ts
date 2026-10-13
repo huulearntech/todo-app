@@ -40,6 +40,13 @@ export class MailerTransportService implements OnModuleInit {
           mailUser && mailPass ? { user: mailUser, pass: mailPass } : undefined,
       });
     } else {
+      if (this.configService.get('NODE_ENV') === 'production') {
+        throw new Error(
+          '[CONFIG ERROR] Missing required SMTP configuration (MAIL_HOST, MAIL_PORT) in production environment. ' +
+            'Production cannot silently fall back to an Ethereal sandbox test account.',
+        );
+      }
+
       this.logger.log(
         'No MAIL_HOST configured. Creating Ethereal sandbox test account for development...',
       );

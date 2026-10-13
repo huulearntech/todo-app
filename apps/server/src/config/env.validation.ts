@@ -1,13 +1,14 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type, Transform } from 'class-transformer';
 import {
   IsEnum,
   IsNumber,
   IsInt,
   IsString,
+  IsUrl,
   IsOptional,
+  MinLength,
   validateSync,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 enum Environment {
   Development = 'development',
@@ -49,17 +50,23 @@ export class EnvironmentVariables {
   @IsString()
   CLOUDINARY_API_SECRET!: string;
 
-  @IsOptional()
   @IsString()
-  REDIS_HOST?: string;
+  REDIS_HOST!: string;
 
-  @IsOptional()
   @Type(() => Number)
   @IsInt()
-  REDIS_PORT?: number;
+  REDIS_PORT!: number;
 
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' ? undefined : trimmed;
+    }
+    return value;
+  })
   @IsOptional()
   @IsString()
+  @MinLength(1)
   REDIS_PASSWORD?: string;
 
   @IsOptional()
@@ -83,13 +90,9 @@ export class EnvironmentVariables {
   @IsString()
   MAIL_FROM?: string;
 
-  @IsOptional()
   @IsString()
-  FRONTEND_URL?: string;
-
-  @IsOptional()
-  @IsString()
-  BACKEND_URL?: string;
+  @IsUrl({ require_tld: false, require_protocol: true })
+  FRONTEND_URL!: string;
 }
 
 export function validate(config: Record<string, unknown>) {

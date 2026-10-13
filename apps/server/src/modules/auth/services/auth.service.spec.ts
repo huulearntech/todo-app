@@ -78,7 +78,6 @@ describe('AuthService - Magic Link & Sign Up', () => {
 
     configServiceMock = {
       get: jest.fn().mockImplementation((key: string) => {
-        if (key === 'BACKEND_URL') return 'http://localhost:4000';
         if (key === 'FRONTEND_URL') return 'http://localhost:3000';
         return undefined;
       }),
