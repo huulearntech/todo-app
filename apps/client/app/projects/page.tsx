@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useProjects } from "@/hooks/projects/use-projects";
 import { useAuth } from "@/providers/AuthProvider";
 import { getColorConfig } from "@/lib/color-palette";
-import Header from "@/components/header";
+import { StandardPageLayout } from "@/components/layout/standard-page-layout";
 import AddProjectDialog from "@/components/projects/add-project-dialog";
 
 import { Input } from "@/components/ui/input";
@@ -65,46 +65,42 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden bg-background text-foreground">
-      <Header />
-
-      <main className="flex-1 w-full overflow-y-auto min-h-0">
-        <div className="mx-auto flex flex-col gap-6 w-full max-w-4xl p-4 sm:p-6 md:p-8">
-          {/* Header section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
-                <FolderIcon className="size-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                    Projects
-                  </h1>
-                  {!isLoading && (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    >
-                      {projects.length}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  Manage and organize your project boards and tasks.
-                </p>
-              </div>
-            </div>
-
-            <AddProjectDialog
-              trigger={
-                <Button className="gap-2 rounded-xl font-medium shrink-0 shadow-xs">
-                  <PlusIcon className="size-4" />
-                  <span>New Project</span>
-                </Button>
-              }
-            />
+    <StandardPageLayout>
+      {/* Header section */}
+      <div className="page-header-row">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+            <FolderIcon className="size-5" />
           </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="page-title">
+                Projects
+              </h1>
+              {!isLoading && (
+                <Badge
+                  variant="secondary"
+                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                >
+                  {projects.length}
+                </Badge>
+              )}
+            </div>
+            <p className="page-subtitle">
+              Manage and organize your project boards and tasks.
+            </p>
+          </div>
+        </div>
+
+        <AddProjectDialog
+          trigger={
+            <Button className="gap-2 rounded-xl font-medium shrink-0 shadow-xs">
+              <PlusIcon className="size-4" />
+              <span>New Project</span>
+            </Button>
+          }
+        />
+      </div>
 
           {/* Search bar */}
           <div className="relative w-full">
@@ -132,10 +128,10 @@ export default function ProjectsPage() {
               <div className="p-3 rounded-full bg-muted text-muted-foreground mb-3">
                 <FolderPlusIcon className="size-6" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">
+              <h3 className="empty-state-title">
                 {searchQuery ? "No matching projects" : "No projects yet"}
               </h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              <p className="empty-state-description">
                 {searchQuery
                   ? `No projects found matching "${searchQuery}". Try a different keyword.`
                   : "Create your first project to start organizing tasks into custom Kanban boards."}
@@ -187,7 +183,7 @@ export default function ProjectsPage() {
                       })()}
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors truncate">
+                          <span className="item-title group-hover:text-primary transition-colors truncate">
                             {project.name}
                           </span>
                           {isDefault && (
@@ -200,7 +196,7 @@ export default function ProjectsPage() {
                           )}
                         </div>
                         {project.description && (
-                          <span className="text-xs text-muted-foreground truncate mt-0.5">
+                          <span className="helper-text truncate mt-0.5">
                             {project.description}
                           </span>
                         )}
@@ -287,8 +283,6 @@ export default function ProjectsPage() {
               />
             </div>
           )}
-        </div>
-      </main>
-    </div>
+    </StandardPageLayout>
   );
 }

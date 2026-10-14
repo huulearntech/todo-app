@@ -84,7 +84,7 @@ export default function GoalProgressCard() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TargetIcon className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+          <h2 className="section-title">
             Goal Targets
           </h2>
         </div>
@@ -216,14 +216,14 @@ export default function GoalProgressCard() {
 
               <div className="flex flex-col">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold tracking-tight text-foreground">
+                  <span className="stat-value">
                     {goals.daily.completed}
                   </span>
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="stat-label">
                     / {goals.daily.target} tasks
                   </span>
                 </div>
-                <CardDescription className="text-xs mt-0.5">
+                <CardDescription className="card-subheading mt-0.5">
                   {goals.daily.isAchieved
                     ? "Great job! You achieved today's daily target."
                     : `${dailyRemaining} more completed ${dailyRemaining === 1 ? "task" : "tasks"} to reach your goal.`}
@@ -281,14 +281,14 @@ export default function GoalProgressCard() {
 
               <div className="flex flex-col">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold tracking-tight text-foreground">
+                  <span className="stat-value">
                     {goals.weekly.completed}
                   </span>
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="stat-label">
                     / {goals.weekly.target} tasks
                   </span>
                 </div>
-                <CardDescription className="text-xs mt-0.5">
+                <CardDescription className="card-subheading mt-0.5">
                   {goals.weekly.isAchieved
                     ? "Outstanding! You surpassed your weekly completion goal."
                     : `${weeklyRemaining} more completed ${weeklyRemaining === 1 ? "task" : "tasks"} to hit this week's target.`}

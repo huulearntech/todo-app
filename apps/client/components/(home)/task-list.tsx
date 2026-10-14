@@ -1,9 +1,11 @@
 "use client";
 
-import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDueTodayTasks } from "@/hooks/tasks/use-due-today-tasks";
 import { usePostponeTask } from "@/hooks/tasks/use-postpone-task";
+import { useUpdateTask } from "@/hooks/tasks/use-update-task";
+import { taskQueryKeys } from "@/lib/query/query-keys";
 import { useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import TaskCard from "@/components/(home)/task-card";
 import {
@@ -12,7 +14,9 @@ import {
   SortableItemHandle,
 } from "@/components/reui/sortable";
 import { toast } from "@/components/ui/toast";
-import { CalendarDaysIcon, CheckCircle2Icon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarDaysIcon, CheckCircle2Icon, Plus } from "lucide-react";
+import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
 import { cn } from "@/lib/utils";
 import type { TaskResponseDto as Task } from "@todo/shared";
 
@@ -32,33 +36,33 @@ function PostponeDropZone() {
     <div
       ref={setNodeRef}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl border border-dashed p-2.5 min-h-[60px] transition-all duration-200 select-none cursor-pointer",
+        "group relative flex items-center gap-3 rounded-xl border border-dashed p-3 min-h-[52px] transition-all duration-200 select-none cursor-pointer mt-1",
         isOver
           ? "border-primary bg-primary/10 text-primary scale-[1.01] shadow-xs"
-          : "border-border/80 hover:border-primary/50 bg-card/60 hover:bg-accent/30 text-muted-foreground"
+          : "border-border/60 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 text-muted-foreground"
       )}
     >
       <div
         className={cn(
-          "flex size-8 items-center justify-center rounded-lg transition-colors shrink-0",
+          "flex size-7 items-center justify-center rounded-lg transition-colors shrink-0",
           isOver
             ? "bg-primary text-primary-foreground shadow-xs"
             : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
         )}
       >
-        <CalendarDaysIcon className="size-4" />
+        <CalendarDaysIcon className="size-3.5" />
       </div>
       <div className="flex flex-col text-left min-w-0">
         <span
           className={cn(
-            "text-xs font-semibold tracking-tight transition-colors truncate",
-            isOver ? "text-primary font-bold" : "text-foreground"
+            "text-xs font-medium tracking-tight transition-colors truncate",
+            isOver ? "text-primary font-semibold" : "text-foreground"
           )}
         >
-          {isOver ? "Release to postpone to tomorrow" : "Postpone to Tomorrow"}
+          {isOver ? "Release to postpone to tomorrow" : "Postpone to tomorrow"}
         </span>
         <span className="text-[11px] text-muted-foreground truncate">
-          Drag and drop any task here to reschedule it for tomorrow
+          Drag any task here to reschedule
         </span>
       </div>
     </div>
@@ -92,21 +96,24 @@ export function calculatePostponedDate(task: Pick<Task, "timeRange">): string {
 
 export default function TaskList() {
   const { data: initialTasks, isLoading } = useDueTodayTasks();
+  const queryClient = useQueryClient();
   const postponeTaskMutation = usePostponeTask();
+  const updateTaskMutation = useUpdateTask({ suppressToast: true });
+  const openDialog = useAddTaskDialogStore((state) => state.openDialog);
 
-  // Local state for drag-and-drop sortable items
-  const [items, setItems] = useState<Task[]>([]);
+  // Local state for drag-and-drop sortable items, synchronized when query results change
+  const [prevInitialTasks, setPrevInitialTasks] = useState(initialTasks);
+  const [items, setItems] = useState<Task[]>(initialTasks ?? []);
 
-  // Synchronize local sortable state with server query results
-  useEffect(() => {
-    if (initialTasks === undefined) return;
-
-    setItems(initialTasks);
-  }, [initialTasks]);
+  if (initialTasks !== prevInitialTasks) {
+    setPrevInitialTasks(initialTasks);
+    setItems(initialTasks ?? []);
+  }
 
   /**
    * Handle drag end events:
-   * 1. If dropped into the postpone section, postpone the task to tomorrow optimistically.
+   * 1. If dropped into the postpone section, postpone the task immediately with optimistic updates
+   *    and provide a compensating Undo action via updateTaskMutation.
    * 2. If dropped within the list, Sortable's internal handler handles arrayMove.
    */
   const handleDragEnd = (event: DragEndEvent) => {
@@ -120,19 +127,15 @@ export default function TaskList() {
       const taskToPostpone = items[originalIndex];
       if (!taskToPostpone) return;
 
-      // 1. Optimistic UI update: Remove task from today's list
+      const tomorrowIso = calculatePostponedDate(taskToPostpone);
+
+      // 1. Dispatch immediate optimistic mutation (updates TanStack Query cache atomically)
+      postponeTaskMutation.mutate({ taskId, postponeTo: tomorrowIso });
+
+      // 2. Optimistic UI update in local drag state so item disappears synchronously
       setItems((prev) => prev.filter((t) => t.id !== taskId));
 
-      // 2. Pending server update timeout reference (TODO: server call)
-      let isUndone = false;
-
-      const postponeTimeout = setTimeout(() => {
-        if (isUndone) return;
-        const tomorrowIso = calculatePostponedDate(taskToPostpone);
-        postponeTaskMutation.mutate({ taskId, postponeTo: tomorrowIso });
-      }, 4000);
-
-      // 3. Show Toast with Undo Action
+      // 3. Show Toast with Compensating Undo Action
       const postponeToastId = toast.add({
         title: "Task postponed",
         description: `"${taskToPostpone.title}" postponed to tomorrow.`,
@@ -140,10 +143,28 @@ export default function TaskList() {
         actionProps: {
           children: "Undo",
           onClick: () => {
-            isUndone = true;
-            clearTimeout(postponeTimeout);
+            // Restore the original timeRange on the backend and in the query cache
+            updateTaskMutation.mutate({
+              taskId,
+              data: {
+                timeRange: taskToPostpone.timeRange,
+              },
+            });
 
-            // Restore the task back into the local state at its original index
+            // Optimistically restore into today's query cache immediately
+            queryClient.setQueryData<Task[]>(taskQueryKeys.dueToday(), (old) => {
+              if (!old || !Array.isArray(old)) return [taskToPostpone];
+              if (old.some((t) => t.id === taskId)) return old;
+              const restored = [...old];
+              const insertIndex =
+                originalIndex >= 0 && originalIndex <= old.length
+                  ? originalIndex
+                  : old.length;
+              restored.splice(insertIndex, 0, taskToPostpone);
+              return restored;
+            });
+
+            // Restore in local sortable state
             setItems((prev) => {
               if (prev.some((t) => t.id === taskId)) return prev;
               const restored = [...prev];
@@ -155,13 +176,13 @@ export default function TaskList() {
               return restored;
             });
 
-            // Close the original "Task postponed" toast so user cannot click Undo again
+            // Close the original "Task postponed" toast
             if (postponeToastId) {
               toast.close(postponeToastId);
             }
 
             toast.add({
-              title: "Postpone cancelled",
+              title: "Postpone undone",
               description: `"${taskToPostpone.title}" restored to today's list.`,
               type: "info",
             });
@@ -174,15 +195,7 @@ export default function TaskList() {
   /**
    * Called when sortable order is committed:
    */
-  const handleValueCommit = (
-    newItems: Task[],
-    meta: {
-      event: DragEndEvent;
-      activeIndex: number;
-      overIndex: number;
-      previousValue: Task[];
-    }
-  ) => {
+  const handleValueCommit = () => {
     // Persist reordering if implemented
   };
 
@@ -196,47 +209,64 @@ export default function TaskList() {
     );
   }
 
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col gap-4 w-full">
+        <div className="py-16 sm:py-20 flex flex-col items-center justify-center text-center select-none">
+          <div className="size-16 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
+            <CheckCircle2Icon className="size-8 stroke-[1.75]" />
+          </div>
+          <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
+            All caught up for today
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1.5 mb-6 leading-relaxed">
+            Enjoy your free time, or add a task to plan ahead.
+          </p>
+          <Button
+            type="button"
+            onClick={() => openDialog()}
+            className="gap-2 font-medium shadow-xs"
+          >
+            <Plus className="size-4" />
+            Add task
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 w-full">
-      <div className="flex items-center justify-between pb-1 border-b border-border/40">
-        <span className="text-xs text-muted-foreground font-medium">
-          {items.length} due today
-        </span>
-      </div>
-
       <Sortable
         value={items}
         onValueChange={setItems}
         getItemValue={(item) => item.id}
         onDragEnd={handleDragEnd}
         onValueCommit={handleValueCommit}
-        className="flex flex-col gap-2.5 w-full"
+        className="list-stack w-full"
       >
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-border/70 text-center bg-card/40">
-            <div className="p-2.5 rounded-full bg-emerald-500/10 text-emerald-500 mb-2">
-              <CheckCircle2Icon className="size-5" />
-            </div>
-            <p className="text-sm font-semibold text-foreground">
-              All caught up for today!
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              No tasks due today. Enjoy your day or add a new task.
-            </p>
-          </div>
-        ) : (
-          items.map((task) => (
-            <SortableItem
-              key={task.id}
-              value={task.id}
-              className="data-[dragging=true]:shadow-xl data-[dragging=true]:rounded-xl data-[dragging=true]:opacity-95"
-            >
-              <SortableItemHandle>
-                <TaskCard task={task} />
-              </SortableItemHandle>
-            </SortableItem>
-          ))
-        )}
+        {items.map((task) => (
+          <SortableItem
+            key={task.id}
+            value={task.id}
+            className="data-[dragging=true]:shadow-xl data-[dragging=true]:rounded-xl data-[dragging=true]:opacity-95"
+          >
+            <SortableItemHandle>
+              <TaskCard task={task} />
+            </SortableItemHandle>
+          </SortableItem>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => openDialog()}
+          className="group flex items-center gap-2.5 w-full py-2 px-1 text-sm text-muted-foreground hover:text-foreground transition-colors select-none text-left rounded-lg cursor-pointer"
+        >
+          <span className="flex size-5 items-center justify-center rounded-full text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+            <Plus className="size-4" />
+          </span>
+          <span className="font-medium">Add task</span>
+        </button>
 
         {/* Droppable section at the bottom for postponing tasks to tomorrow */}
         <PostponeDropZone />

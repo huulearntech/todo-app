@@ -78,7 +78,7 @@ export function useToggleTaskComplete() {
         });
       }
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.add({
         title: "Error",
         description: getErrorMessage(err, "Failed to complete task"),
@@ -87,7 +87,6 @@ export function useToggleTaskComplete() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
       queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
     },
   });
@@ -112,7 +111,7 @@ export function useToggleTaskComplete() {
         type: "info",
       });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.add({
         title: "Error",
         description: getErrorMessage(err, "Failed to restore task"),
@@ -121,7 +120,6 @@ export function useToggleTaskComplete() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
       queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
     },
   });

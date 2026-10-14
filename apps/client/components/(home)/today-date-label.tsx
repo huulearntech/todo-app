@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { cn } from "@/lib/utils";
 
 function subscribe() {
   return () => {};
@@ -18,7 +19,7 @@ function getServerSnapshot(): string {
   return "";
 }
 
-export function TodayDateLabel() {
+export function TodayDateLabel({ className }: { className?: string } = {}) {
   const formattedDate = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -26,11 +27,11 @@ export function TodayDateLabel() {
   );
 
   if (!formattedDate) {
-    return <span className="inline-block h-4 w-20 animate-pulse rounded bg-muted/50 align-baseline" />;
+    return <span className={cn("inline-block h-4 w-20 animate-pulse rounded bg-muted/50 align-baseline", className)} />;
   }
 
   return (
-    <span className="text-xs sm:text-sm font-normal text-muted-foreground tracking-normal align-baseline">
+    <span className={cn("text-xs sm:text-sm font-normal text-muted-foreground tracking-normal align-baseline", className)}>
       {formattedDate}
     </span>
   );

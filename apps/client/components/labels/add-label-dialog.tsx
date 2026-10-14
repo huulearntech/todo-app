@@ -89,8 +89,8 @@ export default function AddLabelDialog() {
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Label</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="card-heading">Add New Label</DialogTitle>
+          <DialogDescription className="card-subheading">
             Fill in the details below to create a new task label.
           </DialogDescription>
         </DialogHeader>

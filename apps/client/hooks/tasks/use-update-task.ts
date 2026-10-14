@@ -12,11 +12,12 @@ import type { UpdateTaskOutput } from "@todo/shared/browser";
 
 interface UpdateTaskVariables {
   taskId: string;
-  data: UpdateTaskOutput;
+  data: Partial<UpdateTaskOutput>;
 }
 
 interface UseUpdateTaskOptions {
   onSuccess?: (data: Task) => void;
+  suppressToast?: boolean;
 }
 
 export function useUpdateTask(options?: UseUpdateTaskOptions) {
@@ -74,11 +75,13 @@ export function useUpdateTask(options?: UseUpdateTaskOptions) {
       });
     },
     onSuccess: (data) => {
-      toast.add({
-        title: "Task updated",
-        description: "Task was updated successfully.",
-        type: "success",
-      });
+      if (!options?.suppressToast) {
+        toast.add({
+          title: "Task updated",
+          description: "Task was updated successfully.",
+          type: "success",
+        });
+      }
       options?.onSuccess?.(data);
     },
     onSettled: () => {

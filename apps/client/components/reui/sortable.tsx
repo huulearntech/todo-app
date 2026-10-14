@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import type { CSSProperties, ReactElement, ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import {
   Children,
   cloneElement,
   createContext,
+  Fragment,
   isValidElement,
   useCallback,
   useContext,
@@ -146,6 +147,33 @@ export interface SortableRootProps<T> extends Omit<
   modifiers?: Modifiers
 }
 
+interface SortableChildProps {
+  value?: unknown
+  className?: string
+  children?: ReactNode
+}
+
+function findActiveChild(
+  children: ReactNode,
+  activeId: UniqueIdentifier
+): ReactNode {
+  let result: ReactNode = null
+  Children.forEach(children, (child) => {
+    if (result) return
+    if (!isValidElement<SortableChildProps>(child)) return
+    if (child.props.value === activeId) {
+      result = cloneElement(child, {
+        className: cn(child.props.className, "z-50"),
+      })
+      return
+    }
+    if (child.type === Fragment && child.props.children) {
+      result = findActiveChild(child.props.children, activeId)
+    }
+  })
+  return result
+}
+
 function Sortable<T>({
   value,
   onValueChange,
@@ -260,16 +288,7 @@ function Sortable<T>({
   // Find the active child for the overlay
   const overlayContent = useMemo(() => {
     if (!activeId) return null
-    let result: ReactNode = null
-    Children.forEach(children, (child) => {
-      if (isValidElement(child) && (child.props as any).value === activeId) {
-        result = cloneElement(child as ReactElement<any>, {
-          ...(child.props as any),
-          className: cn((child.props as any).className, "z-50"),
-        })
-      }
-    })
-    return result
+    return findActiveChild(children, activeId)
   }, [activeId, children])
 
   return (

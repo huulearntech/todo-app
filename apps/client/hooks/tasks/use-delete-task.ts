@@ -14,37 +14,29 @@ export function useDeleteTask() {
     mutationFn: (taskId: string) => taskService.deleteTask(taskId),
     onMutate: async (taskId: string) => {
       await queryClient.cancelQueries({ queryKey: taskQueryKeys.all });
-      await queryClient.cancelQueries({ queryKey: taskQueryKeys.completed() });
 
-      const previousTasks = queryClient.getQueriesData<Task[]>({
+      const previousTasks = queryClient.getQueriesData<
+        Array<Task | CompletedOccurrenceResponseDto>
+      >({
         queryKey: taskQueryKeys.all,
       });
-      const previousCompleted = queryClient.getQueryData<CompletedOccurrenceResponseDto[]>(
-        taskQueryKeys.completed(),
+
+      // Optimistically remove from all queries under taskQueryKeys.all (both pending and completed)
+      queryClient.setQueriesData<Array<Task | CompletedOccurrenceResponseDto>>(
+        { queryKey: taskQueryKeys.all },
+        (old) => {
+          if (!old || !Array.isArray(old)) return old;
+          return old.filter((t) => t.id !== taskId);
+        }
       );
 
-      // Optimistically remove from all pending queries
-      queryClient.setQueriesData<Task[]>({ queryKey: taskQueryKeys.all }, (old) => {
-        if (!old || !Array.isArray(old)) return old;
-        return old.filter((t) => t.id !== taskId);
-      });
-
-      // Optimistically remove from completed occurrences query
-      queryClient.setQueryData<CompletedOccurrenceResponseDto[]>(
-        taskQueryKeys.completed(),
-        (old) => old?.filter((o) => o.id !== taskId) ?? [],
-      );
-
-      return { previousTasks, previousCompleted };
+      return { previousTasks };
     },
     onError: (err: unknown, _taskId, context) => {
       if (context?.previousTasks) {
         context.previousTasks.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
-      }
-      if (context?.previousCompleted) {
-        queryClient.setQueryData(taskQueryKeys.completed(), context.previousCompleted);
       }
       toast.add({
         title: "Error",
@@ -61,7 +53,6 @@ export function useDeleteTask() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
       queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
     },
   });

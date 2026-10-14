@@ -4,7 +4,6 @@ that they belong to. That is the context of the lexorank. For example, we even h
 NOTE: (6 Oct 2026): For magic link account verification, can use sse to notify browser about verification even on a different device.
 the problem is, how to know which browser they request verification, and what if there is many browsers that request the thing?
 
-NOTE: (9 Oct 2026): User who not yet verify email still be able to sign in. Prohibit that
-The dnd kanban needs refactoring and stability improvements.
-
 NOTE: (12 Oct 2026): Differentiate default color of items like sections, labels, projects: color being background or foreground, first of all?
+
+NOTE: (13 Oct 2026): The task list that is not kanban need to use "sortable of sortable"

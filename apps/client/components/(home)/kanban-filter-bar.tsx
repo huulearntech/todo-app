@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { FlagIcon, CheckIcon, XIcon } from "lucide-react";
+import { useMemo, ReactNode } from "react";
+import Link from "next/link";
+import { FlagIcon, CheckIcon, XIcon, CheckCircle2Icon, SearchIcon } from "lucide-react";
 import { TaskPriority } from "@todo/shared";
 import {
   Popover,
@@ -9,8 +10,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import TaskSearchBar from "./task-search-bar";
 import {
   LabelsPopover,
   type LabelItem,
@@ -47,6 +49,8 @@ const priorityOptions: Array<{
 ];
 
 export interface KanbanFilterBarProps {
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   totalCount: number;
   filteredCount: number;
   selectedPriorities: TaskPriority[];
@@ -56,9 +60,13 @@ export interface KanbanFilterBarProps {
   availableLabels: LabelItem[];
   onClearFilters: () => void;
   className?: string;
+  completedHref?: string;
+  rightAction?: ReactNode;
 }
 
 export function KanbanFilterBar({
+  searchQuery = "",
+  onSearchChange,
   totalCount,
   filteredCount,
   selectedPriorities,
@@ -68,9 +76,13 @@ export function KanbanFilterBar({
   availableLabels,
   onClearFilters,
   className,
+  completedHref,
+  rightAction,
 }: KanbanFilterBarProps) {
   const isFiltered =
-    selectedPriorities.length > 0 || selectedLabelIds.length > 0;
+    selectedPriorities.length > 0 ||
+    selectedLabelIds.length > 0 ||
+    Boolean(searchQuery.trim());
 
   // Derive selected label items from available labels + selectedLabelIds
   const selectedLabels = useMemo(() => {
@@ -101,7 +113,25 @@ export function KanbanFilterBar({
     >
       {/* Start: Filter controls */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <TaskSearchBar className="w-48 sm:w-56 shrink-0" />
+        {/* In-place search input */}
+        <div className="relative w-48 sm:w-56 shrink-0">
+          <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            placeholder="Search tasks..."
+            className="h-7 text-xs pl-8 pr-7 bg-muted/30 border-border/60 rounded-lg placeholder:text-muted-foreground/70"
+          />
+          {Boolean(searchQuery) && (
+            <button
+              type="button"
+              onClick={() => onSearchChange?.("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded"
+            >
+              <XIcon className="size-3" />
+            </button>
+          )}
+        </div>
 
         {/* Priority Filter Popover */}
         <Popover>
@@ -193,13 +223,38 @@ export function KanbanFilterBar({
         )}
       </div>
 
-      {/* End: Plain unstyled task count */}
-      <div className="text-xs text-muted-foreground font-medium shrink-0 ml-auto">
-        {isFiltered
-          ? `${filteredCount} of ${totalCount} ${
-              totalCount === 1 ? "task" : "tasks"
-            }`
-          : `${totalCount} ${totalCount === 1 ? "task" : "tasks"}`}
+      {/* End: Task count and Completed / Action link */}
+      <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+        <span className="text-xs text-muted-foreground font-medium">
+          {isFiltered
+            ? `${filteredCount} of ${totalCount} ${
+                totalCount === 1 ? "task" : "tasks"
+              }`
+            : `${totalCount} ${totalCount === 1 ? "task" : "tasks"}`}
+        </span>
+
+        {completedHref && (
+          <>
+            <Separator orientation="vertical" />
+            <Button
+              variant="link"
+              size="sm"
+              nativeButton={false}
+              className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground font-medium gap-1.5 no-underline hover:underline cursor-pointer"
+              render={<Link href={completedHref} />}
+            >
+              <CheckCircle2Icon className="size-3.5 text-emerald-500" />
+              <span> View completed tasks</span>
+            </Button>
+          </>
+        )}
+
+        {rightAction && (
+          <>
+            <Separator orientation="vertical" />
+            {rightAction}
+          </>
+        )}
       </div>
     </div>
   );

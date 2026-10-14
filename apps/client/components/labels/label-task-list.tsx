@@ -51,7 +51,7 @@ export default function LabelTaskList({ labelId }: { labelId: string }) {
   return (
     <div className="flex flex-col gap-5 w-full py-2">
       {/* Label Detail Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+      <div className="page-header-row">
         <div className="flex items-center gap-3.5">
           <div
             className={`p-3 rounded-xl shrink-0 border ${labelConfig.badgeBgClass} ${labelConfig.badgeBorderClass} ${labelConfig.badgeTextClass}`}
@@ -60,7 +60,7 @@ export default function LabelTaskList({ labelId }: { labelId: string }) {
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="page-title">
                 {label?.name || "Label Tasks"}
               </h1>
               <Badge
@@ -71,7 +71,7 @@ export default function LabelTaskList({ labelId }: { labelId: string }) {
               </Badge>
             </div>
             {label?.description && (
-              <p className="text-sm text-muted-foreground mt-0.5 font-normal">
+              <p className="page-subtitle">
                 {label.description}
               </p>
             )}
@@ -85,15 +85,15 @@ export default function LabelTaskList({ labelId }: { labelId: string }) {
           <div className="flex size-12 items-center justify-center rounded-full bg-accent/40 mb-3 text-muted-foreground">
             <CheckCircle2Icon className="size-6" />
           </div>
-          <p className="font-semibold text-foreground text-base">
+          <p className="empty-state-title">
             No tasks with this label
           </p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-xs font-normal">
+          <p className="empty-state-description">
             Tasks tagged with "{label.name}" will appear here automatically.
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <div className="list-stack">
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} />
           ))}

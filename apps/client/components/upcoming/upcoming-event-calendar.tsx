@@ -182,55 +182,57 @@ export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
     setSettings((current) => ({ ...current, ...partial }))
 
   return (
-    <Card className="w-full py-0">
-      <CardContent className="p-0">
-        <EventCalendar
-          defaultEvents={calendarEvents}
-          defaultView="week"
-          views={["month", "week", "day"]}
-          apiRef={apiRef}
-          viewSettings={settings.viewSettings}
-          onViewSettingsChange={(viewSettings) => patch({ viewSettings })}
-          interactions={settings.interactions}
-          onInteractionsChange={(interactions) => patch({ interactions })}
-          weekStartsOn={1}
-          interval={settings.interval}
-          snapDuration={settings.snapDuration}
-          eventTooltip={settings.eventTooltip}
-          showDayAddButton={settings.showDayAddButton}
-          offDays
-          className="h-[640px] w-full"
-          onSlotClick={(slot) => {
-            if (apiRef.current) {
-              apiRef.current.setView("day");
-              apiRef.current.goTo(slot.date);
-            }
-          }}
-          onEventClick={(occurence) => {
-            if (!occurence.event.data) {
-              return;
-            }
+    <div className="flex-1 min-h-0 min-w-0 h-full w-full flex flex-col p-2 sm:p-4 md:p-6 overflow-hidden">
+      <Card className="w-full h-full flex-1 min-h-0 flex flex-col py-0 shadow-xs border-border/70 overflow-hidden bg-card">
+        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <EventCalendar
+            defaultEvents={calendarEvents}
+            defaultView="week"
+            views={["month", "week", "day"]}
+            apiRef={apiRef}
+            viewSettings={settings.viewSettings}
+            onViewSettingsChange={(viewSettings) => patch({ viewSettings })}
+            interactions={settings.interactions}
+            onInteractionsChange={(interactions) => patch({ interactions })}
+            weekStartsOn={1}
+            interval={settings.interval}
+            snapDuration={settings.snapDuration}
+            eventTooltip={settings.eventTooltip}
+            showDayAddButton={settings.showDayAddButton}
+            offDays
+            className="flex-1 min-h-0 h-full w-full"
+            onSlotClick={(slot) => {
+              if (apiRef.current) {
+                apiRef.current.setView("day");
+                apiRef.current.goTo(slot.date);
+              }
+            }}
+            onEventClick={(occurence) => {
+              if (!occurence.event.data) {
+                return;
+              }
 
-            setEditTaskDialogOpen(true);
-            setTaskBeingEdited(occurence.event.data);
-          }}
-          onEventUpdate={(update) => {
-            isDragUpdatingRef.current = true;
-            updateEventMutation.mutate(update);
-          }}
-        >
-          <div className="flex flex-wrap items-center gap-2 pe-2">
-            <EventCalendarNav className="min-w-0 flex-1" />
-            <EventCalendarToolbar>
-              <Button size="sm" onClick={handleNewTask}>
-                <PlusIcon className="size-4" aria-hidden="true" />
-                New task
-              </Button>
-            </EventCalendarToolbar>
-          </div>
-          <EventCalendarContent />
-        </EventCalendar>
-      </CardContent>
-    </Card>
+              setEditTaskDialogOpen(true);
+              setTaskBeingEdited(occurence.event.data);
+            }}
+            onEventUpdate={(update) => {
+              isDragUpdatingRef.current = true;
+              updateEventMutation.mutate(update);
+            }}
+          >
+            <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border/60">
+              <EventCalendarNav className="min-w-0 flex-1" />
+              <EventCalendarToolbar>
+                <Button size="sm" onClick={handleNewTask}>
+                  <PlusIcon className="size-4" aria-hidden="true" />
+                  New task
+                </Button>
+              </EventCalendarToolbar>
+            </div>
+            <EventCalendarContent />
+          </EventCalendar>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

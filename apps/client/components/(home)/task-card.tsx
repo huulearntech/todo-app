@@ -94,12 +94,12 @@ function TaskCard({ task }: TaskCardProps) {
     >
       <ItemHeader>
         <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-          <ItemTitle className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+          <ItemTitle className="item-title group-hover:text-primary transition-colors line-clamp-2">
             {task.title}
           </ItemTitle>
 
           {task.description && (
-            <ItemDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            <ItemDescription className="helper-text line-clamp-2 leading-relaxed">
               {task.description}
             </ItemDescription>
           )}
@@ -122,7 +122,7 @@ function TaskCard({ task }: TaskCardProps) {
           {taskDueLocalTime && (
             <div className="flex items-center gap-1 text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-md">
               <CalendarRangeIcon />
-              <span title={taskDueLocalTime} className="text-xs font-medium">
+              <span title={taskDueLocalTime} className="caption-text font-medium">
                 {taskDueLocalTime}
               </span>
             </div>
@@ -149,14 +149,14 @@ function TaskCard({ task }: TaskCardProps) {
           {labels.length > 0 && (
             <div className="flex items-center gap-1 text-muted-foreground px-1.5 py-0.5 rounded-md">
               <TagIcon />
-              <span className="text-xs font-medium">{labels.length}</span>
+              <span className="caption-text font-medium">{labels.length}</span>
             </div>
           )}
         </div>
 
         {task.section?.project?.name && (
           <div className="flex items-center gap-1 text-xs ml-auto shrink-0">
-            <span className="truncate max-w-[80px] font-medium">
+            <span className="caption-text truncate max-w-[80px] font-medium">
               {task.section.project.name}
             </span>
             <HashIcon className="size-3 opacity-60" />

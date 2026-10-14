@@ -1,6 +1,7 @@
 import * as React from "react";
-import Header from "@/components/header";
 import type { Metadata } from "next";
+import { FullSpaceLayout } from "@/components/layout/full-space-layout";
+import InboxHeader from "@/components/inbox/inbox-header";
 
 export const metadata: Metadata = {
   title: "Inbox",
@@ -9,11 +10,8 @@ export const metadata: Metadata = {
 
 export default function InboxLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden">
-      <Header />
-      <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
-        {children}
-      </div>
-    </div>
+    <FullSpaceLayout header={<InboxHeader />}>
+      {children}
+    </FullSpaceLayout>
   );
 }

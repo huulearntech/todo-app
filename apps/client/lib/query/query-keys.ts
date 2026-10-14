@@ -27,7 +27,6 @@ export const taskQueryKeys = {
     ["tasks", "due-today", { status }] as const,
   byLabel: (labelId: string, status: TaskStatusFilter = "pending") =>
     ["tasks", { labelId, status }] as const,
-  completed: () => ["tasks", "completed"] as const,
   search: (query: string) => ["search-tasks", query] as const,
 };
 

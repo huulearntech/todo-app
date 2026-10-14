@@ -9,13 +9,13 @@ import {
 
 export default function LandingHome() {
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20 flex flex-col items-center text-center space-y-16">
+    <div className="w-full flex flex-col items-center text-center space-y-16 py-6 sm:py-12">
       {/* Hero Section */}
       <div className="space-y-6 max-w-2xl">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground text-balance">
+        <h1 className="display-title">
           Organize your work and life, <span className="text-primary">finally.</span>
         </h1>
-        <p className="text-base sm:text-lg text-muted-foreground text-balance leading-relaxed">
+        <p className="body-muted max-w-xl mx-auto text-balance">
           Simplify your day, reduce mental clutter, and achieve peace of mind with a fast, focused task manager designed for clarity.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -28,15 +28,6 @@ export default function LandingHome() {
             <span>Start for free</span>
             <ArrowRightIcon className="size-4" />
           </Button>
-          {/* <Button
-            size="lg"
-            variant="outline"
-            className="w-full sm:w-auto h-11 px-6 rounded-lg font-medium"
-            render={<Link href="/auth/sign-in" />}
-            nativeButton={false}
-          >
-            Sign In
-          </Button> */}
         </div>
       </div>
 
@@ -46,8 +37,8 @@ export default function LandingHome() {
           <div className="size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
             <ZapIcon className="size-4.5" />
           </div>
-          <h2 className="text-base font-semibold text-foreground">Clear your mind</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          <h2 className="card-heading">Clear your mind</h2>
+          <p className="helper-text leading-relaxed">
             Capture thoughts and tasks the moment they occur so you never lose track of important commitments.
           </p>
         </div>
@@ -56,8 +47,8 @@ export default function LandingHome() {
           <div className="size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
             <LayersIcon className="size-4.5" />
           </div>
-          <h2 className="text-base font-semibold text-foreground">Focus on what matters</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          <h2 className="card-heading">Focus on what matters</h2>
+          <p className="helper-text leading-relaxed">
             Organize with Today view, Upcoming horizons, and colour-coded priority flags from P1 to P4.
           </p>
         </div>
@@ -66,8 +57,8 @@ export default function LandingHome() {
           <div className="size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
             <ShieldCheckIcon className="size-4.5" />
           </div>
-          <h2 className="text-base font-semibold text-foreground">Achieve peace of mind</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          <h2 className="card-heading">Achieve peace of mind</h2>
+          <p className="helper-text leading-relaxed">
             Reach inbox zero daily with intuitive task postponement and clean completion workflows.
           </p>
         </div>
@@ -76,16 +67,16 @@ export default function LandingHome() {
       {/* Social Proof Stats Banner */}
       <div className="grid grid-cols-3 gap-4 w-full py-6 px-4 rounded-xl border border-border/40 bg-muted/20 text-center">
         <div>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">30M+</div>
-          <div className="text-[11px] sm:text-xs text-muted-foreground">App Downloads</div>
+          <div className="stat-value">30M+</div>
+          <div className="stat-label">App Downloads</div>
         </div>
         <div>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">2B+</div>
-          <div className="text-[11px] sm:text-xs text-muted-foreground">Tasks Completed</div>
+          <div className="stat-value">2B+</div>
+          <div className="stat-label">Tasks Completed</div>
         </div>
         <div>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">99.9%</div>
-          <div className="text-[11px] sm:text-xs text-muted-foreground">Reliable Uptime</div>
+          <div className="stat-value">99.9%</div>
+          <div className="stat-label">Reliable Uptime</div>
         </div>
       </div>
     </div>

@@ -5,12 +5,13 @@ import { taskService } from "@/services/task.service";
 import { taskQueryKeys } from "@/lib/query/query-keys";
 import type { CompletedOccurrenceResponseDto } from "@todo/shared";
 
-export function useCompletedTasks() {
+export function useProjectCompletedTasks(projectId: string) {
   return useQuery<CompletedOccurrenceResponseDto[]>({
-    queryKey: taskQueryKeys.completed(),
+    queryKey: taskQueryKeys.byProject(projectId, "completed"),
     queryFn: async () => {
-      const result = await taskService.getMyTasks({ status: "completed" });
-      return (result as unknown as CompletedOccurrenceResponseDto[]) ?? [];
+      const result = await taskService.getCompletedOccurrencesByProjectId(projectId);
+      return result ?? [];
     },
+    enabled: Boolean(projectId),
   });
 }

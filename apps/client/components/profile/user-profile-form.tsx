@@ -4,6 +4,7 @@ import * as React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { userService } from "@/services/user.service";
+import Avatar from "@/components/profile/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,11 +17,7 @@ import {
   Card,
   CardContent,
   CardFooter,
-  CardHeader,
-  CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   updateUserSchema,
   type UpdateUserDto,
@@ -28,13 +25,9 @@ import {
 } from "@todo/shared";
 import { toast } from "@/components/ui/toast";
 import {
-  UserIcon,
-  MailIcon,
-  LockIcon,
   Loader2Icon,
   CheckIcon,
   RotateCcwIcon,
-  ShieldCheckIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -111,82 +104,78 @@ export default function UserProfileForm({
         className
       )}
     >
-      <CardHeader className="space-y-1.5 pb-4 border-b border-border/40">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-            <UserIcon className="size-4" />
-          </div>
-          <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-            Personal Details
-          </CardTitle>
-        </div>
-        <CardDescription className="text-xs text-muted-foreground">
-          Update your public display name and view your registered account details.
-        </CardDescription>
-      </CardHeader>
-
       <form id="user-profile-form" onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-5 pt-6">
-          <FieldGroup className="space-y-4">
-            {/* Display Name Field */}
-            <Controller
-              name="name"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="space-y-1.5">
-                  <FieldLabel
-                    htmlFor="name"
-                  // className="text-xs font-semibold text-foreground flex items-center justify-between"
-                  >
-                    <span>Full Name</span>
-                  </FieldLabel>
-                  <div className="relative">
-                    <Input
-                      {...field}
-                      id="name"
-                      size="lg"
-                      placeholder="e.g. Alex Morgan"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-normal">
-                    This is the name visible on your tasks, assigned sections, and projects.
-                  </p>
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+            {/* Avatar: Centered on mobile/narrow, left-aligned on desktop/wide */}
+            <div className="shrink-0 flex justify-center">
+              <Avatar
+                avatarUrl={user.avatarUrl ?? undefined}
+                name={user.name}
+                onAvatarUpdated={(url) => {
+                  onUserUpdated?.({ ...user, avatarUrl: url });
+                }}
+              />
+            </div>
 
-            {/* Email Address Field (Read-only) */}
-            <Field data-disabled className="space-y-1.5">
-              <FieldLabel
-                htmlFor="email"
-                className="text-xs font-semibold text-foreground flex items-center justify-between"
-              >
-                <span>Email Address</span>
-              </FieldLabel>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  size="lg"
-                  value={user.email}
-                  readOnly
-                  disabled
-                  aria-readonly="true"
-                  className="font-mono text-xs cursor-not-allowed opacity-80"
+            {/* Form Fields */}
+            <div className="flex-1 w-full">
+              <FieldGroup className="space-y-4">
+                {/* Display Name Field */}
+                <Controller
+                  name="name"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} className="space-y-1.5">
+                      <FieldLabel
+                        htmlFor="name"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Full Name
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id="name"
+                        placeholder="e.g. Alex Morgan"
+                        disabled={isSubmitting}
+                      />
+                      <p className="text-xs text-muted-foreground leading-normal">
+                        This is your display name visible across projects and tasks.
+                      </p>
+                      {fieldState.error && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
                 />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-normal flex items-center gap-1.5">
-                Email address cannot be changed
-              </p>
-            </Field>
-          </FieldGroup>
+
+                {/* Email Address Field (Read-only) */}
+                <Field data-disabled className="space-y-1.5">
+                  <FieldLabel
+                    htmlFor="email"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Email Address
+                  </FieldLabel>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={user.email}
+                    readOnly
+                    disabled
+                    aria-readonly="true"
+                    className="text-sm cursor-not-allowed opacity-80"
+                  />
+                  <p className="text-xs text-muted-foreground leading-normal">
+                    Email address cannot be changed
+                  </p>
+                </Field>
+              </FieldGroup>
+            </div>
+          </div>
         </CardContent>
 
-        <CardFooter className="justify-end gap-2 pt-2">
+        <CardFooter className="justify-end gap-2 pt-2 border-t border-border/40">
           {isDirty && (
             <Button
               type="button"
@@ -217,7 +206,6 @@ export default function UserProfileForm({
               </>
             )}
           </Button>
-          {/* </div> */}
         </CardFooter>
       </form>
     </Card>

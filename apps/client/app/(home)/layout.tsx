@@ -1,19 +1,14 @@
-import "../globals.css";
 import type { Metadata } from "next";
-import Header from "@/components/header";
+import { StandardPageLayout } from "@/components/layout/standard-page-layout";
 
 export const metadata: Metadata = {
-  title: "Todo App",
   description: "A simple todo app built with Next.js and NestJS.",
 };
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <Header />
-      <main className="flex flex-1 w-full flex-col overflow-auto">
-        {children}
-      </main>
-    </div>
+    <StandardPageLayout>
+      {children}
+    </StandardPageLayout>
   );
 }

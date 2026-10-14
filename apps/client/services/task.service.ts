@@ -35,6 +35,7 @@ export const taskService = {
   async getTasksByProjectId(projectId: string, filter?: Omit<TaskFilterDto, "projectId">) {
     const response = await apiClient.get<Task[]>(`/projects/${projectId}/tasks`, {
       params: filter,
+      paramsSerializer: { indexes: null },
     });
     return response.data;
   },
@@ -47,6 +48,7 @@ export const taskService = {
       `/projects/${projectId}/tasks`,
       {
         params: { ...filter, status: "completed" },
+        paramsSerializer: { indexes: null },
       },
     );
     return response.data;
@@ -69,7 +71,7 @@ export const taskService = {
     return response.data;
   },
 
-  async updateTask(taskId: string, updateTaskDto: UpdateTaskOutput) {
+  async updateTask(taskId: string, updateTaskDto: Partial<UpdateTaskOutput>) {
     const response = await apiClient.patch<Task>(`/tasks/${taskId}`, updateTaskDto);
     return response.data;
   },

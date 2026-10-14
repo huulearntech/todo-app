@@ -2,7 +2,7 @@ import Header from "@/components/header";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Authentication | Todo",
+  title: "Authentication",
   description: "Organize your work and life with Todo. Sign in or create an account to get started.",
 };
 

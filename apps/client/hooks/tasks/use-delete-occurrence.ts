@@ -14,31 +14,35 @@ export function useDeleteOccurrence() {
     mutationFn: (occurrenceId: string) =>
       taskService.deleteOccurrenceById(occurrenceId),
     onMutate: async (occurrenceId: string) => {
-      await queryClient.cancelQueries({ queryKey: taskQueryKeys.completed() });
+      await queryClient.cancelQueries({ queryKey: taskQueryKeys.all });
 
-      const previousOccurrences = queryClient.getQueryData<
+      const previousOccurrences = queryClient.getQueriesData<
         CompletedOccurrenceResponseDto[]
-      >(taskQueryKeys.completed());
+      >({ queryKey: taskQueryKeys.all });
 
-      queryClient.setQueryData<CompletedOccurrenceResponseDto[]>(
-        taskQueryKeys.completed(),
-        (old) => old?.filter((o) => o.occurrenceId !== occurrenceId) ?? [],
+      queryClient.setQueriesData<CompletedOccurrenceResponseDto[]>(
+        { queryKey: taskQueryKeys.all },
+        (old) => {
+          if (!old || !Array.isArray(old)) return old;
+          return old.filter(
+            (o) => !("occurrenceId" in o) || o.occurrenceId !== occurrenceId
+          );
+        }
       );
 
       return { previousOccurrences };
     },
     onError: (err: unknown, _occurrenceId, context) => {
       if (context?.previousOccurrences) {
-        queryClient.setQueryData(
-          taskQueryKeys.completed(),
-          context.previousOccurrences,
-        );
+        context.previousOccurrences.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
       }
       toast.add({
         title: "Error",
         description: getErrorMessage(
           err,
-          "Failed to delete completed occurrence",
+          "Failed to delete completed occurrence"
         ),
         type: "error",
       });
@@ -51,7 +55,7 @@ export function useDeleteOccurrence() {
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: taskQueryKeys.completed() });
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: productivityQueryKeys.all });
     },
   });

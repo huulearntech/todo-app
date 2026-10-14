@@ -6,15 +6,11 @@ export default async function InboxPage() {
 
   if (!user.defaultProjectId) {
     return (
-      <main className="flex-1 min-h-0 min-w-0 h-full flex items-center justify-center p-6 text-sm text-muted-foreground">
+      <div className="flex-1 min-h-0 min-w-0 h-full flex items-center justify-center p-6 text-sm text-muted-foreground">
         No default project found for your inbox.
-      </main>
+      </div>
     );
   }
 
-  return (
-    <main className="flex-1 min-h-0 min-w-0 h-full flex flex-col overflow-hidden">
-      <DndKanban projectId={user.defaultProjectId} />
-    </main>
-  );
+  return <DndKanban projectId={user.defaultProjectId} />;
 }

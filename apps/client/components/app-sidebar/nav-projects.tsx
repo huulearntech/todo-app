@@ -70,7 +70,7 @@ export function NavProjects() {
       <SidebarMenu className="gap-0.5 mt-0.5">
         {projects.map((item) => {
           const projectUrl = `/projects/${item.id}`
-          const isActive = pathname === projectUrl
+          const isActive = pathname === projectUrl || pathname.startsWith(`${projectUrl}/`)
           const config = getColorConfig(item.colorKey)
 
           return (

@@ -96,10 +96,10 @@ export default function EditProjectDialog() {
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeEditProjectDialog()}>
       <DialogContent className="sm:max-w-md rounded-2xl p-6">
         <DialogHeader className="space-y-1 text-left">
-          <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+          <DialogTitle className="card-heading">
             Edit Project
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="card-subheading">
             Update project details, description, or color.
           </DialogDescription>
         </DialogHeader>

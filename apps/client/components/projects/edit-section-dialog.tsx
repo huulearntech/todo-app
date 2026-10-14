@@ -106,10 +106,10 @@ export default function EditSectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-2xl p-6">
         <DialogHeader className="space-y-1 text-left">
-          <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+          <DialogTitle className="card-heading">
             Edit Section
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="card-subheading">
             Update section name, description, or color.
           </DialogDescription>
         </DialogHeader>

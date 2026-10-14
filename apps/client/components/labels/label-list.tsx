@@ -132,7 +132,7 @@ export default function LabelList() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 w-full max-w-2xl">
+      <div className="flex flex-col gap-6 w-full">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-32 rounded-lg" />
           <Skeleton className="h-9 w-28 rounded-lg" />
@@ -148,23 +148,23 @@ export default function LabelList() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-2xl py-2 pb-12">
+    <div className="section-stack w-full">
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
+      <div className="page-header-row">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
             <TagsIcon className="size-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="page-title">
                 Task Labels
               </h1>
               <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
                 {labels.length}
               </Badge>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            <p className="page-subtitle">
               Organize and filter your tasks by custom tags.
             </p>
           </div>
@@ -201,7 +201,7 @@ export default function LabelList() {
           </p>
         </div>
       ) : ( */}
-        <ul className="flex flex-col gap-2.5">
+        <ul className="list-stack">
           {/* {filteredLabels.map((label) => ( */}
           {labels.map((label) => {
             const config = getColorConfig(label.colorKey);
@@ -219,15 +219,15 @@ export default function LabelList() {
                       <TagIcon className="size-4.5" />
                     </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-foreground text-sm tracking-tight truncate group-hover:text-primary transition-colors">
+                    <span className="item-title truncate group-hover:text-primary transition-colors">
                       {label.name}
                     </span>
                     {label.description ? (
-                      <span className="text-xs text-muted-foreground truncate font-normal">
+                      <span className="helper-text truncate">
                         {label.description}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground/50 italic font-normal">
+                      <span className="helper-text text-muted-foreground/50 italic truncate">
                         No description
                       </span>
                     )}

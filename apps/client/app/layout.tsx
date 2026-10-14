@@ -11,7 +11,7 @@ import Script from "next/script";
 
 import { MyStoreProvider } from "@/providers/MyStoreProvider";
 import EditTaskDialog from "@/components/inbox/edit-task-dialog";
-import AddTaskForm from "@/components/(home)/add-task-form";
+import AddTaskDialog from "@/components/(home)/add-task-dialog";
 import { EditProjectProvider } from "@/providers/EditProjectProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 
@@ -69,7 +69,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                       {children}
                       <Toaster />
                       {initialUser && <EditTaskDialog />}
-                      {initialUser && <AddTaskForm />}
+                      {initialUser && <AddTaskDialog />}
 
                     </SidebarProvider>
                   </TooltipProvider>

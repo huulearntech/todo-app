@@ -101,7 +101,7 @@ const AddSectionForm = React.forwardRef<AddSectionFormHandle, AddSectionFormProp
         )}
       >
         <CardHeader className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">
+          <span className="item-title">
             New Section
           </span>
         </CardHeader>

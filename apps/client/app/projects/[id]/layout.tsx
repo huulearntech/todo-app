@@ -26,10 +26,12 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${project.name} | Todo`,
+    title: `${project.name}`,
     description: project.description ?? undefined,
   };
 }
+
+import { FullSpaceLayout } from "@/components/layout/full-space-layout";
 
 export default async function ProjectLayout({
   children,
@@ -45,12 +47,9 @@ export default async function ProjectLayout({
   return (
     <Suspense>
       <ProjectViewProvider>
-        <div className="flex flex-col flex-1 min-h-0 min-w-0 h-full max-h-full overflow-hidden">
-          <ProjectHeader projectName={project.name} />
-          <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
-            {children}
-          </div>
-        </div>
+        <FullSpaceLayout header={<ProjectHeader projectName={project.name} />}>
+          {children}
+        </FullSpaceLayout>
       </ProjectViewProvider>
     </Suspense>
   );

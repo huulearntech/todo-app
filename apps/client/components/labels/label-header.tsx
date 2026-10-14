@@ -69,10 +69,7 @@ export default function LabelHeader() {
       <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b border-border/60 sticky top-0 z-10 bg-card">
         <div className="flex items-center gap-3 min-w-0">
           <SidebarTrigger className="-ml-1 shrink-0" />
-          <Separator
-            orientation="vertical"
-            className="h-4 bg-border/60 shrink-0"
-          />
+          <Separator orientation="vertical" />
           <Breadcrumb className="min-w-0">
             <BreadcrumbList className="flex-nowrap">
               <BreadcrumbItem>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { userService } from "@/services/user.service";
 import { imageUploadService } from "@/services/image-upload.service";
@@ -33,15 +33,17 @@ export default function Avatar({
   onAvatarUpdated,
   className,
 }: AvatarProps) {
+  const [prevAvatarUrl, setPrevAvatarUrl] = useState(avatarUrl);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | undefined>(avatarUrl);
   const [isUploading, setIsUploading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync state if external avatarUrl prop updates
-  useEffect(() => {
+  if (avatarUrl !== prevAvatarUrl) {
+    setPrevAvatarUrl(avatarUrl);
     setCurrentAvatarUrl(avatarUrl);
-  }, [avatarUrl]);
+  }
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -120,9 +122,9 @@ export default function Avatar({
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
                 unoptimized={!currentAvatarUrl?.includes("res.cloudinary.com")}
               />
-              {/* <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                 <CameraIcon className="size-5" />
-              </div> */}
+              </div>
             </div>
             {/* Edit badge */}
             {/* <div className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground shadow-xs ring-2 ring-background transition-transform group-hover:scale-110">
@@ -133,13 +135,13 @@ export default function Avatar({
       />
 
       {/* Upload Dialog */}
-      <DialogContent className="sm:max-w-md rounded-2xl p-6">
+      <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader className="text-center sm:text-left space-y-1">
           <DialogTitle className="text-lg font-semibold tracking-tight">
             Change Profile Picture
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Hover over the image and click to choose a new photo from your device.
+          <DialogDescription className="sr-only">
+            Select an image to update your profile photo.
           </DialogDescription>
         </DialogHeader>
 

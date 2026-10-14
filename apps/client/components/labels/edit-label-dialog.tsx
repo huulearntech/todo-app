@@ -88,8 +88,8 @@ export default function EditLabelDialog({
     }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Label</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="card-heading">Edit Label</DialogTitle>
+          <DialogDescription className="card-subheading">
             Update the name, description, or color of this label.
           </DialogDescription>
         </DialogHeader>

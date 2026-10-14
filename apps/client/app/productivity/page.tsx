@@ -10,19 +10,19 @@ export default function DailyProductivityPage() {
   const userName = user?.name || user?.email?.split("@")[0] || "there";
 
   return (
-    <div className="w-full flex flex-col gap-6 py-2 pb-12">
+    <div className="w-full section-stack">
       {/* Hero Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
+      <div className="page-header-row">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <TrendingUpIcon className="size-5" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="page-title">
               Productivity Overview
             </h1>
           </div>
-          <p className="mt-1 text-sm sm:text-base text-muted-foreground">
+          <p className="page-subtitle">
             Nice work, <span className="font-semibold text-foreground">{userName}</span>! Here is your task activity over the last 7 days.
           </p>
         </div>

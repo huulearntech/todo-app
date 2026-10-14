@@ -102,6 +102,11 @@ export const taskFilterSchema = z.object({
     if (typeof value === 'string') return [value];
     return value;
   }, z.uuid().array()),
+  priorities: z.preprocess((value) => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'string') return [value];
+    return value;
+  }, z.enum(TaskPriority).array()),
 })
   .extend({
     pagination: cursorPaginationSchema

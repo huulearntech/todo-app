@@ -121,7 +121,7 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="page-title">
           Sign In
         </h1>
       </div>

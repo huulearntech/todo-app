@@ -117,12 +117,12 @@ export default function AddProjectDialog({
         />
       )}
 
-      <DialogContent className="sm:max-w-md rounded-2xl p-6">
+      <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader className="space-y-1 text-left">
-          <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+          <DialogTitle className="card-heading">
             New Project
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="card-subheading">
             Create a new project to organize and manage your tasks.
           </DialogDescription>
         </DialogHeader>

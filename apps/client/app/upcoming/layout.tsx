@@ -1,12 +1,15 @@
-import Header from "@/components/header";
+import type { Metadata } from "next";
+import { FullSpaceLayout } from "@/components/layout/full-space-layout";
+
+export const metadata: Metadata = {
+  title: "Upcoming",
+  description: "View upcoming tasks and calendar schedules.",
+};
 
 export default function UpcomingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full w-full flex-1 flex-col items-stretch justify-start">
-      <Header />
-      <main className="flex flex-1 w-full flex-col items-center bg-background text-foreground sm:items-center justify-center p-4">
-        {children}
-      </main>
-    </div>
+    <FullSpaceLayout>
+      {children}
+    </FullSpaceLayout>
   );
 }

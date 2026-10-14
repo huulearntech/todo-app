@@ -314,6 +314,12 @@ export class TaskService {
       });
     }
 
+    if (filter.priorities && filter.priorities.length > 0) {
+      queryBuilder.andWhere('task.priority IN (:...priorities)', {
+        priorities: filter.priorities,
+      });
+    }
+
     if (filter.taskLabelIds && filter.taskLabelIds.length > 0) {
       this.applyLabelFilter(queryBuilder, filter.taskLabelIds);
     }
@@ -457,6 +463,12 @@ export class TaskService {
     if (filter.projectId) {
       queryBuilder.andWhere('project.id = :projectId', {
         projectId: filter.projectId,
+      });
+    }
+
+    if (filter.priorities && filter.priorities.length > 0) {
+      queryBuilder.andWhere('task.priority IN (:...priorities)', {
+        priorities: filter.priorities,
       });
     }
 
