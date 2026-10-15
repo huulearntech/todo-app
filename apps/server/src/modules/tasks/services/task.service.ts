@@ -33,20 +33,9 @@ import { User } from '@/src/modules/users/user.entity';
 import { TaskReminder } from '../entities/task-reminder.entity';
 import { TaskLabel } from '@/src/modules/task-labels/task-label.entity';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
+import { TstzRange } from '../../../common/transformers/tstzrange.transformer';
 
 export const DEFAULT_REMINDER_OFFSET_MINUTES = 30;
-
-interface RawTaskRow {
-  id: string;
-  title: string;
-  description: string;
-  priority: TaskPriority;
-  section_id: string;
-  lexorank: string;
-  created_at: Date;
-  updated_at: Date;
-  completed_at: Date | null;
-}
 
 import { handleDatabaseOrderingError } from '../../../common/utils/database-error.util';
 
@@ -109,41 +98,28 @@ export class TaskService {
     }
 
     try {
-      const { rawTask, savedReminders } = await this.dataSource.transaction(
+      const { savedTask, savedReminders } = await this.dataSource.transaction(
         async (manager) => {
-          const [raw] = await manager.query<[RawTaskRow]>(
-            `
-              SELECT *
-              FROM create_task(
-                $1::uuid,
-                $2::uuid,
-                $3::uuid,
-                $4::text,
-                $5::text,
-                $6::text,
-                $7::timestamptz,
-                $8::timestamptz,
-                $9::uuid[]
-              );
-            `,
-            [
-              ownerId,
-              taskId,
-              createTaskDto.sectionId,
-              createTaskDto.title,
-              createTaskDto.description ?? '',
-              createTaskDto.priority ?? TaskPriority.LOW,
-              timeRangeStart,
-              timeRangeEnd,
-              labelIds,
-            ],
-          );
+          const taskEntity = manager.create(Task, {
+            id: taskId,
+            sectionId: createTaskDto.sectionId,
+            title: createTaskDto.title,
+            description: createTaskDto.description ?? '',
+            priority: createTaskDto.priority ?? TaskPriority.LOW,
+            timeRange:
+              timeRangeStart && timeRangeEnd
+                ? ({ start: timeRangeStart, end: timeRangeEnd } as TstzRange)
+                : null,
+            labels: labelIds?.map((id) => ({ id }) as TaskLabel) ?? [],
+          });
+
+          const created = await manager.save(Task, taskEntity);
 
           const reminders: TaskReminder[] = [];
           if (createTaskDto.reminders && createTaskDto.reminders.length > 0) {
             const remEntities = createTaskDto.reminders.map((remDto) =>
               manager.create(TaskReminder, {
-                taskId: raw.id,
+                taskId: created.id,
                 userId: ownerId,
                 type: remDto.type,
                 minuteOffset:
@@ -155,26 +131,14 @@ export class TaskService {
             reminders.push(...(await manager.save(TaskReminder, remEntities)));
           }
 
-          return { rawTask: raw, savedReminders: reminders };
+          return { savedTask: created, savedReminders: reminders };
         },
       );
 
-      const createdTask = {
-        id: rawTask.id,
-        title: rawTask.title,
-        description: rawTask.description ?? '',
-        priority: rawTask.priority,
-        sectionId: rawTask.section_id,
-        lexorank: rawTask.lexorank,
-        createdAt: rawTask.created_at,
-        updatedAt: rawTask.updated_at,
-        completedAt: rawTask.completed_at,
-        timeRange: createTaskDto.timeRange ?? null,
-        labels: createTaskDto.labels ?? [],
-        recurrence: null,
-        occurrences: [],
-        reminders: savedReminders,
-      } as unknown as Task;
+      savedTask.reminders = savedReminders;
+      savedTask.labels =
+        createTaskDto.labels?.map((l) => ({ id: l.id }) as TaskLabel) ?? [];
+      const createdTask = savedTask;
 
       if (timeRangeStart && savedReminders.length > 0) {
         try {
@@ -662,14 +626,13 @@ export class TaskService {
       if (updatedTask.sectionId && updatedTask.sectionId !== task.sectionId) {
         await manager.query(
           `
-            SELECT move_task(
+            SELECT move_task_lexorank(
               $1::uuid,
               $2::uuid,
-              $3::uuid,
-              $4::uuid
+              $3::uuid
             );
           `,
-          [ownerId, task.id, updatedTask.sectionId, null],
+          [task.id, updatedTask.sectionId, null],
         );
         task.sectionId = updatedTask.sectionId;
       }
@@ -762,17 +725,23 @@ export class TaskService {
     sectionId: string;
     prevId: string | null;
   }): Promise<void> {
+    const task = await this.taskRepository.findOne({
+      where: { id: taskId, section: { project: { ownerId } } },
+    });
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${taskId} not found`);
+    }
+
     try {
       await this.dataSource.query(
         `
-          SELECT move_task(
+          SELECT move_task_lexorank(
             $1::uuid,
             $2::uuid,
-            $3::uuid,
-            $4::uuid
+            $3::uuid
           );
         `,
-        [ownerId, taskId, sectionId, prevId ?? null],
+        [taskId, sectionId, prevId ?? null],
       );
     } catch (error: unknown) {
       handleDatabaseOrderingError(error);

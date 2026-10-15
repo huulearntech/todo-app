@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { authService } from "@/features/auth/services/auth.service";
-import { signUpSchema, type SignUpDto, AUTH_ERROR_CODES } from "@todo/shared";
+import { signUpSchema, AUTH_ERROR_CODES } from "@todo/shared";
 import CheckEmailNotice from "./check-email-notice";
 
 import { Button } from "@/components/ui/button";
@@ -13,34 +14,42 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "@/components/ui/toast";
 import {
   Loader2Icon,
   MailIcon,
-  LockIcon,
   UserIcon,
-  EyeIcon,
-  EyeOffIcon,
 } from "lucide-react";
+
+export const signUpFormSchema = signUpSchema
+  .extend({
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export type SignUpFormData = z.infer<typeof signUpFormSchema>;
 
 export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
     userId: string;
     password?: string;
   } | null>(null);
 
-  const form = useForm<SignUpDto>({
-    resolver: zodResolver(signUpSchema),
+  const form = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpFormSchema),
     defaultValues: {
       email: "",
       name: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
@@ -50,10 +59,14 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
     setPendingVerification(null);
   };
 
-  const onSubmit = async (data: SignUpDto) => {
+  const onSubmit = async (data: SignUpFormData) => {
     try {
       setIsLoading(true);
-      const res = await authService.signUp(data);
+      const res = await authService.signUp({
+        email: data.email,
+        name: data.name,
+        password: data.password,
+      });
       setPendingVerification({
         email: data.email,
         userId: res.user.id,
@@ -200,39 +213,36 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
                 <FieldLabel htmlFor="password" className="text-xs font-semibold text-foreground/90">
                   Password
                 </FieldLabel>
-                <InputGroup
-                  size="lg"
-                  data-invalid={fieldState.invalid}
+                <PasswordInput
+                  {...field}
+                  id="password"
+                  autoComplete="new-password"
+                  dataInvalid={fieldState.invalid}
+                  disabled={isLoading}
+                />
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+
+          <Controller
+            name="confirmPassword"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel
+                  htmlFor="confirmPassword"
+                  className="text-xs font-semibold text-foreground/90"
                 >
-                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                    <LockIcon className="size-4" />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    aria-invalid={fieldState.invalid}
-                    className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    {...field}
-                  />
-                  <InputGroupAddon align="inline-end" className="pr-1.5">
-                    <InputGroupButton
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? (
-                        <EyeOffIcon className="size-3.5" />
-                      ) : (
-                        <EyeIcon className="size-3.5" />
-                      )}
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                  Confirm Password
+                </FieldLabel>
+                <PasswordInput
+                  {...field}
+                  id="confirmPassword"
+                  autoComplete="new-password"
+                  dataInvalid={fieldState.invalid}
+                  disabled={isLoading}
+                />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}

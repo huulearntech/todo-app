@@ -1,14 +1,5 @@
-import {
-  Check,
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../../common/database/base.entity';
 import { Task } from './task.entity';
 import { User } from '../../users/user.entity';
 import { TaskOccurrenceStatus } from '@todo/shared';
@@ -25,10 +16,7 @@ import { TaskOccurrenceStatus } from '@todo/shared';
   unique: true,
   where: "status = 'completed' AND scheduled_date IS NOT NULL",
 })
-export class TaskOccurrence {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class TaskOccurrence extends BaseEntity {
   @Column({ type: 'uuid', name: 'task_id' })
   taskId: string;
 
@@ -65,10 +53,4 @@ export class TaskOccurrence {
     nullable: true,
   })
   completedAt: Date | null;
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt: Date;
 }

@@ -1,17 +1,15 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
   Index,
   ManyToMany,
   JoinTable,
-  CreateDateColumn,
-  UpdateDateColumn,
   OneToMany,
   OneToOne,
 } from 'typeorm';
+import { BaseEntity } from '../../../common/database/base.entity';
 import { TaskLabel } from '../../task-labels/task-label.entity';
 import { Section } from '../../sections/section.entity';
 
@@ -34,19 +32,10 @@ import { TrigramIndex } from '@/src/common/decorators/trigram-index.decorator';
   unique: true,
 })
 @Index('idx_tasks_completed_at', ['completedAt'])
-export class Task {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Task extends BaseEntity {
   @TrigramIndex()
   @Column()
   title: string;
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt: Date;
 
   @Column({
     type: 'timestamptz',
@@ -94,7 +83,7 @@ export class Task {
   labels: TaskLabel[];
 
   // TODO: may factor this out to reuse in sections or other entities.
-  @Column({ type: 'varchar', length: 255, nullable: false })
+  @Column({ type: 'varchar', length: 255, collation: 'C', nullable: false })
   lexorank: string;
 
   @OneToMany(() => TaskOccurrence, (occurrence) => occurrence.task)

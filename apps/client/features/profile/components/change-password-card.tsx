@@ -12,12 +12,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Card,
   CardContent,
@@ -31,9 +26,6 @@ import {
   Loader2Icon,
   CheckIcon,
   RotateCcwIcon,
-  LockIcon,
-  EyeIcon,
-  EyeOffIcon,
   ShieldCheckIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,10 +51,6 @@ const changePasswordFormSchema = z
 type ChangePasswordFormData = z.infer<typeof changePasswordFormSchema>;
 
 export default function ChangePasswordCard({ className }: { className?: string }) {
-  const [showCurrent, setShowCurrent] = React.useState(false);
-  const [showNew, setShowNew] = React.useState(false);
-  const [showConfirm, setShowConfirm] = React.useState(false);
-
   const {
     control,
     handleSubmit,
@@ -140,36 +128,13 @@ export default function ChangePasswordCard({ className }: { className?: string }
                   >
                     Current Password
                   </FieldLabel>
-                  <InputGroup size="lg" data-invalid={fieldState.invalid}>
-                    <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                      <LockIcon className="size-4" />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      {...field}
-                      id="currentPassword"
-                      type={showCurrent ? "text" : "password"}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      disabled={isSubmitting}
-                      className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    />
-                    <InputGroupAddon align="inline-end" className="pr-1.5">
-                      <InputGroupButton
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setShowCurrent((prev) => !prev)}
-                        className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        aria-label={showCurrent ? "Hide password" : "Show password"}
-                      >
-                        {showCurrent ? (
-                          <EyeOffIcon className="size-3.5" />
-                        ) : (
-                          <EyeIcon className="size-3.5" />
-                        )}
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  </InputGroup>
+                  <PasswordInput
+                    {...field}
+                    id="currentPassword"
+                    autoComplete="current-password"
+                    disabled={isSubmitting}
+                    dataInvalid={fieldState.invalid}
+                  />
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
@@ -187,36 +152,13 @@ export default function ChangePasswordCard({ className }: { className?: string }
                   >
                     New Password
                   </FieldLabel>
-                  <InputGroup size="lg" data-invalid={fieldState.invalid}>
-                    <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                      <LockIcon className="size-4" />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      {...field}
-                      id="newPassword"
-                      type={showNew ? "text" : "password"}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    />
-                    <InputGroupAddon align="inline-end" className="pr-1.5">
-                      <InputGroupButton
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setShowNew((prev) => !prev)}
-                        className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        aria-label={showNew ? "Hide password" : "Show password"}
-                      >
-                        {showNew ? (
-                          <EyeOffIcon className="size-3.5" />
-                        ) : (
-                          <EyeIcon className="size-3.5" />
-                        )}
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  </InputGroup>
+                  <PasswordInput
+                    {...field}
+                    id="newPassword"
+                    autoComplete="new-password"
+                    disabled={isSubmitting}
+                    dataInvalid={fieldState.invalid}
+                  />
                   <p className="text-xs text-muted-foreground leading-normal">
                     Must be at least 8 characters long and different from current password.
                   </p>
@@ -237,36 +179,13 @@ export default function ChangePasswordCard({ className }: { className?: string }
                   >
                     Confirm New Password
                   </FieldLabel>
-                  <InputGroup size="lg" data-invalid={fieldState.invalid}>
-                    <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                      <LockIcon className="size-4" />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      {...field}
-                      id="confirmPassword"
-                      type={showConfirm ? "text" : "password"}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    />
-                    <InputGroupAddon align="inline-end" className="pr-1.5">
-                      <InputGroupButton
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setShowConfirm((prev) => !prev)}
-                        className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        aria-label={showConfirm ? "Hide password" : "Show password"}
-                      >
-                        {showConfirm ? (
-                          <EyeOffIcon className="size-3.5" />
-                        ) : (
-                          <EyeIcon className="size-3.5" />
-                        )}
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  </InputGroup>
+                  <PasswordInput
+                    {...field}
+                    id="confirmPassword"
+                    autoComplete="new-password"
+                    disabled={isSubmitting}
+                    dataInvalid={fieldState.invalid}
+                  />
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}

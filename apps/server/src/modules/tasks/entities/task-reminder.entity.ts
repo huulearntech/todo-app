@@ -1,23 +1,12 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../../common/database/base.entity';
 import { Task } from './task.entity';
 import { User } from '../../users/user.entity';
 
 @Entity('task_reminders')
 @Index('idx_task_reminders_task_id', ['taskId'])
 @Index('idx_task_reminders_user_id', ['userId'])
-export class TaskReminder {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class TaskReminder extends BaseEntity {
   @Column({ type: 'uuid', name: 'task_id' })
   taskId: string;
 
@@ -56,10 +45,4 @@ export class TaskReminder {
     default: 'email',
   })
   channel: 'email';
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt: Date;
 }

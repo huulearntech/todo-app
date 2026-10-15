@@ -1,13 +1,12 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
   Index,
   CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
+import { BaseEntity } from '../../../common/database/base.entity';
 import { User } from '../user.entity';
 
 @Entity('user_goals')
@@ -16,10 +15,7 @@ import { User } from '../user.entity';
   unique: true,
   where: 'effective_to IS NULL',
 })
-export class UserGoal {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class UserGoal extends BaseEntity {
   @Column({ type: 'uuid', name: 'user_id' })
   userId: string;
 
@@ -38,10 +34,4 @@ export class UserGoal {
 
   @Column({ type: 'timestamptz', name: 'effective_to', nullable: true })
   effectiveTo: Date | null;
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt: Date;
 }

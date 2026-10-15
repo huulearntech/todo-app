@@ -1,24 +1,19 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   Index,
   JoinColumn,
   ManyToMany,
   ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
+import { BaseEntity } from '../../common/database/base.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { User } from '../users/user.entity';
 import { TrigramIndex } from '@/src/common/decorators/trigram-index.decorator';
 
 @Entity('task_labels')
 @Index(['name', 'ownerId'], { unique: true }) // NOTE: This ensures that a user cannot create two labels with the same name.
-export class TaskLabel {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class TaskLabel extends BaseEntity {
   @TrigramIndex()
   @Column({ type: 'text' })
   name!: string;
@@ -28,12 +23,6 @@ export class TaskLabel {
 
   @ManyToMany(() => Task, (task) => task.labels)
   tasks!: Task[];
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt!: Date;
 
   @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;

@@ -1,25 +1,15 @@
 "use client";
 
 import {
-  type ReactNode,
   useCallback,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { getColorConfig } from "@/lib/color-palette";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import {
-  SearchIcon,
-  TagIcon,
-  HashIcon,
-  CircleIcon,
-  CheckCircle2Icon,
-  LoaderCircleIcon,
-  CornerDownLeftIcon,
-} from "lucide-react";
+import { SearchIcon } from "lucide-react";
 
 import {
   Autocomplete,
@@ -27,28 +17,33 @@ import {
   AutocompleteGroup,
   AutocompleteGroupLabel,
   AutocompleteInput,
-  AutocompleteItem,
   AutocompleteList,
   AutocompleteSeparator,
-  AutocompleteStatus,
 } from "@/components/reui/autocomplete";
 
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-
-import {
-  type SearchProjectResultDto,
-  type SearchLabelResultDto,
-  type SearchTaskResultDto,
-  TaskPriority,
-} from "@todo/shared";
-import { useGlobalSearch } from "@/features/search/hooks/use-global-search";
-import { cn } from "@/lib/utils";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
 
-export type SearchTaskItem = { itemType: "task" } & SearchTaskResultDto;
-export type SearchProjectItem = { itemType: "project" } & SearchProjectResultDto;
-export type SearchLabelItem = { itemType: "label" } & SearchLabelResultDto;
+import { useGlobalSearch } from "@/features/search/hooks/use-global-search";
+
+import {
+  SearchTaskItem,
+  type SearchTaskItemData,
+} from "./search-task-item";
+import {
+  SearchProjectItem,
+  type SearchProjectItemData,
+} from "./search-project-item";
+import {
+  SearchLabelItem,
+  type SearchLabelItemData,
+} from "./search-label-item";
+import { SearchStatus } from "./search-status";
+
+export type SearchTaskItem = SearchTaskItemData;
+export type SearchProjectItem = SearchProjectItemData;
+export type SearchLabelItem = SearchLabelItemData;
 export type SearchItem = SearchTaskItem | SearchProjectItem | SearchLabelItem;
 
 export default function GlobalSearchBar() {
@@ -58,7 +53,9 @@ export default function GlobalSearchBar() {
   const [debouncedSearchValue] = useDebouncedValue(searchValue, { wait: 300 });
 
   // Global keyboard shortcuts via TanStack Hotkeys
-  useHotkey("/", () => { inputRef.current?.focus(); });
+  useHotkey("/", () => {
+    inputRef.current?.focus();
+  });
 
   const trimmedQuery = debouncedSearchValue.trim();
 
@@ -69,7 +66,7 @@ export default function GlobalSearchBar() {
     error,
   } = useGlobalSearch(trimmedQuery);
 
-  const tasks: SearchTaskItem[] = useMemo(
+  const tasks: SearchTaskItemData[] = useMemo(
     () =>
       searchResults?.tasks.map((t) => ({
         itemType: "task" as const,
@@ -78,7 +75,7 @@ export default function GlobalSearchBar() {
     [searchResults?.tasks]
   );
 
-  const projects: SearchProjectItem[] = useMemo(
+  const projects: SearchProjectItemData[] = useMemo(
     () =>
       searchResults?.projects.map((p) => ({
         itemType: "project" as const,
@@ -87,7 +84,7 @@ export default function GlobalSearchBar() {
     [searchResults?.projects]
   );
 
-  const labels: SearchLabelItem[] = useMemo(
+  const labels: SearchLabelItemData[] = useMemo(
     () =>
       searchResults?.labels.map((l) => ({
         itemType: "label" as const,
@@ -102,40 +99,6 @@ export default function GlobalSearchBar() {
   );
 
   const totalResults = allItems.length;
-
-  let status: ReactNode = "";
-  if (isPending || isFetching) {
-    status = (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <LoaderCircleIcon className="size-3.5 animate-spin" />
-        <span>Searching tasks, projects, labels...</span>
-      </div>
-    );
-  } else if (error) {
-    status = (
-      <span className="text-xs text-destructive">
-        {error.message || "Failed to search"}
-      </span>
-    );
-  } else if (trimmedQuery && totalResults === 0) {
-    status = (
-      <div className="py-2 text-center text-xs text-muted-foreground">
-        No matches found for &ldquo;<span className="font-medium text-foreground">{trimmedQuery}</span>&rdquo;
-      </div>
-    );
-  } else if (totalResults > 0) {
-    status = (
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {totalResults} result{totalResults === 1 ? "" : "s"} found
-        </span>
-        <span className="flex items-center gap-1 text-[11px] opacity-70">
-          <CornerDownLeftIcon className="size-3" /> to navigate
-        </span>
-      </div>
-    );
-  }
-
   const shouldRenderPopup = searchValue.trim().length > 0;
 
   const handleSelectItem = useCallback(
@@ -196,11 +159,13 @@ export default function GlobalSearchBar() {
             sideOffset={6}
             className="w-(--anchor-width) min-w-[320px] max-w-[460px] rounded-xl border border-border/80 bg-popover/95 p-1 shadow-xl backdrop-blur-md"
           >
-            {status && (
-              <AutocompleteStatus className="px-3 py-1.5 border-b border-border/40">
-                {status}
-              </AutocompleteStatus>
-            )}
+            <SearchStatus
+              isPending={isPending}
+              isFetching={isFetching}
+              error={error}
+              query={trimmedQuery}
+              totalResults={totalResults}
+            />
 
             <AutocompleteList scrollAreaClassName="max-h-[360px]">
               {/* Tasks Group */}
@@ -213,59 +178,13 @@ export default function GlobalSearchBar() {
                     </span>
                   </AutocompleteGroupLabel>
 
-                  {tasks.map((task) => {
-                    const isCompleted = Boolean(task.completedAt);
-                    const priorityColor =
-                      task.priority === TaskPriority.HIGH
-                        ? "text-red-500"
-                        : task.priority === TaskPriority.MEDIUM
-                        ? "text-orange-500"
-                        : task.priority === TaskPriority.LOW
-                        ? "text-blue-500"
-                        : "text-muted-foreground/50";
-
-                    return (
-                      <AutocompleteItem
-                        key={`task-${task.id}`}
-                        value={task}
-                        onClick={() => handleSelectItem(task)}
-                        className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {isCompleted ? (
-                            <CheckCircle2Icon className="size-4 shrink-0 text-emerald-500" />
-                          ) : (
-                            <CircleIcon
-                              className={cn(
-                                "size-3.5 shrink-0 transition-transform group-hover:scale-110",
-                                priorityColor
-                              )}
-                            />
-                          )}
-                          <span
-                            className={cn(
-                              "truncate text-sm font-medium",
-                              isCompleted &&
-                                "line-through text-muted-foreground"
-                            )}
-                          >
-                            {task.title}
-                          </span>
-                        </div>
-
-                        {task.projectName && (
-                          <div className="flex items-center gap-1.5 shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground bg-muted/60">
-                            <span
-                              className={`size-2 rounded-full shrink-0 ${getColorConfig(task.projectColorKey).dotClass}`}
-                            />
-                            <span className="max-w-[100px] truncate">
-                              {task.projectName}
-                            </span>
-                          </div>
-                        )}
-                      </AutocompleteItem>
-                    );
-                  })}
+                  {tasks.map((task) => (
+                    <SearchTaskItem
+                      key={`task-${task.id}`}
+                      task={task}
+                      onSelect={handleSelectItem}
+                    />
+                  ))}
                 </AutocompleteGroup>
               )}
 
@@ -281,29 +200,13 @@ export default function GlobalSearchBar() {
                       </span>
                     </AutocompleteGroupLabel>
 
-                    {projects.map((project) => {
-                      const projectConfig = getColorConfig(project.colorKey);
-                      return (
-                        <AutocompleteItem
-                          key={`project-${project.id}`}
-                          value={project}
-                          onClick={() => handleSelectItem(project)}
-                          className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <HashIcon
-                              className={`size-4 shrink-0 ${projectConfig.badgeTextClass}`}
-                            />
-                            <span className="truncate text-sm font-medium">
-                              {project.name}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-muted-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                            Project
-                          </span>
-                        </AutocompleteItem>
-                      );
-                    })}
+                    {projects.map((project) => (
+                      <SearchProjectItem
+                        key={`project-${project.id}`}
+                        project={project}
+                        onSelect={handleSelectItem}
+                      />
+                    ))}
                   </AutocompleteGroup>
                 </>
               )}
@@ -322,29 +225,13 @@ export default function GlobalSearchBar() {
                       </span>
                     </AutocompleteGroupLabel>
 
-                    {labels.map((label) => {
-                      const labelConfig = getColorConfig(label.colorKey);
-                      return (
-                        <AutocompleteItem
-                          key={`label-${label.id}`}
-                          value={label}
-                          onClick={() => handleSelectItem(label)}
-                          className="group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-accent/60 transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <TagIcon
-                              className={`size-3.5 shrink-0 ${labelConfig.badgeTextClass}`}
-                            />
-                            <span className="truncate text-sm font-medium">
-                              {label.name}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-muted-foreground/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                            Label
-                          </span>
-                        </AutocompleteItem>
-                      );
-                    })}
+                    {labels.map((label) => (
+                      <SearchLabelItem
+                        key={`label-${label.id}`}
+                        label={label}
+                        onSelect={handleSelectItem}
+                      />
+                    ))}
                   </AutocompleteGroup>
                 </>
               )}

@@ -25,39 +25,16 @@ export class SectionService {
     const sectionId = randomUUID();
 
     try {
-      const [raw] = await this.sectionRepository.query(
-        `
-          SELECT *
-          FROM create_section(
-            $1::uuid,
-            $2::uuid,
-            $3::uuid,
-            $4::text,
-            $5::text,
-            $6::text
-          );
-        `,
-        [
-          ownerId,
-          sectionId,
-          projectId,
-          name,
-          description ?? '',
-          colorKey ? colorKey.toLowerCase().trim() : null,
-        ],
-      );
-
-      return this.sectionRepository.create({
-        id: raw.id,
-        projectId: raw.project_id ?? raw.projectId,
-        ownerId: raw.owner_id ?? raw.ownerId,
-        name: raw.name,
-        description: raw.description,
-        colorKey: raw.color_key ?? raw.colorKey,
-        lexorank: raw.lexorank,
-        createdAt: raw.created_at ?? raw.createdAt,
-        updatedAt: raw.updated_at ?? raw.updatedAt,
+      const section = this.sectionRepository.create({
+        id: sectionId,
+        projectId,
+        ownerId,
+        name,
+        description: description ?? '',
+        colorKey: colorKey ? colorKey.toLowerCase().trim() : null,
       });
+
+      return await this.sectionRepository.save(section);
     } catch (error: unknown) {
       handleDatabaseOrderingError(error);
     }
@@ -127,16 +104,22 @@ export class SectionService {
     id: string;
     prevId: string | null;
   }): Promise<void> {
+    const section = await this.sectionRepository.findOne({
+      where: { id, project: { ownerId } },
+    });
+    if (!section) {
+      throw new NotFoundException('Section not found');
+    }
+
     try {
       await this.sectionRepository.query(
         `
-          SELECT move_section(
+          SELECT move_section_lexorank(
             $1::uuid,
-            $2::uuid,
-            $3::uuid
+            $2::uuid
           );
         `,
-        [ownerId, id, prevId ?? null],
+        [id, prevId ?? null],
       );
     } catch (error: unknown) {
       handleDatabaseOrderingError(error);

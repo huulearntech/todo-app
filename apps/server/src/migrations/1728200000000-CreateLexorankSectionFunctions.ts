@@ -4,6 +4,14 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
   name = 'CreateLexorankSectionFunctions1728200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // 0. Drop obsolete legacy functions if they exist
+    await queryRunner.query(
+      'DROP FUNCTION IF EXISTS create_section(uuid, uuid, uuid, text, text, text);',
+    );
+    await queryRunner.query(
+      'DROP FUNCTION IF EXISTS move_section(uuid, uuid, uuid);',
+    );
+
     // 1. Rebalance/normalize any sections with ties or missing ranks so unique constraint will succeed
     await queryRunner.query(`
       DO $$
@@ -124,39 +132,16 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
       $$;
     `);
 
-    // 5. Create create_section function
+    // 5. Create next_section_lexorank function
     await queryRunner.query(`
-      CREATE OR REPLACE FUNCTION create_section(
-          p_owner_id uuid,
-          p_section_id uuid,
-          p_project_id uuid,
-          p_name text,
-          p_description text DEFAULT '',
-          p_color_key text DEFAULT NULL
-      )
-      RETURNS sections
+      CREATE OR REPLACE FUNCTION next_section_lexorank(p_project_id uuid)
+      RETURNS text
       LANGUAGE plpgsql
       AS $$
       DECLARE
           v_last_rank text;
-          v_new_rank text;
-          v_section sections;
       BEGIN
-          IF NOT EXISTS (
-              SELECT 1
-              FROM projects p
-              WHERE p.id = p_project_id
-                AND p.owner_id = p_owner_id
-          ) THEN
-              RAISE EXCEPTION
-                  'Project % does not exist or does not belong to the user',
-                  p_project_id
-                  USING ERRCODE = 'P0002';
-          END IF;
-
-          PERFORM pg_advisory_xact_lock(
-              project_lock_key(p_project_id)
-          );
+          PERFORM pg_advisory_xact_lock(project_lock_key(p_project_id));
 
           SELECT s.lexorank
           INTO v_last_rank
@@ -166,55 +151,29 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
           LIMIT 1;
 
           IF v_last_rank IS NULL THEN
-              v_new_rank := 'm';
+              RETURN 'm';
           ELSE
               BEGIN
-                  v_new_rank := lexorank_between(
-                      v_last_rank,
-                      NULL
-                  );
+                  RETURN lexorank_between(v_last_rank, NULL);
               EXCEPTION WHEN SQLSTATE 'P0001' THEN
                   PERFORM rebalance_project_sections(p_project_id);
                   SELECT s.lexorank INTO v_last_rank
                   FROM sections s WHERE s.project_id = p_project_id
                   ORDER BY s.lexorank COLLATE "C" DESC LIMIT 1;
-                  v_new_rank := lexorank_between(v_last_rank, NULL);
+                  RETURN lexorank_between(v_last_rank, NULL);
               END;
           END IF;
-
-          INSERT INTO sections (
-              id,
-              project_id,
-              owner_id,
-              name,
-              description,
-              color_key,
-              lexorank
-          )
-          VALUES (
-              p_section_id,
-              p_project_id,
-              p_owner_id,
-              p_name,
-              COALESCE(p_description, ''),
-              p_color_key,
-              v_new_rank
-          )
-          RETURNING * INTO v_section;
-
-          RETURN v_section;
       END;
       $$;
     `);
 
-    // 6. Create move_section function
+    // 6. Create move_section_lexorank function
     await queryRunner.query(`
-      CREATE OR REPLACE FUNCTION move_section(
-          p_owner_id uuid,
+      CREATE OR REPLACE FUNCTION move_section_lexorank(
           p_section_id uuid,
           p_previous_section_id uuid DEFAULT NULL
       )
-      RETURNS sections
+      RETURNS text
       LANGUAGE plpgsql
       AS $$
       DECLARE
@@ -227,14 +186,11 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
           SELECT s.*
           INTO v_section
           FROM sections s
-          JOIN projects p
-            ON p.id = s.project_id
-          WHERE s.id = p_section_id
-            AND p.owner_id = p_owner_id;
+          WHERE s.id = p_section_id;
 
           IF NOT FOUND THEN
               RAISE EXCEPTION
-                  'Section % does not exist or does not belong to the user',
+                  'Section % does not exist',
                   p_section_id
                   USING ERRCODE = 'P0002';
           END IF;
@@ -328,28 +284,54 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
 
           UPDATE sections
           SET lexorank = v_rank
-          WHERE id = p_section_id
-          RETURNING * INTO v_section;
+          WHERE id = p_section_id;
 
-          RETURN v_section;
+          RETURN v_rank;
       END;
       $$;
+    `);
+
+    // 7. Create BEFORE INSERT trigger on sections
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION trg_set_section_lexorank()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+          IF NEW.lexorank IS NULL OR NEW.lexorank = '' THEN
+              NEW.lexorank := next_section_lexorank(NEW.project_id);
+          END IF;
+          RETURN NEW;
+      END;
+      $$;
+
+      DROP TRIGGER IF EXISTS trg_section_before_insert ON sections;
+      CREATE TRIGGER trg_section_before_insert
+      BEFORE INSERT ON sections
+      FOR EACH ROW
+      EXECUTE FUNCTION trg_set_section_lexorank();
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DROP FUNCTION IF EXISTS move_section(uuid, uuid, uuid);`,
+      'DROP TRIGGER IF EXISTS trg_section_before_insert ON sections;',
     );
     await queryRunner.query(
-      `DROP FUNCTION IF EXISTS create_section(uuid, uuid, uuid, text, text, text);`,
+      'DROP FUNCTION IF EXISTS trg_set_section_lexorank();',
     );
     await queryRunner.query(
-      `DROP FUNCTION IF EXISTS rebalance_project_sections(uuid);`,
+      'DROP FUNCTION IF EXISTS move_section_lexorank(uuid, uuid);',
     );
-    await queryRunner.query(`DROP FUNCTION IF EXISTS project_lock_key(uuid);`);
     await queryRunner.query(
-      `DROP INDEX IF EXISTS sections_project_lexorank_uq;`,
+      'DROP FUNCTION IF EXISTS next_section_lexorank(uuid);',
+    );
+    await queryRunner.query(
+      'DROP FUNCTION IF EXISTS rebalance_project_sections(uuid);',
+    );
+    await queryRunner.query('DROP FUNCTION IF EXISTS project_lock_key(uuid);');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS sections_project_lexorank_uq;',
     );
   }
 }

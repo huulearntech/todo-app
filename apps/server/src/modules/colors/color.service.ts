@@ -1,8 +1,9 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { PALETTE_COLORS, type PaletteColor, type ColorResponseDto } from '@todo/shared';
+  PALETTE_COLORS,
+  type PaletteColor,
+  type ColorResponseDto,
+} from '@todo/shared';
 
 export type StaticColor = ColorResponseDto;
 

@@ -1,14 +1,6 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  ManyToOne,
-  JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 
+import { BaseEntity } from '../../common/database/base.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
@@ -18,10 +10,7 @@ import { UserGoal } from './entities/user-goal.entity';
 import { Section } from '../sections/section.entity';
 
 @Entity('users')
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class User extends BaseEntity {
   @Column({
     unique: true,
     transformer: {
@@ -36,12 +25,6 @@ export class User {
 
   @Column({ name: 'password_hashed' })
   passwordHashed: string;
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt: Date;
 
   @Column({ type: 'text', name: 'avatar_url', nullable: true })
   avatarUrl?: string | null;
@@ -77,10 +60,12 @@ export class User {
   @OneToMany(() => MagicLinkToken, (magicLinkToken) => magicLinkToken.user)
   magicLinkTokens: MagicLinkToken[];
 
-  @OneToMany(() => PasswordResetToken, (passwordResetToken) => passwordResetToken.user)
+  @OneToMany(
+    () => PasswordResetToken,
+    (passwordResetToken) => passwordResetToken.user,
+  )
   passwordResetTokens?: PasswordResetToken[];
 
   @OneToMany(() => UserGoal, (userGoal) => userGoal.user, { cascade: true })
   goals?: UserGoal[];
 }
-

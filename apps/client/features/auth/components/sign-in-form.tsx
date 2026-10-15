@@ -14,16 +14,14 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "@/components/ui/toast";
 import {
   Loader2Icon,
   MailIcon,
   LockIcon,
-  EyeIcon,
-  EyeOffIcon,
 } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/safe-redirect";
 
@@ -32,7 +30,6 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
   const searchParams = useSearchParams();
   const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
 
@@ -174,39 +171,13 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
                     Forgot password?
                   </Link>
                 </div>
-                <InputGroup
-                  size="lg"
-                  data-invalid={fieldState.invalid}
-                >
-                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                    <LockIcon className="size-4" />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    aria-invalid={fieldState.invalid}
-                    className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    {...field}
-                  />
-                  <InputGroupAddon align="inline-end" className="pr-1.5">
-                    <InputGroupButton
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? (
-                        <EyeOffIcon className="size-3.5" />
-                      ) : (
-                        <EyeIcon className="size-3.5" />
-                      )}
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                <PasswordInput
+                  {...field}
+                  id="password"
+                  autoComplete="current-password"
+                  dataInvalid={fieldState.invalid}
+                  disabled={isLoading}
+                />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}

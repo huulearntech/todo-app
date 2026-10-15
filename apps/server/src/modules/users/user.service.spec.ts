@@ -53,9 +53,7 @@ describe('UserService', () => {
     };
 
     dataSource = {
-      transaction: jest
-        .fn()
-        .mockImplementation((cb) => cb(mockEntityManager)),
+      transaction: jest.fn().mockImplementation((cb) => cb(mockEntityManager)),
     } as unknown as jest.Mocked<DataSource>;
 
     const module: TestingModule = await Test.createTestingModule({

@@ -1,23 +1,19 @@
-"use client"
+"use client";
 
-import { useState, useSyncExternalStore } from "react"
-import Link from "next/link"
+import { useState } from "react";
+import Link from "next/link";
 import {
   User2Icon,
   ChevronsUpDownIcon,
   LogOutIcon,
   TargetIcon,
-  SunIcon,
-  MoonIcon,
-  LaptopIcon,
-  CheckIcon,
-} from "lucide-react"
+} from "lucide-react";
 
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@/components/ui/avatar"
+} from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,41 +21,37 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { useAuth } from "@/providers/AuthProvider"
-import { useTheme } from "next-themes"
-import { Skeleton } from "@/components/ui/skeleton"
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/providers/AuthProvider";
+import { Skeleton } from "@/components/ui/skeleton";
+import { NavUserThemeSubmenu } from "./nav-user-theme-submenu";
+import { SignOutAlertDialog } from "./sign-out-alert-dialog";
+
+function getInitials(name?: string | null, email?: string | null) {
+  if (name && name.trim().length > 0) {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email && email.length > 0) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return "U";
+}
 
 export function NavUser() {
-  const { isMobile } = useSidebar()
-  const { user, isLoading, signOut } = useAuth()
-  const { theme, resolvedTheme, setTheme } = useTheme()
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  )
-  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+  const { isMobile } = useSidebar();
+  const { user, isLoading, signOut } = useAuth();
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -70,28 +62,14 @@ export function NavUser() {
           <Skeleton className="h-2.5 w-28 rounded" />
         </div>
       </div>
-    )
+    );
   }
 
   if (!user) {
-    return null
+    return null;
   }
 
-  const getInitials = (name?: string | null, email?: string | null) => {
-    if (name && name.trim().length > 0) {
-      const parts = name.trim().split(" ")
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-      }
-      return name.slice(0, 2).toUpperCase()
-    }
-    if (email && email.length > 0) {
-      return email.slice(0, 2).toUpperCase()
-    }
-    return "U"
-  }
-
-  const initials = getInitials(user.name, user.email)
+  const initials = getInitials(user.name, user.email);
 
   return (
     <>
@@ -152,54 +130,7 @@ export function NavUser() {
                   <TargetIcon className="size-4 text-muted-foreground" />
                   <span>Productivity</span>
                 </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="rounded-lg gap-2 cursor-pointer">
-                    {mounted && resolvedTheme === "dark" ? (
-                      <MoonIcon className="size-4 text-muted-foreground" />
-                    ) : (
-                      <SunIcon className="size-4 text-muted-foreground" />
-                    )}
-                    <span>Theme</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="min-w-36 rounded-xl p-1 shadow-md border-border/60">
-                    <DropdownMenuItem
-                      onClick={() => setTheme("light")}
-                      className="flex items-center justify-between gap-2 rounded-lg cursor-pointer text-xs px-2.5 py-1.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <SunIcon className="size-3.5 text-muted-foreground" />
-                        <span>Light</span>
-                      </div>
-                      {mounted && theme === "light" && (
-                        <CheckIcon className="size-3.5 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setTheme("dark")}
-                      className="flex items-center justify-between gap-2 rounded-lg cursor-pointer text-xs px-2.5 py-1.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <MoonIcon className="size-3.5 text-muted-foreground" />
-                        <span>Dark</span>
-                      </div>
-                      {mounted && theme === "dark" && (
-                        <CheckIcon className="size-3.5 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setTheme("system")}
-                      className="flex items-center justify-between gap-2 rounded-lg cursor-pointer text-xs px-2.5 py-1.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <LaptopIcon className="size-3.5 text-muted-foreground" />
-                        <span>System</span>
-                      </div>
-                      {mounted && theme === "system" && (
-                        <CheckIcon className="size-3.5 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                <NavUserThemeSubmenu />
               </DropdownMenuGroup>
               <DropdownMenuSeparator className="my-1 bg-border/50" />
               <DropdownMenuItem
@@ -215,26 +146,11 @@ export function NavUser() {
         </SidebarMenuItem>
       </SidebarMenu>
 
-      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Sign Out</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to sign out of your account? You will need to sign in again to access your tasks and projects.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => signOut()}
-              className="rounded-lg"
-            >
-              Sign Out
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SignOutAlertDialog
+        open={showSignOutDialog}
+        onOpenChange={setShowSignOutDialog}
+        onConfirmSignOut={signOut}
+      />
     </>
-  )
+  );
 }

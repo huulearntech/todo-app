@@ -1,0 +1,97 @@
+"use client";
+
+import type { LucideIcon } from "lucide-react";
+import { CheckCircle2Icon } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CircularProgressIndicator } from "@/features/productivity/components/circular-progress-indicator";
+
+export interface GoalMetricCardProps {
+  title: string;
+  backgroundIcon: LucideIcon;
+  completed: number;
+  target: number;
+  ratio: number;
+  isAchieved: boolean;
+  achievedBadgeText: string;
+  achievedBadgeIcon: LucideIcon;
+  achievedDescription: string;
+  unachievedDescription: string;
+}
+
+export function GoalMetricCard({
+  title,
+  backgroundIcon: BackgroundIcon,
+  completed,
+  target,
+  ratio,
+  isAchieved,
+  achievedBadgeText,
+  achievedBadgeIcon: AchievedBadgeIcon,
+  achievedDescription,
+  unachievedDescription,
+}: GoalMetricCardProps) {
+  const remaining = Math.max(0, target - completed);
+
+  return (
+    <Card className="rounded-2xl border-border/60 bg-card/60 backdrop-blur-sm relative overflow-hidden transition-all hover:border-border">
+      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+        <BackgroundIcon className="size-24 text-primary" />
+      </div>
+
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {title}
+          </CardTitle>
+          {isAchieved ? (
+            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1 text-xs">
+              <AchievedBadgeIcon className="size-3" />
+              {achievedBadgeText}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-xs">
+              {remaining} {remaining === 1 ? "task" : "tasks"} left
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="flex items-center gap-5">
+          <CircularProgressIndicator
+            size={68}
+            strokeWidth={6}
+            progress={ratio}
+            fillColor={isAchieved ? "stroke-emerald-500" : "stroke-primary"}
+            icon={
+              isAchieved ? (
+                <CheckCircle2Icon className="size-6 text-emerald-500" />
+              ) : (
+                <span className="text-xs font-bold text-foreground">
+                  {Math.round(ratio * 100)}%
+                </span>
+              )
+            }
+          />
+
+          <div className="flex flex-col">
+            <div className="flex items-baseline gap-1.5">
+              <span className="stat-value">{completed}</span>
+              <span className="stat-label">/ {target} tasks</span>
+            </div>
+            <CardDescription className="card-subheading mt-0.5">
+              {isAchieved ? achievedDescription : unachievedDescription}
+            </CardDescription>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

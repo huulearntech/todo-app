@@ -1,5 +1,3 @@
-// TODO: on creating task with no section, consider make task be able to have no section (!?)
-
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -12,108 +10,23 @@ import {
   EventCalendarNav,
   EventCalendarToolbar,
 } from "@/components/reui/event-calendar/event-calendar-nav"
-import type {
-  CalendarEvent,
-  EventCalendarInteractions,
-  EventCalendarProposedUpdate,
-  EventCalendarRecurrenceRule,
-  EventCalendarViewSettings,
-  EventCalendarWeekday,
-} from "@/components/reui/event-calendar/event-calendar-types"
-import { addDays, startOfDay } from "date-fns"
-
+import {
+  mapTaskToCalendarEvent,
+  DEFAULT_CALENDAR_SETTINGS,
+  type CalendarSettings,
+} from "../utils/calendar-event-mapper"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { PlusIcon } from 'lucide-react'
+import { PlusIcon } from "lucide-react"
 import { useProjectTasks, EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks"
 import { useSections } from "@/features/projects/hooks/use-sections"
-import type { SectionResponseDto } from "@todo/shared"
-
-const EMPTY_SECTIONS: SectionResponseDto[] = [];
+import type { SectionResponseDto, TaskResponseDto as Task } from "@todo/shared"
 import { useCreateSection } from "@/features/projects/hooks/use-create-section"
 import { useUpdateCalendarEvent } from "@/features/tasks/hooks/use-update-calendar-event"
 import { toast } from "@/components/ui/toast"
 import { useAddTaskDialogStore, useEditTaskDialogStore } from "@/providers/MyStoreProvider"
-import { TaskResponseDto as Task } from "@todo/shared"
 
-import { TaskPriority } from "@todo/shared";
-
-const taskPriorityColorMap: Record<TaskPriority, string> = {
-  high: "var(--color-red-500)",
-  medium: "var(--color-amber-500)",
-  low: "var(--color-blue-500)",
-}
-
-function mapTaskToCalendarEvent(task: Task): CalendarEvent<Task> {
-  const fallbackDate = startOfDay(new Date());
-  const start = task.timeRange ? new Date(task.timeRange.start) : fallbackDate;
-  const end = task.timeRange ? new Date(task.timeRange.end) : addDays(start, 1);
-
-  const rawRecurrence =
-    task.recurrence && typeof task.recurrence === "object" && "rrule" in task.recurrence && (task.recurrence as { rrule?: EventCalendarRecurrenceRule }).rrule
-      ? { ...task.recurrence, ...(task.recurrence as { rrule?: EventCalendarRecurrenceRule }).rrule }
-      : task.recurrence;
-
-  const recurrence: EventCalendarRecurrenceRule | undefined = rawRecurrence
-    ? {
-        ...rawRecurrence,
-        until: rawRecurrence.until ? new Date(rawRecurrence.until) : undefined,
-        byWeekday: rawRecurrence.byWeekday?.map((w: any) =>
-          typeof w === "string"
-            ? (w as EventCalendarWeekday)
-            : w.ordinal !== undefined
-              ? { day: w.day as EventCalendarWeekday, ordinal: w.ordinal }
-              : (w.day as EventCalendarWeekday)
-        ),
-        weekStart: rawRecurrence.weekStart as EventCalendarWeekday | undefined,
-      }
-    : undefined;
-
-  return {
-    id: task.id,
-    title: task.title,
-    start,
-    end,
-    allDay: !task.timeRange,
-    color: task.priority ? taskPriorityColorMap[task.priority] : undefined,
-    data: task,
-    recurrence,
-  };
-}
-
-/** Everything the settings panel drives, as one resettable object. */
-interface DemoSettings {
-  viewSettings: EventCalendarViewSettings
-  interactions: EventCalendarInteractions
-  weekStartsOn: 0 | 1
-  dayStartHour: number
-  dayEndHour: number
-  interval: number
-  snapDuration: number
-  eventTooltip: boolean
-  showDayAddButton: boolean
-  localeId: string
-  timeZoneId: string
-}
-
-const DEFAULT_SETTINGS: DemoSettings = {
-  viewSettings: {
-    weekends: true,
-    weekNumbers: false,
-    nowIndicator: true,
-    offDays: false,
-  },
-  interactions: { drag: true, resize: true, selectSlot: true },
-  weekStartsOn: 0,
-  dayStartHour: 0,
-  dayEndHour: 24,
-  interval: 60,
-  snapDuration: 15,
-  eventTooltip: false,
-  showDayAddButton: false,
-  localeId: "en",
-  timeZoneId: "local",
-}
+const EMPTY_SECTIONS: SectionResponseDto[] = [];
 
 export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
   const openAddTaskDialog = useAddTaskDialogStore((state) => state.openDialog);
@@ -176,9 +89,9 @@ export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
     },
   });
 
-  const [settings, setSettings] = useState<DemoSettings>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<CalendarSettings>(DEFAULT_CALENDAR_SETTINGS)
 
-  const patch = (partial: Partial<DemoSettings>) =>
+  const patch = (partial: Partial<CalendarSettings>) =>
     setSettings((current) => ({ ...current, ...partial }))
 
   return (

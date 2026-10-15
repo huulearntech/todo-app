@@ -3,10 +3,9 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useColors } from "@/hooks/colors/use-colors";
 import { useUpdateSection } from "@/features/projects/hooks/use-update-section";
 import { Loader2Icon } from "lucide-react";
-import { getColorConfig } from "@/lib/color-palette";
+import { ColorSelect } from "@/components/ui/color-select";
 
 import {
   Dialog,
@@ -23,13 +22,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,7 +41,6 @@ export default function EditSectionDialog({
   open,
   onOpenChange,
 }: EditSectionDialogProps) {
-  const { data: colors = [] } = useColors();
 
   const {
     control,
@@ -161,60 +152,20 @@ export default function EditSectionDialog({
             <Controller
               name="colorKey"
               control={control}
-              render={({ field, fieldState }) => {
-                const selectedColor = colors.find(
-                  (c) => c.key === field.value
-                );
-                const selectedConfig = getColorConfig(field.value);
-
-                return (
-                  <Field data-invalid={fieldState.invalid} className="space-y-1.5">
-                    <FieldLabel htmlFor="edit-section-color" className="text-xs font-semibold text-foreground">
-                      Color
-                    </FieldLabel>
-                    <Select
-                      id="edit-section-color"
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger>
-                        <div className="flex items-center gap-2 w-full">
-                          <span
-                            className={`size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10 ${selectedConfig.dotClass}`}
-                          />
-                          <span>{selectedColor?.name || selectedConfig.label}</span>
-                          <span className="text-xs text-muted-foreground ml-auto font-mono">
-                            {field.value}
-                          </span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colors.map((color) => {
-                          const config = getColorConfig(color.key);
-                          return (
-                            <SelectItem
-                              key={color.key}
-                              value={color.key}
-                              className="rounded-lg cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2 w-full">
-                                <span
-                                  className={`size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10 ${config.dotClass}`}
-                                />
-                                <span>{color.name}</span>
-                                <span className="text-xs text-muted-foreground ml-auto font-mono">
-                                  {color.key}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                );
-              }}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="space-y-1.5">
+                  <FieldLabel htmlFor="edit-section-color" className="text-xs font-semibold text-foreground">
+                    Color
+                  </FieldLabel>
+                  <ColorSelect
+                    id="edit-section-color"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={updateSectionMutation.isPending}
+                  />
+                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
             />
           </FieldGroup>
 

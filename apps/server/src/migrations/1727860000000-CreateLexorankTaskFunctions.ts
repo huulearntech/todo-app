@@ -4,6 +4,14 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
   name = 'CreateLexorankTaskFunctions1727860000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // 0. Drop obsolete legacy functions if they exist
+    await queryRunner.query(
+      'DROP FUNCTION IF EXISTS create_task(uuid, uuid, uuid, text, text, text, timestamptz, timestamptz, uuid[]);',
+    );
+    await queryRunner.query(
+      'DROP FUNCTION IF EXISTS move_task(uuid, uuid, uuid, uuid);',
+    );
+
     // 1. Drop existing standalone index on lexorank if exists
     await queryRunner.query(`
       DO $$
@@ -66,9 +74,6 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
           mid_digit integer;
           result text := '';
       BEGIN
-          /*
-           * Empty string means "no boundary".
-           */
           IF p_prev = '' THEN
               p_prev := NULL;
           END IF;
@@ -77,9 +82,6 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
               p_next := NULL;
           END IF;
 
-          /*
-           * Validate explicit bounds.
-           */
           IF p_prev IS NOT NULL
              AND p_next IS NOT NULL
              AND p_prev COLLATE "C" >= p_next COLLATE "C"
@@ -222,44 +224,16 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
       $$;
     `);
 
-    // 6. Create create_task function
+    // 6. Create next_task_lexorank function
     await queryRunner.query(`
-      CREATE OR REPLACE FUNCTION create_task(
-          p_owner_id uuid,
-          p_task_id uuid,
-          p_section_id uuid,
-          p_title text,
-          p_description text DEFAULT '',
-          p_priority text DEFAULT 'high',
-          p_time_range_start timestamptz DEFAULT NULL,
-          p_time_range_end timestamptz DEFAULT NULL,
-          p_label_ids uuid[] DEFAULT ARRAY[]::uuid[]
-      )
-      RETURNS tasks
+      CREATE OR REPLACE FUNCTION next_task_lexorank(p_section_id uuid)
+      RETURNS text
       LANGUAGE plpgsql
       AS $$
       DECLARE
           v_last_rank text;
-          v_new_rank text;
-          v_task tasks;
-          v_time_range tstzrange := NULL;
       BEGIN
-          IF NOT EXISTS (
-              SELECT 1
-              FROM sections s
-              JOIN projects p ON p.id = s.project_id
-              WHERE s.id = p_section_id
-                AND p.owner_id = p_owner_id
-          ) THEN
-              RAISE EXCEPTION
-                  'Section % does not exist or does not belong to the user',
-                  p_section_id
-                  USING ERRCODE = 'P0002';
-          END IF;
-
-          PERFORM pg_advisory_xact_lock(
-              section_lock_key(p_section_id)
-          );
+          PERFORM pg_advisory_xact_lock(section_lock_key(p_section_id));
 
           SELECT t.lexorank
           INTO v_last_rank
@@ -269,75 +243,30 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
           LIMIT 1;
 
           IF v_last_rank IS NULL THEN
-              v_new_rank := 'm';
+              RETURN 'm';
           ELSE
               BEGIN
-                  v_new_rank := lexorank_between(
-                      v_last_rank,
-                      NULL
-                  );
+                  RETURN lexorank_between(v_last_rank, NULL);
               EXCEPTION WHEN SQLSTATE 'P0001' THEN
                   PERFORM rebalance_section(p_section_id);
                   SELECT t.lexorank INTO v_last_rank
                   FROM tasks t WHERE t.section_id = p_section_id
                   ORDER BY t.lexorank COLLATE "C" DESC LIMIT 1;
-                  v_new_rank := lexorank_between(v_last_rank, NULL);
+                  RETURN lexorank_between(v_last_rank, NULL);
               END;
           END IF;
-
-          -- Prevent degenerate [x, x) empty range by offsetting end by 1 hour if start >= end
-          IF p_time_range_start IS NOT NULL AND p_time_range_end IS NOT NULL THEN
-              IF p_time_range_start >= p_time_range_end THEN
-                  v_time_range := tstzrange(p_time_range_start, p_time_range_start + interval '1 hour', '[)');
-              ELSE
-                  v_time_range := tstzrange(p_time_range_start, p_time_range_end, '[)');
-              END IF;
-          END IF;
-
-          INSERT INTO tasks (
-              id,
-              section_id,
-              lexorank,
-              title,
-              description,
-              priority,
-              time_range
-          )
-          VALUES (
-              p_task_id,
-              p_section_id,
-              v_new_rank,
-              p_title,
-              COALESCE(p_description, ''),
-              lower(COALESCE(p_priority, 'high'))::tasks_priority_enum,
-              v_time_range
-          )
-          RETURNING * INTO v_task;
-
-          IF p_label_ids IS NOT NULL AND array_length(p_label_ids, 1) > 0 THEN
-              INSERT INTO task_to_task_labels (task_id, task_label_id)
-              SELECT
-                  p_task_id,
-                  l.id
-              FROM task_labels l
-              WHERE l.id = ANY(p_label_ids)
-                AND l.owner_id = p_owner_id;
-          END IF;
-
-          RETURN v_task;
       END;
       $$;
     `);
 
-    // 7. Create move_task function
+    // 7. Create move_task_lexorank function
     await queryRunner.query(`
-      CREATE OR REPLACE FUNCTION move_task(
-          p_owner_id uuid,
+      CREATE OR REPLACE FUNCTION move_task_lexorank(
           p_task_id uuid,
           p_destination_section_id uuid,
           p_previous_task_id uuid DEFAULT NULL
       )
-      RETURNS tasks
+      RETURNS text
       LANGUAGE plpgsql
       AS $$
       DECLARE
@@ -354,36 +283,18 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
           SELECT t.*
           INTO v_task
           FROM tasks t
-          JOIN sections s
-            ON s.id = t.section_id
-          JOIN projects p
-            ON p.id = s.project_id
-          WHERE t.id = p_task_id
-            AND p.owner_id = p_owner_id;
+          WHERE t.id = p_task_id;
 
           IF NOT FOUND THEN
               RAISE EXCEPTION
-                  'Task % does not exist or does not belong to the user',
+                  'Task % does not exist',
                   p_task_id
                   USING ERRCODE = 'P0002';
           END IF;
 
           v_source_section_id := v_task.section_id;
 
-          IF NOT EXISTS (
-              SELECT 1
-              FROM sections s
-              JOIN projects p
-                ON p.id = s.project_id
-              WHERE s.id = p_destination_section_id
-                AND p.owner_id = p_owner_id
-          ) THEN
-              RAISE EXCEPTION
-                  'Destination section % does not exist or does not belong to the user',
-                  p_destination_section_id
-                  USING ERRCODE = 'P0002';
-          END IF;
-
+          -- Deadlock-free ordered advisory locking
           IF v_source_section_id < p_destination_section_id THEN
               v_first_section_id := v_source_section_id;
               v_second_section_id := p_destination_section_id;
@@ -507,21 +418,45 @@ export class CreateLexorankTaskFunctions1727860000000 implements MigrationInterf
           SET
               section_id = p_destination_section_id,
               lexorank = v_rank
-          WHERE id = p_task_id
-          RETURNING * INTO v_task;
+          WHERE id = p_task_id;
 
-          RETURN v_task;
+          RETURN v_rank;
       END;
       $$;
+    `);
+
+    // 8. Create BEFORE INSERT trigger on tasks
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION trg_set_task_lexorank()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+          IF NEW.lexorank IS NULL OR NEW.lexorank = '' THEN
+              NEW.lexorank := next_task_lexorank(NEW.section_id);
+          END IF;
+          RETURN NEW;
+      END;
+      $$;
+
+      DROP TRIGGER IF EXISTS trg_task_before_insert ON tasks;
+      CREATE TRIGGER trg_task_before_insert
+      BEFORE INSERT ON tasks
+      FOR EACH ROW
+      EXECUTE FUNCTION trg_set_task_lexorank();
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      'DROP FUNCTION IF EXISTS move_task(uuid, uuid, uuid, uuid);',
+      'DROP TRIGGER IF EXISTS trg_task_before_insert ON tasks;',
+    );
+    await queryRunner.query('DROP FUNCTION IF EXISTS trg_set_task_lexorank();');
+    await queryRunner.query(
+      'DROP FUNCTION IF EXISTS move_task_lexorank(uuid, uuid, uuid);',
     );
     await queryRunner.query(
-      'DROP FUNCTION IF EXISTS create_task(uuid, uuid, uuid, text, text, text, timestamptz, timestamptz, uuid[]);',
+      'DROP FUNCTION IF EXISTS next_task_lexorank(uuid);',
     );
     await queryRunner.query('DROP FUNCTION IF EXISTS rebalance_section(uuid);');
     await queryRunner.query(

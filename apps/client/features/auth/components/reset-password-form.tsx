@@ -10,18 +10,10 @@ import { resetPasswordAction } from "@/features/auth/actions/auth.actions";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "@/components/ui/toast";
 import {
   Loader2Icon,
-  LockIcon,
-  EyeIcon,
-  EyeOffIcon,
   CheckCircle2Icon,
   ArrowRightIcon,
 } from "lucide-react";
@@ -48,8 +40,6 @@ interface ResetPasswordFormProps {
 export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const { handleSubmit, control } = useForm<ClientResetPasswordFormData>({
@@ -149,39 +139,13 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 <FieldLabel htmlFor="newPassword" className="text-xs font-semibold text-foreground/90">
                   New Password
                 </FieldLabel>
-                <InputGroup
-                  size="lg"
-                  data-invalid={fieldState.invalid}
-                >
-                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                    <LockIcon className="size-4" />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="newPassword"
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    aria-invalid={fieldState.invalid}
-                    className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    {...field}
-                  />
-                  <InputGroupAddon align="inline-end" className="pr-1.5">
-                    <InputGroupButton
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setShowNewPassword((prev) => !prev)}
-                      className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      aria-label={showNewPassword ? "Hide password" : "Show password"}
-                    >
-                      {showNewPassword ? (
-                        <EyeOffIcon className="size-3.5" />
-                      ) : (
-                        <EyeIcon className="size-3.5" />
-                      )}
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                <PasswordInput
+                  {...field}
+                  id="newPassword"
+                  autoComplete="new-password"
+                  dataInvalid={fieldState.invalid}
+                  disabled={isLoading}
+                />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
@@ -195,39 +159,13 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 <FieldLabel htmlFor="confirmPassword" className="text-xs font-semibold text-foreground/90">
                   Confirm New Password
                 </FieldLabel>
-                <InputGroup
-                  size="lg"
-                  data-invalid={fieldState.invalid}
-                >
-                  <InputGroupAddon align="inline-start" className="pl-3 text-muted-foreground">
-                    <LockIcon className="size-4" />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    aria-invalid={fieldState.invalid}
-                    className="h-full text-sm pl-1 pr-1 placeholder:text-muted-foreground/60"
-                    {...field}
-                  />
-                  <InputGroupAddon align="inline-end" className="pr-1.5">
-                    <InputGroupButton
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      className="size-7 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOffIcon className="size-3.5" />
-                      ) : (
-                        <EyeIcon className="size-3.5" />
-                      )}
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                <PasswordInput
+                  {...field}
+                  id="confirmPassword"
+                  autoComplete="new-password"
+                  dataInvalid={fieldState.invalid}
+                  disabled={isLoading}
+                />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}

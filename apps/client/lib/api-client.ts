@@ -2,7 +2,6 @@ import axios, {
   AxiosError,
   AxiosInstance,
   AxiosResponse,
-  InternalAxiosRequestConfig,
 } from "axios";
 import { getBackendApiUrl } from "./server/config";
 
@@ -28,35 +27,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-interface QueuedRequest {
-  resolve: (value: AxiosResponse) => void;
-  reject: (reason: unknown) => void;
-  config: InternalAxiosRequestConfig;
-}
-
-let isRefreshing = false;
-let failedQueue: QueuedRequest[] = [];
-
-const processQueue = (error: unknown): void => {
-  failedQueue.forEach((item) => {
-    if (error) {
-      item.reject(error);
-    } else {
-      apiClient(item.config)
-        .then((response) => item.resolve(response))
-        .catch((err: unknown) => item.reject(err));
-    }
-  });
-  failedQueue = [];
-};
-
-/**
- * Reset queue state (exported for test isolation)
- */
-export function _resetQueueState(): void {
-  isRefreshing = false;
-  failedQueue = [];
-}
+let refreshPromise: Promise<void> | null = null;
 
 async function refreshAccessToken(): Promise<void> {
   const url =
@@ -75,43 +46,25 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // SSR Guard: Token refresh queue and rotation only run in browser context
-    if (typeof window === "undefined") {
-      return Promise.reject(error);
-    }
+    const isRefreshEndpoint =
+      typeof originalRequest.url === "string" &&
+      originalRequest.url.includes("/auth/refresh-token");
 
-    const requestUrl = originalRequest.url ?? "";
-    const isExcludedEndpoint =
-      requestUrl.includes("/auth/refresh-token") ||
-      requestUrl.includes("/auth/sign-in");
-
-    if (
-      error.response.status === 401 &&
-      !originalRequest._retry &&
-      !isExcludedEndpoint
-    ) {
+    if (error.response.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
       originalRequest._retry = true;
 
-      const retryPromise = new Promise<AxiosResponse>((resolve, reject) => {
-        failedQueue.push({ resolve, reject, config: originalRequest });
-      });
+      try {
+        // This is the queue itself. Microtask queue.
+        refreshPromise ??= refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
 
-      if (!isRefreshing) {
-        isRefreshing = true;
+        await refreshPromise;
 
-        refreshAccessToken()
-          .then(() => {
-            processQueue(null);
-          })
-          .catch((refreshError: unknown) => {
-            processQueue(refreshError);
-          })
-          .finally(() => {
-            isRefreshing = false;
-          });
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
       }
-
-      return retryPromise;
     }
 
     return Promise.reject(error);

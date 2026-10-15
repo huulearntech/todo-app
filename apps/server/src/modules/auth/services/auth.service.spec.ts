@@ -233,9 +233,7 @@ describe('AuthService - Magic Link & Sign Up', () => {
           templateType: 'magic-link',
           context: {
             name: mockUser.name,
-            actionUrl: expect.stringContaining(
-              '/auth/verify?token=',
-            ) as unknown as string,
+            actionUrl: expect.stringContaining('/auth/verify?token='),
           },
         }),
       );
@@ -566,7 +564,9 @@ describe('AuthService - Magic Link & Sign Up', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('If an account exists');
-      expect(mailerSchedulerServiceMock.sendImmediateEmail).not.toHaveBeenCalled();
+      expect(
+        mailerSchedulerServiceMock.sendImmediateEmail,
+      ).not.toHaveBeenCalled();
     });
 
     it('should enforce cooldown if last request was under 60 seconds ago', async () => {
@@ -593,7 +593,9 @@ describe('AuthService - Magic Link & Sign Up', () => {
 
       expect(result.success).toBe(true);
       expect(passwordResetTokenRepositoryMock.save).toHaveBeenCalled();
-      expect(mailerSchedulerServiceMock.sendImmediateEmail).toHaveBeenCalledWith(
+      expect(
+        mailerSchedulerServiceMock.sendImmediateEmail,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           to: mockUser.email,
           templateType: 'password-reset',
@@ -616,7 +618,10 @@ describe('AuthService - Magic Link & Sign Up', () => {
 
     it('should successfully reset password, revoke sessions, and return success', async () => {
       const mockResetToken = {
-        tokenHash: crypto.createHash('sha256').update('valid-token').digest('hex'),
+        tokenHash: crypto
+          .createHash('sha256')
+          .update('valid-token')
+          .digest('hex'),
         userId: mockUser.id,
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         isUsed: false,

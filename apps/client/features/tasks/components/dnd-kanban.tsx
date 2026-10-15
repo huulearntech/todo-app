@@ -1,233 +1,34 @@
-"use client"
+"use client";
 
-import { ComponentProps, useState, useMemo, Fragment, useRef } from "react"
-import { Badge } from "@/components/reui/badge"
+import { useState, useMemo, useRef } from "react";
 import {
   Kanban,
   KanbanBoard,
-  KanbanColumn,
-  KanbanColumnContent,
-  KanbanColumnHandle,
-  KanbanItem,
-  KanbanItemHandle,
   KanbanOverlay,
   type KanbanCommitMeta,
-} from "@/components/reui/kanban"
+} from "@/components/reui/kanban";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { GripVerticalIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, PlusIcon } from "lucide-react"
-
-import TaskItemListView from "./task-card"
+import { Button } from "@/components/ui/button";
+import { PlusIcon } from "lucide-react";
 
 import {
   type TaskResponseDto as Task,
   type SectionResponseDto,
-  TaskPriority,
-} from "@todo/shared"
-import { useProjectTasks } from "@/features/tasks/hooks/use-project-tasks"
-import { useLabels } from "@/features/labels/hooks/use-labels"
-import { KanbanFilterBar } from "./kanban-filter-bar"
-import type { LabelItem } from "./task-attribute-controls/labels-popover"
-import { useSections } from "@/features/projects/hooks/use-sections"
-import { useMoveTasks } from "@/features/tasks/hooks/use-move-tasks"
-import { useMoveSection } from "@/features/projects/hooks/use-move-section"
-import { useDeleteSection } from "@/features/projects/hooks/use-delete-section"
-import { useAuth } from "@/providers/AuthProvider"
-import { AddTaskDialogTrigger } from "./add-task-dialog"
+} from "@todo/shared";
+import { useProjectTasks } from "@/features/tasks/hooks/use-project-tasks";
+import { KanbanFilterBar } from "./kanban-filter-bar";
+import { useSections } from "@/features/projects/hooks/use-sections";
+import { useMoveTasks } from "@/features/tasks/hooks/use-move-tasks";
+import { useMoveSection } from "@/features/projects/hooks/use-move-section";
+import { useDeleteSection } from "@/features/projects/hooks/use-delete-section";
+import { useAuth } from "@/providers/AuthProvider";
 import AddSectionForm, { type AddSectionFormHandle } from "@/features/projects/components/add-section-form";
 import EditSectionDialog from "@/features/projects/components/edit-section-dialog";
-import { getColorConfig } from "@/lib/color-palette"
-import { cn } from "@/lib/utils"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-
-interface TaskCardProps extends Omit<
-  ComponentProps<typeof KanbanItem>,
-  "value" | "children"
-> {
-  task: Task
-  asHandle?: boolean
-  isOverlay?: boolean
-}
-
-function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
-  const Wrapper = (asHandle && !isOverlay) ? KanbanItemHandle : Fragment
-
-  return (
-    <KanbanItem value={task.id} {...props}>
-      <Wrapper>
-        <TaskItemListView task={task} />
-      </Wrapper>
-    </KanbanItem>
-  )
-}
-
-interface TaskColumnProps extends Omit<
-  ComponentProps<typeof KanbanColumn>,
-  "children"
-> {
-  projectId: string
-  tasks: Task[]
-  section?: SectionResponseDto
-  isOverlay?: boolean
-  onEdit: (section: SectionResponseDto) => void
-  onDelete: (section: SectionResponseDto) => void
-}
-
-function TaskColumn({
-  projectId,
-  value,
-  section,
-  tasks,
-  isOverlay,
-  onEdit,
-  onDelete,
-  ...props
-}: TaskColumnProps) {
-  const title = section?.name || "Untitled section"
-  const colorConfig = getColorConfig(section?.colorKey)
-
-  return (
-    <KanbanColumn value={value} {...props}>
-      <Card
-        className={cn(
-          "mb-2.5 transition-colors border-border/80",
-          section?.colorKey && colorConfig?.badgeBgClass
-        )}
-      >
-        <CardHeader className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span
-              className="item-title truncate"
-              title={title}
-            >
-              {title}
-            </span>
-            <Badge variant="outline" className="shrink-0">
-              {tasks.length}
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-0.5 shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={(triggerProps) => (
-                  <Button
-                    {...triggerProps}
-                    size="icon-xs"
-                    variant="ghost"
-                    className="opacity-0 group-hover/kanban-column:opacity-100 data-popup-open:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground transition-opacity rounded-md"
-                    aria-label={`Section options for ${title}`}
-                  />
-                )}
-              >
-                <MoreHorizontalIcon className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl p-1 shadow-md">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    onClick={() => section && onEdit(section)}
-                    className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                  >
-                    <PencilIcon className="size-3.5 text-muted-foreground" />
-                    <span>Edit section</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="my-1 bg-border/50" />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => section && onDelete(section)}
-                    className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                  >
-                    <Trash2Icon className="size-3.5" />
-                    <span>Delete section</span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" className="rounded-md" />} >
-              <GripVerticalIcon className="size-4" />
-            </KanbanColumnHandle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <KanbanColumnContent value={value} className="list-stack">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                asHandle={!isOverlay}
-                isOverlay={isOverlay}
-              />
-            ))}
-            <AddTaskDialogTrigger sectionId={value} projectId={projectId} />
-          </KanbanColumnContent>
-        </CardContent>
-      </Card>
-    </KanbanColumn>
-  )
-}
-
-
-const EMPTY_LABELS: LabelItem[] = [];
-
-function groupBySection(
-  sections: SectionResponseDto[] | undefined,
-  tasks: Task[] | undefined,
-  selectedPriorities: TaskPriority[],
-  selectedLabelIds: string[],
-  searchQuery: string
-): Record<string, Task[]> {
-  const acc: Record<string, Task[]> = {};
-  if (!sections) return acc;
-
-  for (const section of sections) {
-    acc[section.id] = [];
-  }
-
-  if (!tasks) return acc;
-
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-
-  for (const task of tasks) {
-    if (normalizedQuery && !task.title.toLowerCase().includes(normalizedQuery)) {
-      continue;
-    }
-    if (
-      selectedPriorities.length > 0 &&
-      !selectedPriorities.includes(task.priority)
-    ) {
-      continue;
-    }
-    if (selectedLabelIds.length > 0) {
-      const hasMatch = task.labels?.some((tl) =>
-        selectedLabelIds.includes(tl.id)
-      );
-      if (!hasMatch) continue;
-    }
-    (acc[task.sectionId] ??= []).push(task);
-  }
-
-  return acc;
-}
+import { DeleteSectionDialog } from "@/features/projects/components/delete-section-dialog";
+import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
+import { groupBySection } from "@/features/tasks/utils/kanban-helpers";
+import { TaskColumn } from "./kanban/kanban-column";
+import { KanbanBoardSkeleton } from "./kanban/kanban-board-skeleton";
 
 function DndKanban({ projectId }: { projectId: string }) {
   const { user } = useAuth();
@@ -249,39 +50,24 @@ function DndKanban({ projectId }: { projectId: string }) {
   } = useSections(projectId);
   const isLoading = tasksLoading || sectionsLoading;
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);
-  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
-  const { data: availableLabels = EMPTY_LABELS } = useLabels();
+  const {
+    searchQuery,
+    setSearchQuery,
+    selectedPriorities,
+    handleTogglePriority,
+    selectedLabelIds,
+    handleToggleLabel,
+    handleClearFilters,
+    availableLabels,
+    matchesFilters,
+  } = useTaskFilters();
 
   const serverColumns = useMemo(
-    () => groupBySection(sections, projectTasks, selectedPriorities, selectedLabelIds, searchQuery),
-    [sections, projectTasks, selectedPriorities, selectedLabelIds, searchQuery]
+    () => groupBySection(sections, projectTasks, matchesFilters),
+    [sections, projectTasks, matchesFilters]
   );
   const [dragColumns, setDragColumns] = useState<Record<string, Task[]> | null>(null);
   const columns: Record<string, Task[]> = dragColumns ?? serverColumns;
-
-  const handleTogglePriority = (priority: TaskPriority) => {
-    setSelectedPriorities((prev) =>
-      prev.includes(priority)
-        ? prev.filter((p) => p !== priority)
-        : [...prev, priority]
-    );
-  };
-
-  const handleToggleLabel = (label: LabelItem) => {
-    setSelectedLabelIds((prev) =>
-      prev.includes(label.id)
-        ? prev.filter((id) => id !== label.id)
-        : [...prev, label.id]
-    );
-  };
-
-  const handleClearFilters = () => {
-    setSearchQuery("");
-    setSelectedPriorities([]);
-    setSelectedLabelIds([]);
-  };
 
   const moveTasksMutation = useMoveTasks(projectId);
   const moveSectionMutation = useMoveSection(projectId);
@@ -438,64 +224,14 @@ function DndKanban({ projectId }: { projectId: string }) {
       />
 
       {/* Delete Section Dialog */}
-      <AlertDialog
+      <DeleteSectionDialog
+        section={sectionToDelete}
         open={Boolean(sectionToDelete)}
         onOpenChange={(open) => !open && setSectionToDelete(null)}
-      >
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Section</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;
-              {sectionToDelete?.name || "Untitled section"}&rdquo;?
-              {sectionToDelete && (columns[sectionToDelete.id]?.length ?? 0) > 0 && (
-                <span className="block mt-1.5 text-amber-600 dark:text-amber-400 font-medium">
-                  This section contains{" "}
-                  {columns[sectionToDelete.id].length}{" "}
-                  {columns[sectionToDelete.id].length === 1 ? "task" : "tasks"}.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              className="rounded-lg"
-              onClick={() => {
-                if (sectionToDelete) {
-                  deleteSectionMutation.mutate(sectionToDelete.id);
-                  setSectionToDelete(null);
-                }
-              }}
-            >
-              Delete section
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={(sec) => deleteSectionMutation.mutate(sec.id)}
+      />
     </div>
-  )
-}
-
-function KanbanBoardSkeleton() {
-  return (
-    <div className="flex gap-4">
-      {[1, 2, 3].map((index) => (
-        <Card key={index} className="w-80 shrink-0 border border-border/60 bg-card/70 rounded-2xl p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-5 w-32 rounded-lg" />
-            <Skeleton className="h-5 w-8 rounded-full" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-14 w-full rounded-xl" />
-          </div>
-        </Card>
-      ))}
-    </div>
-  )
+  );
 }
 
 export default DndKanban;

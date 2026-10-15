@@ -1,20 +1,9 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  Index,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { BaseEntity } from '../../../common/database/base.entity';
 import { User } from '../../users/user.entity'; // Adjust the import path as needed
 
 @Entity({ name: 'refresh_tokens' })
-export class RefreshToken {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class RefreshToken extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   @Index()
   token!: string;
@@ -35,12 +24,6 @@ export class RefreshToken {
 
   @Column({ type: 'varchar', name: 'user_agent', nullable: true })
   userAgent?: string;
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt!: Date;
 
   @Column({ type: 'uuid', name: 'user_id' })
   userId!: string;

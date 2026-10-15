@@ -3,10 +3,9 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useColors } from "@/hooks/colors/use-colors";
 import { useUpdateLabel } from "@/features/labels/hooks/use-update-label";
 import { toast } from "@/components/ui/toast";
-import { getColorConfig } from "@/lib/color-palette";
+import { ColorSelect } from "@/components/ui/color-select";
 
 import {
   Field,
@@ -14,13 +13,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
 
 import {
   Dialog,
@@ -37,7 +29,6 @@ import { Button } from "@/components/ui/button";
 import { updateTaskLabelSchema, type UpdateTaskLabelDto } from "@todo/shared";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
-
 export default function EditLabelDialog({
   label,
   setLabel,
@@ -45,7 +36,6 @@ export default function EditLabelDialog({
   label: TaskLabel;
   setLabel: (label: TaskLabel | null) => void;
 }) {
-  const { data: colors = [] } = useColors();
 
   const { control, handleSubmit, reset } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
@@ -123,58 +113,17 @@ export default function EditLabelDialog({
             <Controller
               name="colorKey"
               control={control}
-              render={({ field, fieldState }) => {
-                const selectedColor = colors.find(
-                  (c) => c.key === field.value,
-                );
-                const selectedConfig = getColorConfig(field.value);
-
-                return (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="edit-label-color">Color</FieldLabel>
-                    <Select
-                      id="edit-label-color"
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger>
-                        <div className="flex items-center gap-2 w-full">
-                          <span
-                            className={`size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10 ${selectedConfig.dotClass}`}
-                          />
-                          <span>{selectedColor?.name || selectedConfig.label}</span>
-                          <span className="text-xs text-muted-foreground ml-auto font-mono">
-                            {field.value}
-                          </span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colors.map((color) => {
-                          const config = getColorConfig(color.key);
-                          return (
-                            <SelectItem
-                              key={color.key}
-                              value={color.key}
-                              className="rounded-lg cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2 w-full">
-                                <span
-                                  className={`size-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/10 ${config.dotClass}`}
-                                />
-                                <span>{color.name}</span>
-                                <span className="text-xs text-muted-foreground ml-auto font-mono">
-                                  {color.key}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                );
-              }}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="edit-label-color">Color</FieldLabel>
+                  <ColorSelect
+                    id="edit-label-color"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
             />
           </FieldGroup>
         </form>

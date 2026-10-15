@@ -1,15 +1,13 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   OneToMany,
   ManyToOne,
   JoinColumn,
   Index,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 
+import { BaseEntity } from '../../common/database/base.entity';
 import { User } from '../users/user.entity';
 import { Section } from '../sections/section.entity';
 import { TrigramIndex } from '../../common/decorators/trigram-index.decorator';
@@ -17,22 +15,13 @@ import { TrigramIndex } from '../../common/decorators/trigram-index.decorator';
 @Entity('projects')
 @Index(['ownerId', 'id'])
 @Index(['ownerId', 'name'], { unique: true }) // NOTE: Should this be?
-export class Project {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Project extends BaseEntity {
   @TrigramIndex()
   @Column()
   name!: string;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
-
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt!: Date;
 
   @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;

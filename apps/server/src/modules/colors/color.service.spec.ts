@@ -34,9 +34,9 @@ describe('ColorService', () => {
     });
 
     it('should throw NotFoundException for unknown key', async () => {
-      await expect(
-        service.getColorByKey('non-existent-color'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getColorByKey('non-existent-color')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

@@ -1,20 +1,11 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToOne,
-} from 'typeorm';
+import { Entity, Column, OneToOne } from 'typeorm';
+import { BaseEntity } from '../../../common/database/base.entity';
 import { Task } from '../entities/task.entity';
 import { RecurrenceTransformer } from '@/src/common/transformers/rrule_plpgsql.transformer';
 import { type RRule } from '@todo/shared';
 
 @Entity('task_recurrences')
-export class TaskRecurrence {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class TaskRecurrence extends BaseEntity {
   @OneToOne(() => Task, (task) => task.recurrence)
   task: Task;
 
@@ -36,10 +27,4 @@ export class TaskRecurrence {
 
   @Column({ length: 64 })
   timezone: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

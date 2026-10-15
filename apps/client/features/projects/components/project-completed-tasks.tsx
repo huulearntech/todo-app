@@ -4,63 +4,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useProjectCompletedTasks } from "@/features/tasks/hooks/use-project-completed-tasks";
 import { useDeleteTask } from "@/features/tasks/hooks/use-delete-task";
-import { useLabels } from "@/features/labels/hooks/use-labels";
 import CompletedTaskCard from "@/features/tasks/components/completed-task-card";
 import { KanbanFilterBar } from "@/features/tasks/components/kanban-filter-bar";
-import type { LabelItem } from "@/features/tasks/components/task-attribute-controls/labels-popover";
+import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
+import { groupOccurrencesByDate } from "@/features/tasks/utils/task-date-grouping";
+import { DeleteTaskAlertDialog } from "@/features/tasks/components/delete-task-alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  CheckCircle2Icon,
-  ArrowLeftIcon,
-  XIcon,
-} from "lucide-react";
-import { TaskPriority, type CompletedOccurrenceResponseDto } from "@todo/shared";
-
-const EMPTY_LABELS: LabelItem[] = [];
-
-function getDateGroupKey(dateString?: string | null): string {
-  if (!dateString) return "Earlier";
-  const date = new Date(dateString);
-  const now = new Date();
-
-  const isToday =
-    date.getDate() === now.getDate() &&
-    date.getMonth() === now.getMonth() &&
-    date.getFullYear() === now.getFullYear();
-
-  if (isToday) return "Today";
-
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const isYesterday =
-    date.getDate() === yesterday.getDate() &&
-    date.getMonth() === yesterday.getMonth() &&
-    date.getFullYear() === yesterday.getFullYear();
-
-  if (isYesterday) return "Yesterday";
-
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 7) return "Earlier this week";
-  if (diffDays < 14) return "Last week";
-
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-}
+import { CheckCircle2Icon, ArrowLeftIcon } from "lucide-react";
+import type { CompletedOccurrenceResponseDto } from "@todo/shared";
 
 export interface ProjectCompletedTasksProps {
   projectId: string;
@@ -76,88 +28,32 @@ export default function ProjectCompletedTasks({
   const { data: occurrences = [], isLoading, error } = useProjectCompletedTasks(projectId);
   const deleteTaskMutation = useDeleteTask();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);
-  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
-  const { data: availableLabels = EMPTY_LABELS } = useLabels();
+  const {
+    searchQuery,
+    setSearchQuery,
+    selectedPriorities,
+    handleTogglePriority,
+    selectedLabelIds,
+    handleToggleLabel,
+    handleClearFilters,
+    availableLabels,
+    matchesFilters,
+  } = useTaskFilters();
 
-  // State for permanent deletion dialog
   const [taskToDelete, setTaskToDelete] = useState<{
     id: string;
     title: string;
   } | null>(null);
 
-  const handleTogglePriority = (priority: TaskPriority) => {
-    setSelectedPriorities((prev) =>
-      prev.includes(priority)
-        ? prev.filter((p) => p !== priority)
-        : [...prev, priority]
-    );
-  };
-
-  const handleToggleLabel = (label: LabelItem) => {
-    setSelectedLabelIds((prev) =>
-      prev.includes(label.id)
-        ? prev.filter((id) => id !== label.id)
-        : [...prev, label.id]
-    );
-  };
-
-  const handleClearFilters = () => {
-    setSearchQuery("");
-    setSelectedPriorities([]);
-    setSelectedLabelIds([]);
-  };
-
   // Filter completed occurrences based on search query, priorities and labels
   const filteredOccurrences = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return occurrences.filter((occ) => {
-      if (q && !occ.title.toLowerCase().includes(q)) {
-        return false;
-      }
-      if (
-        selectedPriorities.length > 0 &&
-        !selectedPriorities.includes(occ.priority as TaskPriority)
-      ) {
-        return false;
-      }
-      if (selectedLabelIds.length > 0) {
-        const occLabelIds = new Set(occ.labels?.map((l) => l.id));
-        const hasMatchingLabel = selectedLabelIds.some((id) =>
-          occLabelIds.has(id)
-        );
-        if (!hasMatchingLabel) return false;
-      }
-      return true;
-    });
-  }, [occurrences, searchQuery, selectedPriorities, selectedLabelIds]);
+    return occurrences.filter((occ) => matchesFilters(occ));
+  }, [occurrences, matchesFilters]);
 
   // Group filtered completed occurrences by date
   const groupedOccurrences = useMemo(() => {
-    const groups: Record<string, CompletedOccurrenceResponseDto[]> = {};
-
-    // Sort by completedAt descending
-    const sorted = [...filteredOccurrences].sort((a, b) => {
-      const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-      const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-      return timeB - timeA;
-    });
-
-    for (const occ of sorted) {
-      const groupKey = getDateGroupKey(occ.completedAt);
-      (groups[groupKey] ??= []).push(occ);
-    }
-
-    return groups;
+    return groupOccurrencesByDate(filteredOccurrences);
   }, [filteredOccurrences]);
-
-  const handleConfirmDeleteTask = () => {
-    if (taskToDelete) {
-      deleteTaskMutation.mutate(taskToDelete.id);
-      setTaskToDelete(null);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -250,69 +146,46 @@ export default function ProjectCompletedTasks({
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl mt-4 gap-1.5"
+                className="rounded-xl mt-4"
                 onClick={handleClearFilters}
               >
-                <XIcon className="size-3.5" />
-                <span>Clear filters</span>
+                Clear all filters
               </Button>
             </div>
           ) : (
-            <div className="flex flex-col gap-8">
-              {Object.entries(groupedOccurrences).map(([groupTitle, items]) => (
-                <div key={groupTitle} className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="overline-label">
-                      {groupTitle}
-                    </span>
-                    <span className="caption-text font-medium">
-                      ({items.length})
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {items.map((occ) => (
-                      <CompletedTaskCard
-                        key={occ.occurrenceId}
-                        occurrence={occ}
-                        onDeleteTaskPermanently={setTaskToDelete}
-                      />
-                    ))}
-                  </div>
+            Object.entries(groupedOccurrences).map(([dateGroup, items]) => (
+              <section key={dateGroup} className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-2 px-1">
+                  <h2 className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
+                    {dateGroup}
+                  </h2>
+                  <span className="text-[11px] text-muted-foreground/60 font-medium">
+                    ({items.length})
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {/* Confirmation Dialog for Permanent Task Deletion */}
-          <AlertDialog
-            open={Boolean(taskToDelete)}
-            onOpenChange={(open) => {
-              if (!open) setTaskToDelete(null);
-            }}
-          >
-            <AlertDialogContent className="rounded-2xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Task Permanently</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to permanently delete &ldquo;
-                  {taskToDelete?.title}&rdquo;? This will remove the task, all its
-                  occurrences, and reminder history. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleConfirmDeleteTask}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
-                >
-                  Delete Permanently
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                <div className="flex flex-col gap-2">
+                  {items.map((occ: CompletedOccurrenceResponseDto) => (
+                    <CompletedTaskCard
+                      key={occ.occurrenceId}
+                      occurrence={occ}
+                      onDeleteTaskPermanently={(task) => setTaskToDelete(task)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       </main>
+
+      {/* Permanent Delete Task Dialog */}
+      <DeleteTaskAlertDialog
+        task={taskToDelete}
+        open={Boolean(taskToDelete)}
+        onOpenChange={(open) => !open && setTaskToDelete(null)}
+        onConfirm={(task) => deleteTaskMutation.mutate(task.id)}
+      />
     </div>
   );
 }

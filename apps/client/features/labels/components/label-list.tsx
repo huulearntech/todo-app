@@ -1,133 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useQueryClient } from "@tanstack/react-query";
-import { taskLabelService } from "@/features/tasks/services/task-label.service";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
-
 import { Badge } from "@/components/reui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "@/components/ui/toast";
-
-import {
-  TagIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  Trash2Icon,
-  ChevronRightIcon,
-  TagsIcon,
-} from "lucide-react";
+import { TagsIcon } from "lucide-react";
 
 import AddLabelDialog from "@/features/labels/components/add-label-dialog";
 import EditLabelDialog from "@/features/labels/components/edit-label-dialog";
 import { useLabels } from "@/features/labels/hooks/use-labels";
-import { getColorConfig } from "@/lib/color-palette";
+import { useDeleteLabelWithUndo } from "@/features/labels/hooks/use-delete-label-with-undo";
+import { LabelListItem } from "./label-list-item";
+import { DeleteLabelAlertDialog } from "./delete-label-alert-dialog";
 
 export default function LabelList() {
-  const queryClient = useQueryClient();
-
   const { data: labels = [], isLoading } = useLabels();
 
   const [editingLabel, setEditingLabel] = useState<TaskLabel | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<TaskLabel | null>(null);
 
+  const { deleteLabelWithUndo } = useDeleteLabelWithUndo(labels);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!deletingLabel) return;
-
-    const labelToDelete = deletingLabel;
-    const targetIndex = labels.findIndex((l) => l.id === labelToDelete.id);
-
+    deleteLabelWithUndo(deletingLabel);
     setDeletingLabel(null);
-
-    // 1. Optimistic UI update: remove label from query cache
-    queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) =>
-      old ? old.filter((l) => l.id !== labelToDelete.id) : []
-    );
-
-    let isUndone = false;
-
-    // 2. Pending server update timeout reference
-    const deleteTimeout = setTimeout(async () => {
-      if (isUndone) return;
-      try {
-        await taskLabelService.deleteTaskLabel(labelToDelete.id);
-        queryClient.invalidateQueries({ queryKey: ["task-labels"] });
-      } catch {
-        queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
-          if (!old) return [labelToDelete];
-          if (old.some((l) => l.id === labelToDelete.id)) return old;
-          const next = [...old];
-          if (targetIndex >= 0 && targetIndex <= next.length) {
-            next.splice(targetIndex, 0, labelToDelete);
-          } else {
-            next.push(labelToDelete);
-          }
-          return next;
-        });
-        toast.add({
-          title: "Error deleting label",
-          description: `Failed to delete "${labelToDelete.name}".`,
-          type: "error",
-        });
-      }
-    }, 4000);
-
-    // 3. Show Toast with Undo Action
-    const toastId = toast.add({
-      title: "Label deleted",
-      description: `"${labelToDelete.name}" was deleted.`,
-      type: "success",
-      actionProps: {
-        children: "Undo",
-        onClick: () => {
-          isUndone = true;
-          clearTimeout(deleteTimeout);
-
-          // Restore label back into local React Query cache
-          queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
-            if (!old) return [labelToDelete];
-            if (old.some((l) => l.id === labelToDelete.id)) return old;
-            const next = [...old];
-            if (targetIndex >= 0 && targetIndex <= next.length) {
-              next.splice(targetIndex, 0, labelToDelete);
-            } else {
-              next.push(labelToDelete);
-            }
-            return next;
-          });
-
-          if (toastId) {
-            toast.close(toastId);
-          }
-
-          toast.add({
-            title: "Deletion cancelled",
-            description: `"${labelToDelete.name}" was restored.`,
-            type: "info",
-          });
-        },
-      },
-    });
   };
 
   if (isLoading) {
@@ -172,113 +69,17 @@ export default function LabelList() {
         <AddLabelDialog />
       </div>
 
-      {/* Search Input */}
-      {/* {labels.length > 0 && (
-        <div className="relative w-full">
-          <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search labels..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-card border-border/70 rounded-xl focus-visible:ring-primary/40"
-          />
-        </div>
-      )} */}
-
       {/* Label List */}
-      {/* {filteredLabels.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-border/70 text-center bg-card/40 my-2">
-          <div className="p-3 rounded-full bg-muted text-muted-foreground mb-3">
-            <TagIcon className="size-6" />
-          </div>
-          <p className="text-sm font-semibold text-foreground">
-            {labels.length === 0 ? "No labels created yet" : "No matching labels found"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-            {labels.length === 0
-              ? "Create your first label to easily group and categorize tasks across projects."
-              : `No labels matched "${searchQuery}". Try a different keyword.`}
-          </p>
-        </div>
-      ) : ( */}
-        <ul className="list-stack">
-          {/* {filteredLabels.map((label) => ( */}
-          {labels.map((label) => {
-            const config = getColorConfig(label.colorKey);
-            return (
-              <li key={label.id} className="group relative">
-                <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-xs">
-                  {/* Clickable card area leading to /labels/[id] */}
-                  <Link
-                    href={`/labels/${label.id}`}
-                    className="flex flex-1 items-center gap-3.5 min-w-0 pr-2 focus-visible:outline-none"
-                  >
-                    <div
-                      className={`flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border ${config.badgeBgClass} ${config.badgeBorderClass} ${config.badgeTextClass}`}
-                    >
-                      <TagIcon className="size-4.5" />
-                    </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="item-title truncate group-hover:text-primary transition-colors">
-                      {label.name}
-                    </span>
-                    {label.description ? (
-                      <span className="helper-text truncate">
-                        {label.description}
-                      </span>
-                    ) : (
-                      <span className="helper-text text-muted-foreground/50 italic truncate">
-                        No description
-                      </span>
-                    )}
-                  </div>
-                </Link>
-
-                {/* Actions Dropdown Pop-up */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg"
-                        />
-                      }
-                    >
-                      <MoreHorizontalIcon className="size-4" />
-                      <span className="sr-only">Actions for {label.name}</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40 rounded-xl p-1 shadow-md">
-                      <DropdownMenuItem
-                        onClick={() => setEditingLabel(label)}
-                        className="gap-2 rounded-lg cursor-pointer text-xs"
-                      >
-                        <PencilIcon className="size-3.5 text-muted-foreground" />
-                        <span>Edit Label</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="my-1 bg-border/50" />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setDeletingLabel(label)}
-                        className="gap-2 rounded-lg cursor-pointer text-xs"
-                      >
-                        <Trash2Icon className="size-3.5" />
-                        <span>Delete Label</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <Link href={`/labels/${label.id}`} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors p-1">
-                    <ChevronRightIcon className="size-4" />
-                  </Link>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-        </ul>
-      {/* )} */}
+      <ul className="list-stack">
+        {labels.map((label) => (
+          <LabelListItem
+            key={label.id}
+            label={label}
+            onEdit={setEditingLabel}
+            onDelete={setDeletingLabel}
+          />
+        ))}
+      </ul>
 
       {/* Edit Label Dialog */}
       {editingLabel && (
@@ -286,26 +87,12 @@ export default function LabelList() {
       )}
 
       {/* Delete Label Confirmation Dialog */}
-      <AlertDialog open={!!deletingLabel} onOpenChange={(open) => !open && setDeletingLabel(null)}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Label</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <span className="font-semibold text-foreground">&quot;{deletingLabel?.name}&quot;</span>? Tasks tagged with this label will not be deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              className="rounded-lg"
-            >
-              Delete Label
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteLabelAlertDialog
+        label={deletingLabel}
+        open={Boolean(deletingLabel)}
+        onOpenChange={(open) => !open && setDeletingLabel(null)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

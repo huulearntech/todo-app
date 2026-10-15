@@ -78,9 +78,7 @@ export class AuthService {
     return userWithoutPassword;
   }
 
-  async signUp(
-    signUpDto: SignUpDto,
-  ): Promise<{ user: UserResponseDto }> {
+  async signUp(signUpDto: SignUpDto): Promise<{ user: UserResponseDto }> {
     const user = await this.userService.createUser(signUpDto);
     try {
       await this.sendMagicLink(user.email);
@@ -518,10 +516,13 @@ export class AuthService {
       .createQueryBuilder()
       .update(PasswordResetToken)
       .set({ isUsed: true })
-      .where('token_hash = :tokenHash AND is_used = false AND expires_at > :now', {
-        tokenHash,
-        now: new Date(),
-      })
+      .where(
+        'token_hash = :tokenHash AND is_used = false AND expires_at > :now',
+        {
+          tokenHash,
+          now: new Date(),
+        },
+      )
       .execute();
 
     if (updateResult.affected === 0) {
@@ -556,4 +557,3 @@ export class AuthService {
     };
   }
 }
-

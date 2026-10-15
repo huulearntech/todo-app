@@ -32,20 +32,12 @@ describe('SectionService', () => {
   });
 
   describe('createSection', () => {
-    it('should call create_section with parameters and return entity', async () => {
-      mockSectionRepo.query.mockResolvedValue([
-        {
-          id: 'sec-1',
-          project_id: 'proj-1',
-          owner_id: 'user-1',
-          name: 'Section 1',
-          description: '',
-          color_key: 'red',
-          lexorank: '0|hzzzzz:',
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-      ]);
+    it('should create and save section entity with parameters', async () => {
+      mockSectionRepo.save.mockImplementation(async (entity: any) => ({
+        ...entity,
+        id: 'sec-1',
+        lexorank: '0|hzzzzz:',
+      }));
 
       const result = await service.createSection('user-1', {
         projectId: 'proj-1',
@@ -53,25 +45,23 @@ describe('SectionService', () => {
         colorKey: 'red',
       });
 
-      expect(mockSectionRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('create_section('),
-        expect.arrayContaining([
-          'user-1',
-          expect.any(String),
-          'proj-1',
-          'Section 1',
-          '',
-          'red',
-        ]),
+      expect(mockSectionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ownerId: 'user-1',
+          projectId: 'proj-1',
+          name: 'Section 1',
+          colorKey: 'red',
+        }),
       );
+      expect(mockSectionRepo.save).toHaveBeenCalled();
       expect(result.id).toBe('sec-1');
       expect(result.colorKey).toBe('red');
     });
 
-    it('should throw NotFoundException if project not found (P0002)', async () => {
+    it('should throw NotFoundException if ordering error code is P0002', async () => {
       const error: any = new Error('Project not found');
       error.code = 'P0002';
-      mockSectionRepo.query.mockRejectedValue(error);
+      mockSectionRepo.save.mockRejectedValue(error);
 
       await expect(
         service.createSection('user-1', {
@@ -83,7 +73,8 @@ describe('SectionService', () => {
   });
 
   describe('updateSectionOrder', () => {
-    it('should call move_section with parameters', async () => {
+    it('should call move_section_lexorank with parameters after checking ownership', async () => {
+      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2' });
       mockSectionRepo.query.mockResolvedValue([]);
 
       await service.updateSectionOrder({
@@ -92,13 +83,29 @@ describe('SectionService', () => {
         prevId: 'sec-1',
       });
 
+      expect(mockSectionRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'sec-2', project: { ownerId: 'user-1' } },
+      });
       expect(mockSectionRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('move_section('),
-        ['user-1', 'sec-2', 'sec-1'],
+        expect.stringContaining('move_section_lexorank('),
+        ['sec-2', 'sec-1'],
       );
     });
 
+    it('should throw NotFoundException if section not owned by user', async () => {
+      mockSectionRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateSectionOrder({
+          ownerId: 'user-1',
+          id: 'sec-2',
+          prevId: 'sec-1',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it('should throw BadRequestException if bounds invalid (22000)', async () => {
+      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2' });
       const error: any = new Error(
         'A section cannot be positioned after itself',
       );

@@ -1,68 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import Link from "next/link";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useAuth } from "@/providers/AuthProvider";
-import { getColorConfig } from "@/lib/color-palette";
 import { StandardPageLayout } from "@/components/layout/standard-page-layout";
 import AddProjectDialog from "@/features/projects/components/add-project-dialog";
-
-import { Input } from "@/components/ui/input";
+import { ProjectList } from "@/features/projects/components/project-list";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "@/components/ui/toast";
-
-import {
-  FolderIcon,
-  HashIcon,
-  PlusIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  Trash2Icon,
-  SearchIcon,
-  ChevronRightIcon,
-  FolderPlusIcon,
-  CopyIcon,
-  ExternalLinkIcon,
-} from "lucide-react";
-import { useEditProjectDialog } from "@/features/projects/context/edit-project-context";
+import { FolderIcon, PlusIcon } from "lucide-react";
 
 export default function ProjectsPage() {
   const { user } = useAuth();
-  const { openEditProjectDialog } = useEditProjectDialog();
-  const [searchQuery, setSearchQuery] = useState("");
-
   const { data: projects = [], isLoading } = useProjects("non_default");
-
-  const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) return projects;
-    const query = searchQuery.toLowerCase();
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        (p.description && p.description.toLowerCase().includes(query))
-    );
-  }, [projects, searchQuery]);
-
-  const handleCopyLink = (projectId: string) => {
-    const url = `${window.location.origin}/projects/${projectId}`;
-    navigator.clipboard.writeText(url);
-    toast.add({
-      title: "Link copied",
-      description: "Project link has been copied to your clipboard.",
-      type: "success",
-    });
-  };
 
   return (
     <StandardPageLayout>
@@ -74,9 +23,7 @@ export default function ProjectsPage() {
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="page-title">
-                Projects
-              </h1>
+              <h1 className="page-title">Projects</h1>
               {!isLoading && (
                 <Badge
                   variant="secondary"
@@ -102,187 +49,11 @@ export default function ProjectsPage() {
         />
       </div>
 
-          {/* Search bar */}
-          <div className="relative w-full">
-            <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              size="lg"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Projects List */}
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-16 w-full rounded-xl" />
-            </div>
-          ) : !filteredProjects.length ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border/70 bg-card/40">
-              <div className="p-3 rounded-full bg-muted text-muted-foreground mb-3">
-                <FolderPlusIcon className="size-6" />
-              </div>
-              <h3 className="empty-state-title">
-                {searchQuery ? "No matching projects" : "No projects yet"}
-              </h3>
-              <p className="empty-state-description">
-                {searchQuery
-                  ? `No projects found matching "${searchQuery}". Try a different keyword.`
-                  : "Create your first project to start organizing tasks into custom Kanban boards."}
-              </p>
-              {searchQuery ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSearchQuery("")}
-                  className="rounded-xl mt-4 text-xs font-medium"
-                >
-                  Clear search
-                </Button>
-              ) : (
-                <AddProjectDialog
-                  trigger={
-                    <Button
-                      size="sm"
-                      className="gap-2 rounded-xl mt-4 text-xs font-semibold shadow-xs"
-                    >
-                      <PlusIcon className="size-3.5" />
-                      <span>Create Project</span>
-                    </Button>
-                  }
-                />
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {filteredProjects.map((project) => {
-                const isDefault = user?.defaultProjectId === project.id;
-
-                return (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="group relative flex items-center justify-between p-3.5 sm:p-4 rounded-xl border border-border/70 bg-card hover:bg-accent/40 hover:border-primary/40 shadow-xs hover:shadow-sm transition-all duration-150 select-none"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 pr-4">
-                      {(() => {
-                        const config = getColorConfig(project.colorKey);
-                        return (
-                          <div
-                            className={`flex size-9 items-center justify-center rounded-lg shrink-0 transition-transform group-hover:scale-105 border ${config.badgeBgClass} ${config.badgeBorderClass} ${config.badgeTextClass}`}
-                          >
-                            <HashIcon className="size-4.5" />
-                          </div>
-                        );
-                      })()}
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="item-title group-hover:text-primary transition-colors truncate">
-                            {project.name}
-                          </span>
-                          {isDefault && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] font-medium text-muted-foreground border-border/60"
-                            >
-                              Default
-                            </Badge>
-                          )}
-                        </div>
-                        {project.description && (
-                          <span className="helper-text truncate mt-0.5">
-                            {project.description}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-1.5 shrink-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={(props) => (
-                            <Button
-                              {...props}
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg shrink-0"
-                            />
-                          )}
-                        >
-                          <MoreHorizontalIcon className="size-4" />
-                          <span className="sr-only">Project options</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-44 rounded-xl p-1 shadow-md"
-                        >
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem
-                              onClick={() => openEditProjectDialog(project)}
-                              className="gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                            >
-                              <PencilIcon className="size-3.5 text-muted-foreground" />
-                              <span>Edit project</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleCopyLink(project.id)}
-                              className="gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                            >
-                              <CopyIcon className="size-3.5 text-muted-foreground" />
-                              <span>Copy link</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="my-1 bg-border/50" />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => {
-                                toast.add({
-                                  title: "Delete project",
-                                  description:
-                                    "Project deletion functionality will be available soon.",
-                                  type: "info",
-                                });
-                              }}
-                              className="gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                            >
-                              <Trash2Icon className="size-3.5" />
-                              <span>Delete project</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <ChevronRightIcon className="size-4 text-muted-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  </Link>
-                );
-              })}
-
-              {/* Quick Add trigger at the bottom of the list */}
-              <AddProjectDialog
-                trigger={
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl border border-dashed border-border/80 hover:border-primary/50 bg-card/40 hover:bg-accent/30 text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer mt-1"
-                  >
-                    <PlusIcon className="size-4 text-primary" />
-                    <span>Add new project</span>
-                  </button>
-                }
-              />
-            </div>
-          )}
+      <ProjectList
+        projects={projects}
+        isLoading={isLoading}
+        defaultProjectId={user?.defaultProjectId}
+      />
     </StandardPageLayout>
   );
 }

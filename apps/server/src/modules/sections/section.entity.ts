@@ -1,16 +1,14 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   OneToMany,
   ManyToOne,
   JoinColumn,
   Index,
   Unique,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 
+import { BaseEntity } from '../../common/database/base.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/project.entity';
 import { User } from '../users/user.entity';
@@ -18,10 +16,7 @@ import { User } from '../users/user.entity';
 @Entity('sections')
 @Unique(['id', 'projectId'])
 @Index(['projectId', 'name'], { unique: true }) // Ensure that each project can only have one section with a given name
-export class Section {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Section extends BaseEntity {
   @Column({ type: 'uuid', name: 'project_id' })
   projectId: string;
 
@@ -43,12 +38,6 @@ export class Section {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @CreateDateColumn({ type: 'timestamptz', precision: 3, name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz', precision: 3, name: 'updated_at' })
-  updatedAt: Date;
-
   @ManyToOne(() => User, (user) => user.sections, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner!: User;
@@ -64,6 +53,6 @@ export class Section {
 
   // TODO: need to factor this out
   @Index()
-  @Column({ type: 'varchar', length: 255, nullable: false })
+  @Column({ type: 'varchar', length: 255, collation: 'C', nullable: false })
   lexorank: string;
 }
