@@ -1,4 +1,4 @@
-import ProjectCompletedTasks from "@/components/projects/project-completed-tasks";
+import ProjectCompletedTasks from "@/features/projects/components/project-completed-tasks";
 
 export default async function ProjectCompletedTasksPage({
   params,

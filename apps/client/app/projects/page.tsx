@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useProjects } from "@/hooks/projects/use-projects";
+import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useAuth } from "@/providers/AuthProvider";
 import { getColorConfig } from "@/lib/color-palette";
 import { StandardPageLayout } from "@/components/layout/standard-page-layout";
-import AddProjectDialog from "@/components/projects/add-project-dialog";
+import AddProjectDialog from "@/features/projects/components/add-project-dialog";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import {
   CopyIcon,
   ExternalLinkIcon,
 } from "lucide-react";
-import { useEditProjectDialog } from "@/providers/EditProjectProvider";
+import { useEditProjectDialog } from "@/features/projects/context/edit-project-context";
 
 export default function ProjectsPage() {
   const { user } = useAuth();

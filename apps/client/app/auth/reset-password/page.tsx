@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import ResetPasswordForm from "@/components/auth/reset-password-form";
+import ResetPasswordForm from "@/features/auth/components/reset-password-form";
 import { Button } from "@/components/ui/button";
 import { AlertCircleIcon, ArrowLeftIcon } from "lucide-react";
 

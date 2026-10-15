@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { verifyMagicLinkAction } from "@/lib/actions/auth.actions";
+import { verifyMagicLinkAction } from "@/features/auth/actions/auth.actions";
 
 function VerifyContent() {
   const searchParams = useSearchParams();

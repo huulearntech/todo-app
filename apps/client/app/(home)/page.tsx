@@ -1,6 +1,6 @@
 import { getOptionalUser } from "@/lib/server/auth";
-import AuthenticatedHome from "@/components/(home)/authenticated-home";
-import LandingHome from "@/components/(home)/landing-home";
+import AuthenticatedHome from "@/features/home/components/authenticated-home";
+import LandingHome from "@/features/home/components/landing-home";
 
 export default async function Home() {
   const user = await getOptionalUser();

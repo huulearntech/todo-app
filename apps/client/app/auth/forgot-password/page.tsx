@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import ForgotPasswordForm from "@/components/auth/forgot-password-form";
+import ForgotPasswordForm from "@/features/auth/components/forgot-password-form";
 
 function ForgotPasswordContent() {
   const { user, isLoading } = useAuth();

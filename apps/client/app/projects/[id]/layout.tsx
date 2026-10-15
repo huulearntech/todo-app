@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ProjectHeader from "@/components/projects/project-header";
-import { ProjectViewProvider } from "@/components/projects/project-view-context";
-import { getProjectById } from "@/lib/server/api/project";
+import ProjectHeader from "@/features/projects/components/project-header";
+import { ProjectViewProvider } from "@/features/projects/components/project-view-context";
+import { getProjectById } from "@/features/projects/server/project";
 
 interface ProjectLayoutProps {
   children: React.ReactNode;

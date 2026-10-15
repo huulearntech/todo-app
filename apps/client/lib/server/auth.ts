@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "./api/user";
+import { getCurrentUser } from "@/features/auth/server/user";
 import { ServiceUnavailableError, UnauthorizedError } from "./errors";
 import type { UserResponseDto } from "@todo/shared";
 

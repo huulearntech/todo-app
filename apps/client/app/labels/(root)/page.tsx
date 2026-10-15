@@ -1,4 +1,4 @@
-import LabelList from "@/components/labels/label-list";
+import LabelList from "@/features/labels/components/label-list";
 
 export default function LabelsPage() {
   return <LabelList />;

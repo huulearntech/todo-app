@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import SignUpForm from "@/components/auth/sign-up-form";
+import SignUpForm from "@/features/auth/components/sign-up-form";
 import { getSafeRedirectUrl } from "@/lib/safe-redirect";
 
 function SignUpContent() {

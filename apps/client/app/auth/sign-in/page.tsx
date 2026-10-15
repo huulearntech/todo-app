@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import SignInForm from "@/components/auth/sign-in-form";
+import SignInForm from "@/features/auth/components/sign-in-form";
 import { getSafeRedirectUrl } from "@/lib/safe-redirect";
 
 function SignInContent() {

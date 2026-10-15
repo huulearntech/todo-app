@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Metadata } from "next";
 import { FullSpaceLayout } from "@/components/layout/full-space-layout";
-import InboxHeader from "@/components/inbox/inbox-header";
+import InboxHeader from "@/features/inbox/components/inbox-header";
 
 export const metadata: Metadata = {
   title: "Inbox",

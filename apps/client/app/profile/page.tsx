@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import UserProfileForm from "@/components/profile/user-profile-form";
-import ChangePasswordCard from "@/components/profile/change-password-card";
-import { AppearanceSkeleton } from "@/components/profile/appearance-settings";
+import UserProfileForm from "@/features/profile/components/user-profile-form";
+import ChangePasswordCard from "@/features/profile/components/change-password-card";
+import { AppearanceSkeleton } from "@/features/profile/components/appearance-settings";
 import { useAuth } from "@/providers/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { LogInIcon } from "lucide-react";
 
 const AppearanceSettings = dynamic(
-  () => import("@/components/profile/appearance-settings"),
+  () => import("@/features/profile/components/appearance-settings"),
   {
     ssr: false,
     loading: () => <AppearanceSkeleton />,

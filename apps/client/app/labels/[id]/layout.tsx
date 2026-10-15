@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import LabelHeader from "@/components/labels/label-header";
+import LabelHeader from "@/features/labels/components/label-header";
 import { StandardPageLayout } from "@/components/layout/standard-page-layout";
 
 export default function LabelsDetailLayout({ children }: { children: React.ReactNode }) {

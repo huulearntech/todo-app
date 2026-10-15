@@ -6,13 +6,13 @@ import AuthProvider from "@/providers/AuthProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar/app-sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar/app-sidebar";
 import Script from "next/script";
 
 import { MyStoreProvider } from "@/providers/MyStoreProvider";
-import EditTaskDialog from "@/components/inbox/edit-task-dialog";
-import AddTaskDialog from "@/components/(home)/add-task-dialog";
-import { EditProjectProvider } from "@/providers/EditProjectProvider";
+import EditTaskDialog from "@/features/tasks/components/edit-task-dialog";
+import AddTaskDialog from "@/features/tasks/components/add-task-dialog";
+import { EditProjectProvider } from "@/features/projects/context/edit-project-context";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 
 const geistSans = Geist({

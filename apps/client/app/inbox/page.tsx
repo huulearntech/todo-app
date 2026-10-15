@@ -1,4 +1,4 @@
-import DndKanban from "@/components/(home)/dnd-kanban";
+import DndKanban from "@/features/tasks/components/dnd-kanban";
 import { requireUser } from "@/lib/server/auth";
 
 export default async function InboxPage() {

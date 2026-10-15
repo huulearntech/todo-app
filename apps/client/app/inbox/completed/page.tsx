@@ -1,4 +1,4 @@
-import ProjectCompletedTasks from "@/components/projects/project-completed-tasks";
+import ProjectCompletedTasks from "@/features/projects/components/project-completed-tasks";
 import { requireUser } from "@/lib/server/auth";
 
 export default async function InboxCompletedPage() {

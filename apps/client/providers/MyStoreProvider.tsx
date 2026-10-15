@@ -3,8 +3,8 @@
 import { type ReactNode, createContext, useRef, useContext } from "react";
 import { useStore } from "zustand";
 
-import { type AddTaskDialogStore, addTaskDialogStore } from "@/stores/add-task-dialog.store";
-import { type EditTaskDialogStore, editTaskDialogStore } from "@/stores/edit-task-dialog.store";
+import { type AddTaskDialogStore, addTaskDialogStore } from "@/features/tasks/stores/add-task-dialog.store";
+import { type EditTaskDialogStore, editTaskDialogStore } from "@/features/tasks/stores/edit-task-dialog.store";
 
 export type MyStoreContextType = {
   addTaskDialogStore: ReturnType<typeof addTaskDialogStore>;
