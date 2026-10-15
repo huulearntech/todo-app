@@ -10,6 +10,7 @@ import { UserModule } from '../users/user.module';
 
 import { RefreshToken } from './entities/refresh-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { MagicLinkStrategy } from './strategies/magic-link.strategy';
 import { JwtAccessGuard } from './guards/jwt-access.guard';
@@ -31,7 +32,12 @@ import { TypedConfigService } from '@/src/config/typed-config.service';
         },
       }),
     }),
-    TypeOrmModule.forFeature([User, RefreshToken, MagicLinkToken]),
+    TypeOrmModule.forFeature([
+      User,
+      RefreshToken,
+      MagicLinkToken,
+      PasswordResetToken,
+    ]),
     UserModule,
     MailerModule,
   ],

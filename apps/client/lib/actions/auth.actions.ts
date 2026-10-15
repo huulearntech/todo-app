@@ -122,7 +122,7 @@ export async function resendVerificationEmailAction(
 
 export async function verifyMagicLinkAction(
   token: string,
-): Promise<{ success: boolean; user?: UserResponseDto; error?: string }> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/magic-link/verify`, {
       method: "POST",
@@ -144,24 +144,7 @@ export async function verifyMagicLinkAction(
       return { success: false, error: errorMessage };
     }
 
-    const data = (await response.json()) as { user: UserResponseDto };
-    const cookieStore = await cookies();
-    const setCookies = response.headers.getSetCookie();
-
-    for (const cookieStr of setCookies) {
-      const [nameVal] = cookieStr.split(";");
-      const [name, val] = nameVal.split("=");
-      if (name && val) {
-        cookieStore.set(name.trim(), val.trim(), {
-          path: "/",
-          httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-        });
-      }
-    }
-
-    return { success: true, user: data.user };
+    return { success: true };
   } catch {
     return {
       success: false,
@@ -169,3 +152,81 @@ export async function verifyMagicLinkAction(
     };
   }
 }
+
+export async function requestPasswordResetAction(
+  email: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      cache: "no-store",
+    });
+
+    const data = (await response.json()) as { message?: string };
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to send password reset email.",
+      };
+    }
+
+    return {
+      success: true,
+      message:
+        data.message ||
+        "If an account exists with this email, a password reset link has been sent.",
+    };
+  } catch {
+    return {
+      success: false,
+      message: "An unexpected network error occurred.",
+    };
+  }
+}
+
+export async function resetPasswordAction(
+  token: string,
+  newPassword: string,
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, newPassword }),
+      cache: "no-store",
+    });
+
+    const data = (await response.json()) as { message?: string };
+
+    if (!response.ok) {
+      let errorMessage =
+        data.message ||
+        "This password reset link is invalid, expired, or has already been used.";
+      if (Array.isArray(data.message)) {
+        errorMessage = data.message.join(", ");
+      }
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    return {
+      success: true,
+      message: data.message || "Password has been reset successfully.",
+    };
+  } catch {
+    return {
+      success: false,
+      error: "An unexpected error occurred while resetting your password.",
+    };
+  }
+}
+

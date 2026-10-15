@@ -6,6 +6,8 @@ import {
   Req,
   Res,
   UseGuards,
+  Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './services/auth.service';
@@ -17,6 +19,9 @@ import {
   MagicLinkRequestDto,
   MagicLinkVerifyDto,
 } from './dto/magic-link-request.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordRequestDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 import { Public } from './decorators/public.decorator';
 import { CurrentUser, type JwtUser } from './decorators/current-user.decorator';
@@ -173,32 +178,62 @@ export class AuthController {
   @UseGuards(GuestGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('magic-link/verify')
-  async verifyMagicLink(
-    @Body() body: MagicLinkVerifyDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async verifyMagicLink(@Body() body: MagicLinkVerifyDto) {
     const user = await this.authService.validateMagicLinkToken(body.token);
 
-    const { accessToken, refreshToken } =
-      await this.refreshTokenService.generatePairOfTokens(user.id);
-    await this.refreshTokenService.createRefreshToken(user.id, refreshToken);
-
-    this.setAuthCookies(response, accessToken, refreshToken);
-
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatarUrl: user.avatarUrl,
-        defaultProjectId: user.defaultProjectId,
-        isEmailVerified: user.isEmailVerified,
-      },
+      success: true,
+      message: 'Email verified successfully',
+      email: user.email,
     };
+  }
+
+  @Public()
+  @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Get('verification-status')
+  async getVerificationStatus(@Query('userId') userId: string) {
+    if (!userId || typeof userId !== 'string') {
+      throw new UnauthorizedException('User ID is required');
+    }
+    const isEmailVerified =
+      await this.authService.checkUserEmailVerified(userId);
+    return { isEmailVerified };
   }
 
   @Get('me')
   async getCurrentUser(@CurrentUser() jwtUser: JwtUser) {
     return this.userService.findById(jwtUser.id);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('change-password')
+  async changePassword(
+    @CurrentUser() user: JwtUser,
+    @Body() changePasswordDto: ChangePasswordDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { accessToken, refreshToken, message } =
+      await this.authService.changePassword(user.id, changePasswordDto);
+
+    this.setAuthCookies(response, accessToken, refreshToken);
+
+    return { success: true, message };
+  }
+
+  @Public()
+  @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: ForgotPasswordRequestDto) {
+    return this.authService.sendPasswordResetEmail(body.email);
+  }
+
+  @Public()
+  @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('reset-password')
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body);
   }
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import UserProfileForm from "@/components/profile/user-profile-form";
+import ChangePasswordCard from "@/components/profile/change-password-card";
 import { AppearanceSkeleton } from "@/components/profile/appearance-settings";
 import { useAuth } from "@/providers/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -96,6 +97,9 @@ export default function ProfilePage() {
 
       {/* Unified Profile Form Section */}
       <UserProfileForm user={user} />
+
+      {/* Security & Password Section */}
+      <ChangePasswordCard />
 
       {/* Appearance & Theme Section */}
       <AppearanceSettings />

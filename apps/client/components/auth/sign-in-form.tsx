@@ -163,9 +163,17 @@ export default function SignInForm({ onSwitchTab }: { onSwitchTab?: () => void }
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="password" className="text-xs font-semibold text-foreground/90">
-                  Password
-                </FieldLabel>
+                <div className="flex items-center justify-between">
+                  <FieldLabel htmlFor="password" className="text-xs font-semibold text-foreground/90">
+                    Password
+                  </FieldLabel>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <InputGroup
                   size="lg"
                   data-invalid={fieldState.invalid}

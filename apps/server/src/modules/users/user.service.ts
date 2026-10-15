@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import argon2 from 'argon2';
 import { randomUUID } from 'crypto';
+import { AUTH_ERROR_CODES } from '@todo/shared';
 
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { SignUpDto } from '../auth/dto/sign-up.dto';
@@ -18,6 +23,40 @@ export class UserService {
   ) {}
 
   async createUser(signUp: SignUpDto): Promise<UserResponseDto> {
+    const normalizedEmail = signUp.email.trim().toLowerCase();
+
+    const existingUser = await this.userRepository.findOne({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      if (existingUser.isEmailVerified) {
+        throw new ConflictException({
+          code: AUTH_ERROR_CODES.EMAIL_ALREADY_EXISTS,
+          message: 'An account with this email already exists. Please sign in.',
+        });
+      }
+
+      // Re-registration of an unverified account:
+      // Update credentials and name to the newly provided values.
+      const passwordHashed = await argon2.hash(signUp.password);
+      existingUser.passwordHashed = passwordHashed;
+      if (signUp.name) {
+        existingUser.name = signUp.name.trim();
+      }
+
+      const savedUser = await this.userRepository.save(existingUser);
+
+      return {
+        id: savedUser.id,
+        email: savedUser.email,
+        name: savedUser.name,
+        avatarUrl: savedUser.avatarUrl,
+        defaultProjectId: savedUser.defaultProjectId,
+        isEmailVerified: savedUser.isEmailVerified,
+      };
+    }
+
     const { password, ...userData } = signUp;
     const passwordHashed = await argon2.hash(password);
 
@@ -25,6 +64,7 @@ export class UserService {
 
     const user = this.userRepository.create({
       ...userData,
+      email: normalizedEmail,
       passwordHashed,
       defaultProjectId,
     });

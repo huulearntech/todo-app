@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authService } from "@/services/auth.service";
-import { signUpSchema, type SignUpDto } from "@todo/shared";
+import { signUpSchema, type SignUpDto, AUTH_ERROR_CODES } from "@todo/shared";
+import CheckEmailNotice from "./check-email-notice";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -27,9 +27,13 @@ import {
 } from "lucide-react";
 
 export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }) {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<{
+    email: string;
+    userId: string;
+    password?: string;
+  } | null>(null);
 
   const form = useForm<SignUpDto>({
     resolver: zodResolver(signUpSchema),
@@ -42,30 +46,81 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
 
   const { handleSubmit, control } = form;
 
+  const handleReset = () => {
+    setPendingVerification(null);
+  };
+
   const onSubmit = async (data: SignUpDto) => {
     try {
       setIsLoading(true);
-      await authService.signUp(data);
+      const res = await authService.signUp(data);
+      setPendingVerification({
+        email: data.email,
+        userId: res.user.id,
+        password: data.password,
+      });
       toast.add({
-        title: "Sign up successful!",
-        description: "Your account has been created. You can now sign in.",
+        title: "Account created!",
+        description: "Please check your email to verify your account.",
         type: "success",
       });
-      if (onSwitchTab) {
-        onSwitchTab();
+    } catch (err: unknown) {
+      const responseData =
+        err && typeof err === "object" && "response" in err
+          ? (
+              err as {
+                response?: { data?: { message?: string; code?: string } };
+              }
+            ).response?.data
+          : undefined;
+
+      const code = responseData?.code;
+      const message =
+        responseData?.message ||
+        (err instanceof Error
+          ? err.message
+          : "Could not create account. Please try again.");
+
+      if (code === AUTH_ERROR_CODES.EMAIL_ALREADY_EXISTS) {
+        form.setError("email", {
+          type: "manual",
+          message: "An account with this email already exists. Please sign in.",
+        });
+        toast.add({
+          title: "Account exists",
+          description:
+            "An account with this email already exists. Please sign in.",
+          type: "error",
+        });
       } else {
-        router.push("/auth/sign-in");
+        toast.add({
+          title: "Sign up failed",
+          description: message,
+          type: "error",
+        });
       }
-    } catch {
-      toast.add({
-        title: "Sign up failed",
-        description: "Could not create account. Please try again.",
-        type: "error",
-      });
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (pendingVerification) {
+    return (
+      <CheckEmailNotice
+        email={pendingVerification.email}
+        userId={pendingVerification.userId}
+        credentials={
+          pendingVerification.password
+            ? {
+                email: pendingVerification.email,
+                password: pendingVerification.password,
+              }
+            : undefined
+        }
+        onReset={handleReset}
+      />
+    );
+  }
 
   return (
     <div className="w-full">

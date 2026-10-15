@@ -1,13 +1,18 @@
 import * as crypto from 'crypto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UnauthorizedException } from '@nestjs/common';
+import {
+  UnauthorizedException,
+  BadRequestException,
+  HttpException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import argon2 from 'argon2';
 
 import { AuthService } from './auth.service';
 import { User } from '@/src/modules/users/user.entity';
 import { MagicLinkToken } from '../entities/magic-link-token.entity';
+import { PasswordResetToken } from '../entities/password-reset-token.entity';
 import { RefreshTokenService } from './refresh-token.service';
 import { UserService } from '@/src/modules/users/user.service';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
@@ -18,6 +23,9 @@ describe('AuthService - Magic Link & Sign Up', () => {
   let userRepositoryMock: Partial<jest.Mocked<Repository<User>>>;
   let magicLinkTokenRepositoryMock: Partial<
     jest.Mocked<Repository<MagicLinkToken>>
+  >;
+  let passwordResetTokenRepositoryMock: Partial<
+    jest.Mocked<Repository<PasswordResetToken>>
   >;
   let userServiceMock: Partial<jest.Mocked<UserService>>;
   let refreshTokenServiceMock: Partial<jest.Mocked<RefreshTokenService>>;
@@ -47,12 +55,24 @@ describe('AuthService - Magic Link & Sign Up', () => {
     };
 
     magicLinkTokenRepositoryMock = {
-      findOne: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(0),
       create: jest.fn().mockImplementation((dto) => dto as MagicLinkToken),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
       update: jest
         .fn()
         .mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] }),
+    };
+
+    passwordResetTokenRepositoryMock = {
+      findOne: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockImplementation((dto) => dto as PasswordResetToken),
+      save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      update: jest
+        .fn()
+        .mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] }),
+      createQueryBuilder: jest.fn(),
     };
 
     userServiceMock = {
@@ -95,6 +115,10 @@ describe('AuthService - Magic Link & Sign Up', () => {
           useValue: magicLinkTokenRepositoryMock,
         },
         {
+          provide: getRepositoryToken(PasswordResetToken),
+          useValue: passwordResetTokenRepositoryMock,
+        },
+        {
           provide: UserService,
           useValue: userServiceMock,
         },
@@ -117,7 +141,7 @@ describe('AuthService - Magic Link & Sign Up', () => {
   });
 
   describe('signUp', () => {
-    it('should create user via UserService and dispatch verification email instead of welcome email', async () => {
+    it('should create user, dispatch verification email, and return user with ticket', async () => {
       userRepositoryMock.findOne!.mockResolvedValue(mockUser);
 
       const result = await service.signUp({
@@ -132,10 +156,10 @@ describe('AuthService - Magic Link & Sign Up', () => {
         password: 'password123',
       });
 
-      expect(result.id).toBe(mockUser.id);
-      expect(result.email).toBe(mockUser.email);
+      expect(result.user.id).toBe(mockUser.id);
+      expect(result.user.email).toBe(mockUser.email);
 
-      // Verify that magic-link verification email was sent, NOT welcome email
+      // Verify that verification email was queued
       expect(
         mailerSchedulerServiceMock.sendImmediateEmail,
       ).toHaveBeenCalledWith(
@@ -148,19 +172,35 @@ describe('AuthService - Magic Link & Sign Up', () => {
           }),
         }),
       );
-      expect(
-        mailerSchedulerServiceMock.sendImmediateEmail,
-      ).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          templateType: 'welcome',
-        }),
-      );
+    });
+
+    it('should still succeed and return user if sendMagicLink hits 60s cooldown', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      // Simulate recent token created 10 seconds ago
+      magicLinkTokenRepositoryMock.findOne!.mockResolvedValue({
+        tokenHash: 'recent_hash',
+        userId: mockUser.id,
+        createdAt: new Date(Date.now() - 10 * 1000),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        isUsed: false,
+      } as MagicLinkToken);
+
+      const result = await service.signUp({
+        email: 'test@example.com',
+        name: 'Test User',
+        password: 'password123',
+      });
+
+      expect(result.user.id).toBe(mockUser.id);
+      expect(userServiceMock.createUser).toHaveBeenCalled();
     });
   });
 
   describe('sendMagicLink', () => {
-    it('should generate a token, save hashed token, and enqueue email when user exists', async () => {
+    it('should generate a token, save hashed token, and enqueue email when user exists and rate limits pass', async () => {
       userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      magicLinkTokenRepositoryMock.findOne!.mockResolvedValue(null);
+      magicLinkTokenRepositoryMock.count!.mockResolvedValue(0);
 
       const result = await service.sendMagicLink('test@example.com');
 
@@ -193,9 +233,47 @@ describe('AuthService - Magic Link & Sign Up', () => {
           templateType: 'magic-link',
           context: {
             name: mockUser.name,
-            actionUrl: expect.stringContaining('/auth/verify?token='),
+            actionUrl: expect.stringContaining(
+              '/auth/verify?token=',
+            ) as unknown as string,
           },
         }),
+      );
+    });
+
+    it('should throw 429 COOLDOWN_ACTIVE if called within 60 seconds of previous token', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      const recentToken: MagicLinkToken = {
+        tokenHash: 'abc',
+        userId: mockUser.id,
+        user: mockUser,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        isUsed: false,
+        createdAt: new Date(Date.now() - 20 * 1000), // 20s ago (< 60s)
+      };
+      magicLinkTokenRepositoryMock.findOne!.mockResolvedValue(recentToken);
+
+      await expect(service.sendMagicLink('test@example.com')).rejects.toThrow(
+        HttpException,
+      );
+    });
+
+    it('should throw 429 RATE_LIMIT_EXCEEDED if 5 or more tokens were generated in the last hour', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      // Older token past 60s
+      const olderToken: MagicLinkToken = {
+        tokenHash: 'abc',
+        userId: mockUser.id,
+        user: mockUser,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        isUsed: false,
+        createdAt: new Date(Date.now() - 120 * 1000), // 2 mins ago
+      };
+      magicLinkTokenRepositoryMock.findOne!.mockResolvedValue(olderToken);
+      magicLinkTokenRepositoryMock.count!.mockResolvedValue(5);
+
+      await expect(service.sendMagicLink('test@example.com')).rejects.toThrow(
+        HttpException,
       );
     });
 
@@ -221,7 +299,7 @@ describe('AuthService - Magic Link & Sign Up', () => {
       .update(rawToken)
       .digest('hex');
 
-    it('should validate valid token, mark used, verify email, send welcome email, and return user', async () => {
+    it('should validate valid token, mark used, verify email, emit SSE event, send welcome email, and return user', async () => {
       const mockTokenEntity: MagicLinkToken = {
         tokenHash,
         userId: mockUser.id,
@@ -286,11 +364,11 @@ describe('AuthService - Magic Link & Sign Up', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw UnauthorizedException if token has already been used', async () => {
+    it('should throw UnauthorizedException if token has already been used and user is not verified', async () => {
       const mockTokenEntity: MagicLinkToken = {
         tokenHash,
         userId: mockUser.id,
-        user: mockUser,
+        user: { ...mockUser, isEmailVerified: false },
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         isUsed: true,
         createdAt: new Date(),
@@ -299,8 +377,29 @@ describe('AuthService - Magic Link & Sign Up', () => {
       magicLinkTokenRepositoryMock.findOne!.mockResolvedValue(mockTokenEntity);
 
       await expect(service.validateMagicLinkToken(rawToken)).rejects.toThrow(
-        'Magic link token has already been used',
+        'This verification link has expired or has already been used.',
       );
+    });
+
+    it('should return user idempotently if token was already used but user is already verified', async () => {
+      const mockTokenEntity: MagicLinkToken = {
+        tokenHash,
+        userId: mockUser.id,
+        user: { ...mockUser, isEmailVerified: true },
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        isUsed: true,
+        createdAt: new Date(),
+      };
+
+      magicLinkTokenRepositoryMock.findOne!.mockResolvedValue(mockTokenEntity);
+
+      const validatedUser = await service.validateMagicLinkToken(rawToken);
+
+      expect(validatedUser.id).toBe(mockUser.id);
+      expect(magicLinkTokenRepositoryMock.save).not.toHaveBeenCalled();
+      expect(
+        mailerSchedulerServiceMock.sendImmediateEmail,
+      ).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException if token has expired', async () => {
@@ -316,8 +415,37 @@ describe('AuthService - Magic Link & Sign Up', () => {
       magicLinkTokenRepositoryMock.findOne!.mockResolvedValue(mockTokenEntity);
 
       await expect(service.validateMagicLinkToken(rawToken)).rejects.toThrow(
-        'Magic link token has expired',
+        'This verification link has expired or has already been used.',
       );
+    });
+  });
+
+  describe('checkUserEmailVerified', () => {
+    it('should return true if user email is verified', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue({
+        id: mockUser.id,
+        isEmailVerified: true,
+      } as User);
+
+      const isVerified = await service.checkUserEmailVerified(mockUser.id);
+      expect(isVerified).toBe(true);
+    });
+
+    it('should return false if user email is not verified', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue({
+        id: mockUser.id,
+        isEmailVerified: false,
+      } as User);
+
+      const isVerified = await service.checkUserEmailVerified(mockUser.id);
+      expect(isVerified).toBe(false);
+    });
+
+    it('should return false if user does not exist', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(null);
+
+      const isVerified = await service.checkUserEmailVerified('nonexistent');
+      expect(isVerified).toBe(false);
     });
   });
 
@@ -373,6 +501,155 @@ describe('AuthService - Magic Link & Sign Up', () => {
           password: 'wrong-password',
         }),
       ).rejects.toThrow('Invalid credentials');
+    });
+  });
+
+  describe('changePassword', () => {
+    it('should throw BadRequestException if current password does not match', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      jest.spyOn(argon2, 'verify').mockResolvedValue(false);
+
+      await expect(
+        service.changePassword(mockUser.id, {
+          currentPassword: 'wrong-current',
+          newPassword: 'brandNewPassword123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if new password matches current password', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      jest.spyOn(argon2, 'verify').mockResolvedValue(true);
+
+      await expect(
+        service.changePassword(mockUser.id, {
+          currentPassword: 'samePassword123',
+          newPassword: 'samePassword123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should successfully update password, revoke sessions and return new tokens', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue({ ...mockUser });
+      jest.spyOn(argon2, 'verify').mockResolvedValue(true);
+      jest.spyOn(argon2, 'hash').mockResolvedValue('newlyHashedPassword');
+      refreshTokenServiceMock.generatePairOfTokens!.mockResolvedValue({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      });
+
+      const result = await service.changePassword(mockUser.id, {
+        currentPassword: 'oldPassword123',
+        newPassword: 'brandNewPassword123',
+      });
+
+      expect(userRepositoryMock.save).toHaveBeenCalled();
+      expect(refreshTokenServiceMock.revokeAllUserTokens).toHaveBeenCalledWith(
+        mockUser.id,
+      );
+      expect(refreshTokenServiceMock.createRefreshToken).toHaveBeenCalledWith(
+        mockUser.id,
+        'new-refresh-token',
+      );
+      expect(result.accessToken).toBe('new-access-token');
+      expect(result.refreshToken).toBe('new-refresh-token');
+    });
+  });
+
+  describe('sendPasswordResetEmail', () => {
+    it('should return generic success message when email is not found', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(null);
+
+      const result = await service.sendPasswordResetEmail(
+        'unknown@example.com',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('If an account exists');
+      expect(mailerSchedulerServiceMock.sendImmediateEmail).not.toHaveBeenCalled();
+    });
+
+    it('should enforce cooldown if last request was under 60 seconds ago', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      passwordResetTokenRepositoryMock.findOne!.mockResolvedValue({
+        tokenHash: 'hash',
+        userId: mockUser.id,
+        createdAt: new Date(Date.now() - 30 * 1000), // 30s ago
+        expiresAt: new Date(Date.now() + 14 * 60 * 1000),
+        isUsed: false,
+      } as any);
+
+      await expect(
+        service.sendPasswordResetEmail(mockUser.email),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('should send password reset email when valid', async () => {
+      userRepositoryMock.findOne!.mockResolvedValue(mockUser);
+      passwordResetTokenRepositoryMock.findOne!.mockResolvedValue(null);
+      passwordResetTokenRepositoryMock.count!.mockResolvedValue(0);
+
+      const result = await service.sendPasswordResetEmail(mockUser.email);
+
+      expect(result.success).toBe(true);
+      expect(passwordResetTokenRepositoryMock.save).toHaveBeenCalled();
+      expect(mailerSchedulerServiceMock.sendImmediateEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: mockUser.email,
+          templateType: 'password-reset',
+        }),
+      );
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should throw BadRequestException if token is invalid or expired', async () => {
+      passwordResetTokenRepositoryMock.findOne!.mockResolvedValue(null);
+
+      await expect(
+        service.resetPassword({
+          token: 'invalid-token',
+          newPassword: 'newPassword123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should successfully reset password, revoke sessions, and return success', async () => {
+      const mockResetToken = {
+        tokenHash: crypto.createHash('sha256').update('valid-token').digest('hex'),
+        userId: mockUser.id,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        isUsed: false,
+        createdAt: new Date(),
+      };
+
+      passwordResetTokenRepositoryMock.findOne!.mockResolvedValue(
+        mockResetToken as any,
+      );
+
+      const updateQueryBuilderMock = {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+      passwordResetTokenRepositoryMock.createQueryBuilder = jest
+        .fn()
+        .mockReturnValue(updateQueryBuilderMock);
+
+      userRepositoryMock.findOne!.mockResolvedValue({ ...mockUser });
+      jest.spyOn(argon2, 'hash').mockResolvedValue('hashedNewPassword');
+
+      const result = await service.resetPassword({
+        token: 'valid-token',
+        newPassword: 'newPassword123',
+      });
+
+      expect(result.success).toBe(true);
+      expect(userRepositoryMock.save).toHaveBeenCalled();
+      expect(refreshTokenServiceMock.revokeAllUserTokens).toHaveBeenCalledWith(
+        mockUser.id,
+      );
     });
   });
 });

@@ -11,6 +11,7 @@ import {
 
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
+import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { TaskLabel } from '../task-labels/task-label.entity';
 import { Project } from '../projects/project.entity';
 import { UserGoal } from './entities/user-goal.entity';
@@ -76,6 +77,10 @@ export class User {
   @OneToMany(() => MagicLinkToken, (magicLinkToken) => magicLinkToken.user)
   magicLinkTokens: MagicLinkToken[];
 
+  @OneToMany(() => PasswordResetToken, (passwordResetToken) => passwordResetToken.user)
+  passwordResetTokens?: PasswordResetToken[];
+
   @OneToMany(() => UserGoal, (userGoal) => userGoal.user, { cascade: true })
   goals?: UserGoal[];
 }
+

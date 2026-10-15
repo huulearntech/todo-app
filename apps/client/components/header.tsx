@@ -13,9 +13,11 @@ export interface HeaderProps {
   left?: React.ReactNode;
   /** Custom right content, e.g. action buttons or dropdown menus */
   right?: React.ReactNode;
+  /** Whether to show the Sign In button for unauthenticated users. Defaults to true. */
+  showAuthAction?: boolean;
 }
 
-export default function Header({ left, right }: HeaderProps) {
+export default function Header({ left, right, showAuthAction = true }: HeaderProps) {
   const { user } = useAuth();
 
   // Unauthenticated header: No search bar or sidebar toggle; show branding and auth action
@@ -33,14 +35,16 @@ export default function Header({ left, right }: HeaderProps) {
         </Link>
         <div className="flex items-center gap-2">
           {right}
-          <Button
-            variant="outline"
-            className="px-4 py-2 rounded-lg hover:bg-muted"
-            render={<Link href="/auth/sign-in" />}
-            nativeButton={false}
-          >
-            Sign In
-          </Button>
+          {showAuthAction && (
+            <Button
+              variant="outline"
+              className="px-4 py-2 rounded-lg hover:bg-muted"
+              render={<Link href="/auth/sign-in" />}
+              nativeButton={false}
+            >
+              Sign In
+            </Button>
+          )}
         </div>
       </header>
     );
