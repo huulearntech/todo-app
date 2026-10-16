@@ -10,7 +10,7 @@ import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
 import { groupOccurrencesByDate } from "@/features/tasks/utils/task-date-grouping";
 import { DeleteTaskAlertDialog } from "@/features/tasks/components/delete-task-alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ProjectCompletedTasksSkeleton } from "./project-completed-tasks-skeleton";
 import { CheckCircle2Icon, ArrowLeftIcon } from "lucide-react";
 import type { CompletedOccurrenceResponseDto } from "@todo/shared";
 
@@ -56,17 +56,7 @@ export default function ProjectCompletedTasks({
   }, [filteredOccurrences]);
 
   if (isLoading) {
-    return (
-      <div className="relative flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden flex flex-col">
-        <main className="flex-1 min-h-0 min-w-0 h-full overflow-y-auto">
-          <div className="flex flex-col gap-3 w-full max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-          </div>
-        </main>
-      </div>
-    );
+    return <ProjectCompletedTasksSkeleton />;
   }
 
   if (error) {
@@ -180,12 +170,13 @@ export default function ProjectCompletedTasks({
       </main>
 
       {/* Permanent Delete Task Dialog */}
-      <DeleteTaskAlertDialog
-        task={taskToDelete}
-        open={Boolean(taskToDelete)}
-        onOpenChange={(open) => !open && setTaskToDelete(null)}
-        onConfirm={(task) => deleteTaskMutation.mutate(task.id)}
-      />
+      {taskToDelete && (
+        <DeleteTaskAlertDialog
+          task={taskToDelete}
+          onClose={() => setTaskToDelete(null)}
+          onConfirm={(task) => deleteTaskMutation.mutate(task.id)}
+        />
+      )}
     </div>
   );
 }

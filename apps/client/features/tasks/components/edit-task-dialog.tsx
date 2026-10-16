@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,7 @@ import {
 import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { useUpdateTask } from "@/features/tasks/hooks/use-update-task";
 import { updateTaskSchema } from "@todo/shared/browser";
+import type { TaskResponseDto as Task } from "@todo/shared";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,25 +20,31 @@ import {
 } from "@/components/ui/breadcrumb";
 import { TaskForm } from "@/features/tasks/components/task-form";
 
-export default function EditTaskDialog() {
-  const task = useEditTaskDialogStore((state) => state.task);
-  const setTask = useEditTaskDialogStore((state) => state.setTask);
+export interface EditTaskDialogContentProps {
+  task: Task;
+  onClose: () => void;
+}
+
+export function EditTaskDialogContent({
+  task,
+  onClose,
+}: EditTaskDialogContentProps) {
+  const [open, setOpen] = useState(true);
 
   const editTaskMutation = useUpdateTask({
     onSuccess: () => {
-      setTask(null);
+      setOpen(false);
     },
   });
 
-  if (!task) {
-    return null;
-  }
-
   return (
     <Dialog
-      open={!!task}
-      onOpenChange={(open) => {
-        if (!open) setTask(null);
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
       }}
     >
       <DialogContent className="sm:max-w-[840px] max-h-[90vh] sm:max-h-[calc(100vh-3rem)] p-0 gap-0 overflow-hidden rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-2xl flex flex-col">
@@ -70,11 +78,9 @@ export default function EditTaskDialog() {
         <TaskForm
           defaultValues={updateTaskSchema.encode(task)}
           onSubmit={(data) => {
-            if (task) {
-              editTaskMutation.mutate({ taskId: task.id, data });
-            }
+            editTaskMutation.mutate({ taskId: task.id, data });
           }}
-          onCancel={() => setTask(null)}
+          onCancel={() => setOpen(false)}
           isPending={editTaskMutation.isPending}
           submitLabel="Save changes"
           submittingLabel="Saving..."
@@ -82,5 +88,22 @@ export default function EditTaskDialog() {
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+export default function EditTaskDialog() {
+  const task = useEditTaskDialogStore((state) => state.task);
+  const setTask = useEditTaskDialogStore((state) => state.setTask);
+
+  if (!task) {
+    return null;
+  }
+
+  return (
+    <EditTaskDialogContent
+      key={task.id}
+      task={task}
+      onClose={() => setTask(null)}
+    />
   );
 }

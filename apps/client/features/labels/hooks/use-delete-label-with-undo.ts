@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { taskLabelService } from "@/features/tasks/services/task-label.service";
+import { labelQueryKeys } from "@/lib/query/query-keys";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 import { toast } from "@/components/ui/toast";
 
@@ -12,7 +13,7 @@ export function useDeleteLabelWithUndo(labels: TaskLabel[]) {
     const targetIndex = labels.findIndex((l) => l.id === labelToDelete.id);
 
     // 1. Optimistic UI update: remove label from query cache
-    queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) =>
+    queryClient.setQueryData<TaskLabel[]>(labelQueryKeys.all, (old) =>
       old ? old.filter((l) => l.id !== labelToDelete.id) : []
     );
 
@@ -23,9 +24,9 @@ export function useDeleteLabelWithUndo(labels: TaskLabel[]) {
       if (isUndone) return;
       try {
         await taskLabelService.deleteTaskLabel(labelToDelete.id);
-        queryClient.invalidateQueries({ queryKey: ["task-labels"] });
+        queryClient.invalidateQueries({ queryKey: labelQueryKeys.all });
       } catch {
-        queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
+        queryClient.setQueryData<TaskLabel[]>(labelQueryKeys.all, (old) => {
           if (!old) return [labelToDelete];
           if (old.some((l) => l.id === labelToDelete.id)) return old;
           const next = [...old];
@@ -56,7 +57,7 @@ export function useDeleteLabelWithUndo(labels: TaskLabel[]) {
           clearTimeout(deleteTimeout);
 
           // Restore label back into local React Query cache
-          queryClient.setQueryData<TaskLabel[]>(["task-labels"], (old) => {
+          queryClient.setQueryData<TaskLabel[]>(labelQueryKeys.all, (old) => {
             if (!old) return [labelToDelete];
             if (old.some((l) => l.id === labelToDelete.id)) return old;
             const next = [...old];

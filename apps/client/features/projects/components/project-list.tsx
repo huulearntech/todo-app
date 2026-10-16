@@ -17,6 +17,17 @@ export interface ProjectListProps {
   defaultProjectId?: string | null;
 }
 
+export function ProjectListSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-16 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+    </div>
+  );
+}
+
 export function ProjectList({
   projects,
   isLoading,
@@ -62,12 +73,7 @@ export function ProjectList({
 
       {/* Projects List */}
       {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-        </div>
+        <ProjectListSkeleton />
       ) : !filteredProjects.length ? (
         <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border/70 bg-card/40">
           <div className="p-3 rounded-full bg-muted text-muted-foreground mb-3">

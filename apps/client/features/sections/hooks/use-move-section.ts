@@ -1,32 +1,42 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { sectionService } from "@/features/projects/services/section.service";
+import { sectionService } from "@/features/sections/services/section.service";
 import { sectionQueryKeys } from "@/lib/query/query-keys";
-import { toast } from "@/components/ui/toast";
 import type { SectionResponseDto } from "@todo/shared";
 
-interface RenameSectionVariables {
+interface MoveSectionVariables {
   sectionId: string;
-  name: string;
+  prevId: string | null;
 }
 
-export function useRenameSection(projectId: string) {
+export function useMoveSection(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ sectionId, name }: RenameSectionVariables) => {
-      await sectionService.updateSection(sectionId, { name });
+    mutationFn: async ({ sectionId, prevId }: MoveSectionVariables) => {
+      await sectionService.updateSectionOrder({ sectionId, prevId });
     },
-    onMutate: async ({ sectionId, name }) => {
+    onMutate: async ({ sectionId, prevId }) => {
       await queryClient.cancelQueries({ queryKey: sectionQueryKeys.byProject(projectId) });
       const previousSections = queryClient.getQueryData<SectionResponseDto[]>(
         sectionQueryKeys.byProject(projectId)
       );
 
+      // Optimistically update the UI state for immediate feedback
       queryClient.setQueryData<SectionResponseDto[]>(
         sectionQueryKeys.byProject(projectId),
-        (oldItems = []) => oldItems.map((s) => (s.id === sectionId ? { ...s, name } : s))
+        (oldItems = []) => {
+          const sectionToMove = oldItems.find((s) => s.id === sectionId);
+          if (!sectionToMove) return oldItems;
+
+          const newItems = oldItems.filter((s) => s.id !== sectionId);
+          const prevIndex = prevId ? newItems.findIndex((s) => s.id === prevId) : -1;
+          const newIndex = prevIndex + 1;
+
+          newItems.splice(newIndex, 0, sectionToMove);
+          return newItems;
+        }
       );
 
       return { previousSections };
@@ -38,11 +48,6 @@ export function useRenameSection(projectId: string) {
           onMutateResult.previousSections
         );
       }
-      toast.add({
-        title: "Error renaming section",
-        description: "Failed to update section name. Please try again.",
-        type: "error",
-      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: sectionQueryKeys.byProject(projectId) });

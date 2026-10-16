@@ -8,36 +8,50 @@ import { Badge } from "@/components/reui/badge";
 import { TagIcon, CheckCircle2Icon } from "lucide-react";
 import { getColorConfig } from "@/lib/color-palette";
 
+export function LabelTaskListSkeleton() {
+  return (
+    <div className="flex flex-col gap-5 w-full">
+      <div className="flex items-center gap-3.5 pb-3 border-b border-border/60">
+        <Skeleton className="size-12 rounded-xl" />
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function LabelTaskList({ labelId }: { labelId: string }) {
-  const { data: labels = [] } = useLabels();
+  const { data: labels = [], isLoading: isLoadingLabels } = useLabels();
   const label = labels.find((l) => l.id === labelId);
 
   const {
     data: tasks = [],
-    isLoading,
+    isLoading: isLoadingTasks,
     error,
   } = useLabelTasks(labelId);
 
-  if (!label) return null;
+  if (isLoadingLabels || (isLoadingTasks && !label)) {
+    return <LabelTaskListSkeleton />;
+  }
+
+  if (!label) {
+    return (
+      <div className="p-4 rounded-xl border border-muted bg-muted/20 text-muted-foreground text-sm font-medium">
+        Label not found.
+      </div>
+    );
+  }
 
   const labelConfig = getColorConfig(label.colorKey);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-5 w-full">
-        <div className="flex items-center gap-3.5 pb-3 border-b border-border/60">
-          <Skeleton className="size-12 rounded-xl" />
-          <div className="flex flex-col gap-1.5">
-            <Skeleton className="h-6 w-36" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-        </div>
-        <div className="flex flex-col gap-2.5">
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-        </div>
-      </div>
-    );
+  if (isLoadingTasks) {
+    return <LabelTaskListSkeleton />;
   }
 
   if (error) {

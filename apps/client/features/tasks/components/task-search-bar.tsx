@@ -25,7 +25,6 @@ export default function TaskSearchBar({ className }: { className?: string }) {
   const [searchValue, setSearchValue] = useState("")
 
   const setTask = useEditTaskDialogStore((state) => state.setTask)
-  const setDialogIsOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen)
 
   const [debouncedSearchValue] = useDebouncedValue(searchValue, { wait: 300 })
 
@@ -86,7 +85,6 @@ export default function TaskSearchBar({ className }: { className?: string }) {
                   className="rounded-lg cursor-pointer text-xs py-1.5 px-2 hover:bg-muted/50"
                   onClick={() => {
                     setTask(task)
-                    setDialogIsOpen(true)
                   }}
                 >
                   <div className="flex items-center gap-2 truncate">

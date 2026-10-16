@@ -1,16 +1,8 @@
-"use client";
-
 import { UpcomingEventCalendar } from "@/features/upcoming/components/upcoming-event-calendar";
-import { useAuth } from "@/providers/AuthProvider";
+import { requireUser } from "@/lib/server/auth";
 
-export default function UpcomingPage() {
-  const { user } = useAuth();
+export default async function UpcomingPage() {
+  const user = await requireUser("/upcoming");
 
-  if (!user) {
-    return "You must be logged in to view this page.";
-  }
-
-  return (
-    <UpcomingEventCalendar projectId={user.defaultProjectId}/>
-  );
+  return <UpcomingEventCalendar projectId={user.defaultProjectId} />;
 }

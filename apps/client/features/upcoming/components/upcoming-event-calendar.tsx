@@ -19,9 +19,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PlusIcon } from "lucide-react"
 import { useProjectTasks, EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks"
-import { useSections } from "@/features/projects/hooks/use-sections"
+import { useSections } from "@/features/sections/hooks/use-sections"
 import type { SectionResponseDto, TaskResponseDto as Task } from "@todo/shared"
-import { useCreateSection } from "@/features/projects/hooks/use-create-section"
+import { useCreateSection } from "@/features/sections/hooks/use-create-section"
 import { useUpdateCalendarEvent } from "@/features/tasks/hooks/use-update-calendar-event"
 import { toast } from "@/components/ui/toast"
 import { useAddTaskDialogStore, useEditTaskDialogStore } from "@/providers/MyStoreProvider"
@@ -30,7 +30,6 @@ const EMPTY_SECTIONS: SectionResponseDto[] = [];
 
 export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
   const openAddTaskDialog = useAddTaskDialogStore((state) => state.openDialog);
-  const setEditTaskDialogOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
   const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
 
   const createSectionMutation = useCreateSection();
@@ -125,7 +124,6 @@ export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
                 return;
               }
 
-              setEditTaskDialogOpen(true);
               setTaskBeingEdited(occurence.event.data);
             }}
             onEventUpdate={(update) => {

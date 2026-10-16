@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useUpdateSection } from "@/features/projects/hooks/use-update-section";
+import { useUpdateSection } from "@/features/sections/hooks/use-update-section";
 import { Loader2Icon } from "lucide-react";
 import { ColorSelect } from "@/components/ui/color-select";
 
@@ -29,47 +29,31 @@ import { toast } from "@/components/ui/toast";
 import { updateSectionSchema, type UpdateSectionDto, type SectionResponseDto, type PaletteColor } from "@todo/shared";
 
 export interface EditSectionDialogProps {
-  projectId: string;
-  section: SectionResponseDto | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  section: SectionResponseDto;
+  onClose: () => void;
 }
 
 export default function EditSectionDialog({
-  projectId,
   section,
-  open,
-  onOpenChange,
+  onClose,
 }: EditSectionDialogProps) {
+  const [open, setOpen] = useState(true);
 
   const {
     control,
     handleSubmit,
-    reset,
   } = useForm<UpdateSectionDto>({
     resolver: zodResolver(updateSectionSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      colorKey: "slate",
+      name: section.name,
+      description: section.description || "",
+      colorKey: (section.colorKey as PaletteColor) || "slate",
     },
   });
 
-  useEffect(() => {
-    if (section) {
-      reset({
-        name: section.name,
-        description: section.description || "",
-        colorKey: (section.colorKey as PaletteColor) || "slate",
-      });
-    }
-  }, [section, reset]);
-
-  const updateSectionMutation = useUpdateSection(projectId);
+  const updateSectionMutation = useUpdateSection(section.projectId);
 
   const onSubmit = (data: UpdateSectionDto) => {
-    if (!section) return;
-
     updateSectionMutation.mutate(
       { sectionId: section.id, data },
       {
@@ -80,7 +64,7 @@ export default function EditSectionDialog({
             description: `"${updatedName}" has been updated successfully.`,
             type: "success",
           });
-          onOpenChange(false);
+          setOpen(false);
         },
         onError: (err) => {
           toast.add({
@@ -94,7 +78,13 @@ export default function EditSectionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md rounded-2xl p-6">
         <DialogHeader className="space-y-1 text-left">
           <DialogTitle className="card-heading">
@@ -174,7 +164,7 @@ export default function EditSectionDialog({
               type="button"
               variant="outline"
               disabled={updateSectionMutation.isPending}
-              onClick={() => onOpenChange(false)}
+              onClick={() => setOpen(false)}
               className="rounded-xl h-9 px-4 text-xs font-medium"
             >
               Cancel

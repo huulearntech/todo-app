@@ -1,24 +1,19 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { sectionService } from "@/features/projects/services/section.service";
-import { sectionQueryKeys } from "@/lib/query/query-keys";
+import { sectionService } from "@/features/sections/services/section.service";
+import { sectionQueryKeys, taskQueryKeys } from "@/lib/query/query-keys";
 import { toast } from "@/components/ui/toast";
-import type { SectionResponseDto, UpdateSectionDto } from "@todo/shared";
+import type { SectionResponseDto } from "@todo/shared";
 
-interface UpdateSectionVariables {
-  sectionId: string;
-  data: UpdateSectionDto;
-}
-
-export function useUpdateSection(projectId: string) {
+export function useDeleteSection(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ sectionId, data }: UpdateSectionVariables) => {
-      return sectionService.updateSection(sectionId, data);
+    mutationFn: async (sectionId: string) => {
+      await sectionService.deleteSection(sectionId);
     },
-    onMutate: async ({ sectionId, data }) => {
+    onMutate: async (sectionId) => {
       await queryClient.cancelQueries({ queryKey: sectionQueryKeys.byProject(projectId) });
       const previousSections = queryClient.getQueryData<SectionResponseDto[]>(
         sectionQueryKeys.byProject(projectId)
@@ -26,15 +21,12 @@ export function useUpdateSection(projectId: string) {
 
       queryClient.setQueryData<SectionResponseDto[]>(
         sectionQueryKeys.byProject(projectId),
-        (oldItems = []) =>
-          oldItems.map((s) =>
-            s.id === sectionId ? { ...s, ...data } : s
-          )
+        (oldItems = []) => oldItems.filter((s) => s.id !== sectionId)
       );
 
       return { previousSections };
     },
-    onError: (_err, _variables, onMutateResult) => {
+    onError: (_err, _sectionId, onMutateResult) => {
       if (onMutateResult?.previousSections) {
         queryClient.setQueryData(
           sectionQueryKeys.byProject(projectId),
@@ -42,13 +34,21 @@ export function useUpdateSection(projectId: string) {
         );
       }
       toast.add({
-        title: "Error updating section",
-        description: "Failed to update section. Please try again.",
+        title: "Error deleting section",
+        description: "Failed to delete section. Please try again.",
         type: "error",
+      });
+    },
+    onSuccess: () => {
+      toast.add({
+        title: "Section deleted",
+        description: "Section has been removed.",
+        type: "success",
       });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: sectionQueryKeys.byProject(projectId) });
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.byProject(projectId) });
     },
   });
 }

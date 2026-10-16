@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { authService } from "@/features/auth/services/auth.service";
-import { signUpSchema, AUTH_ERROR_CODES } from "@todo/shared";
+import { Controller } from "react-hook-form";
+import { useSignUpForm } from "@/features/auth/hooks/use-sign-up-form";
 import CheckEmailNotice from "./check-email-notice";
 
 import { Button } from "@/components/ui/button";
@@ -17,105 +13,21 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { PasswordInput } from "@/components/ui/password-input";
-import { toast } from "@/components/ui/toast";
 import {
   Loader2Icon,
   MailIcon,
   UserIcon,
 } from "lucide-react";
 
-export const signUpFormSchema = signUpSchema
-  .extend({
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-export type SignUpFormData = z.infer<typeof signUpFormSchema>;
-
-export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [pendingVerification, setPendingVerification] = useState<{
-    email: string;
-    userId: string;
-    password?: string;
-  } | null>(null);
-
-  const form = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpFormSchema),
-    defaultValues: {
-      email: "",
-      name: "",
-      password: "",
-      confirmPassword: "",
-    },
-  });
-
-  const { handleSubmit, control } = form;
-
-  const handleReset = () => {
-    setPendingVerification(null);
-  };
-
-  const onSubmit = async (data: SignUpFormData) => {
-    try {
-      setIsLoading(true);
-      const res = await authService.signUp({
-        email: data.email,
-        name: data.name,
-        password: data.password,
-      });
-      setPendingVerification({
-        email: data.email,
-        userId: res.user.id,
-        password: data.password,
-      });
-      toast.add({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
-        type: "success",
-      });
-    } catch (err: unknown) {
-      const responseData =
-        err && typeof err === "object" && "response" in err
-          ? (
-              err as {
-                response?: { data?: { message?: string; code?: string } };
-              }
-            ).response?.data
-          : undefined;
-
-      const code = responseData?.code;
-      const message =
-        responseData?.message ||
-        (err instanceof Error
-          ? err.message
-          : "Could not create account. Please try again.");
-
-      if (code === AUTH_ERROR_CODES.EMAIL_ALREADY_EXISTS) {
-        form.setError("email", {
-          type: "manual",
-          message: "An account with this email already exists. Please sign in.",
-        });
-        toast.add({
-          title: "Account exists",
-          description:
-            "An account with this email already exists. Please sign in.",
-          type: "error",
-        });
-      } else {
-        toast.add({
-          title: "Sign up failed",
-          description: message,
-          type: "error",
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function SignUpForm() {
+  const {
+    control,
+    handleSubmit,
+    onSubmit,
+    isLoading,
+    pendingVerification,
+    handleReset,
+  } = useSignUpForm();
 
   if (pendingVerification) {
     return (
@@ -137,11 +49,9 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
 
   return (
     <div className="w-full">
-      <div className="mb-6">
-        <h1 className="page-title">
-          Sign Up
-        </h1>
-      </div>
+      <h1 className="page-title mb-6">
+        Sign Up
+      </h1>
 
       <form id="sign-up-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FieldGroup className="space-y-4">
@@ -270,27 +180,15 @@ export default function SignUpForm({ onSwitchTab }: { onSwitchTab?: () => void }
         </Button>
       </form>
 
-      <div className="pt-6 mt-6 border-t border-border/50 text-center">
-        <p className="text-xs text-muted-foreground">
-          Already have an account?{" "}
-          {onSwitchTab ? (
-            <button
-              type="button"
-              onClick={onSwitchTab}
-              className="text-primary font-medium hover:underline hover:text-primary/90 cursor-pointer"
-            >
-              Sign In
-            </button>
-          ) : (
-            <Link
-              href="/auth/sign-in"
-              className="text-primary font-medium hover:underline hover:text-primary/90 cursor-pointer"
-            >
-              Sign In
-            </Link>
-          )}
-        </p>
-      </div>
+      <p className="pt-6 mt-6 border-t border-border/50 text-center text-xs text-muted-foreground">
+        Already have an account?{" "}
+        <Link
+          href="/auth/sign-in"
+          className="text-primary font-medium hover:underline hover:text-primary/90 cursor-pointer"
+        >
+          Sign In
+        </Link>
+      </p>
     </div>
   );
 }

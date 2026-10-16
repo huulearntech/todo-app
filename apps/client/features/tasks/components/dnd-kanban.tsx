@@ -17,14 +17,13 @@ import {
 } from "@todo/shared";
 import { useProjectTasks } from "@/features/tasks/hooks/use-project-tasks";
 import { KanbanFilterBar } from "./kanban-filter-bar";
-import { useSections } from "@/features/projects/hooks/use-sections";
+import { useSections } from "@/features/sections/hooks/use-sections";
 import { useMoveTasks } from "@/features/tasks/hooks/use-move-tasks";
-import { useMoveSection } from "@/features/projects/hooks/use-move-section";
-import { useDeleteSection } from "@/features/projects/hooks/use-delete-section";
+import { useMoveSection } from "@/features/sections/hooks/use-move-section";
 import { useAuth } from "@/providers/AuthProvider";
-import AddSectionForm, { type AddSectionFormHandle } from "@/features/projects/components/add-section-form";
-import EditSectionDialog from "@/features/projects/components/edit-section-dialog";
-import { DeleteSectionDialog } from "@/features/projects/components/delete-section-dialog";
+import AddSectionForm, { type AddSectionFormHandle } from "@/features/sections/components/add-section-form";
+import EditSectionDialog from "@/features/sections/components/edit-section-dialog";
+import { DeleteSectionDialog } from "@/features/sections/components/delete-section-dialog";
 import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
 import { groupBySection } from "@/features/tasks/utils/kanban-helpers";
 import { TaskColumn } from "./kanban/kanban-column";
@@ -69,9 +68,8 @@ function DndKanban({ projectId }: { projectId: string }) {
   const [dragColumns, setDragColumns] = useState<Record<string, Task[]> | null>(null);
   const columns: Record<string, Task[]> = dragColumns ?? serverColumns;
 
-  const moveTasksMutation = useMoveTasks(projectId);
-  const moveSectionMutation = useMoveSection(projectId);
-  const deleteSectionMutation = useDeleteSection(projectId);
+  const moveTasksMutation     = useMoveTasks(projectId);
+  const moveSectionMutation   = useMoveSection(projectId);
   const [sectionToEdit, setSectionToEdit] = useState<SectionResponseDto | null>(null);
   const [sectionToDelete, setSectionToDelete] = useState<SectionResponseDto | null>(null);
 
@@ -216,20 +214,20 @@ function DndKanban({ projectId }: { projectId: string }) {
       </div>
 
       {/* Edit Section Dialog */}
-      <EditSectionDialog
-        projectId={projectId}
-        section={sectionToEdit}
-        open={Boolean(sectionToEdit)}
-        onOpenChange={(open) => !open && setSectionToEdit(null)}
-      />
+      {sectionToEdit && (
+        <EditSectionDialog
+          section={sectionToEdit}
+          onClose={() => setSectionToEdit(null)}
+        />
+      )}
 
       {/* Delete Section Dialog */}
-      <DeleteSectionDialog
-        section={sectionToDelete}
-        open={Boolean(sectionToDelete)}
-        onOpenChange={(open) => !open && setSectionToDelete(null)}
-        onConfirm={(sec) => deleteSectionMutation.mutate(sec.id)}
-      />
+      {sectionToDelete && (
+        <DeleteSectionDialog
+          section={sectionToDelete}
+          onClose={() => setSectionToDelete(null)}
+        />
+      )}
     </div>
   );
 }

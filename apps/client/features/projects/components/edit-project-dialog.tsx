@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useUpdateProject } from "@/features/projects/hooks/use-update-project";
@@ -26,50 +26,45 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
-import { updateProjectSchema, type UpdateProjectDto } from "@todo/shared";
-import { useEditProjectDialog } from "@/features/projects/context/edit-project-context";
+import { updateProjectSchema, type UpdateProjectDto, type ProjectResponseDto as Project } from "@todo/shared";
 
-export default function EditProjectDialog() {
-  const { projectToEdit, isOpen, closeEditProjectDialog } = useEditProjectDialog();
+export interface EditProjectDialogProps {
+  project: Project;
+  onClose: () => void;
+}
+
+export default function EditProjectDialog({
+  project,
+  onClose,
+}: EditProjectDialogProps) {
+  const [open, setOpen] = useState(true);
 
   const {
     control,
     handleSubmit,
-    reset,
   } = useForm<UpdateProjectDto>({
     resolver: zodResolver(updateProjectSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      colorKey: "slate",
+      name: project.name,
+      description: project.description || "",
+      colorKey: project.colorKey || "slate",
     },
   });
-
-  useEffect(() => {
-    if (projectToEdit) {
-      reset({
-        name: projectToEdit.name,
-        description: projectToEdit.description || "",
-        colorKey: projectToEdit.colorKey || "slate",
-      });
-    }
-  }, [projectToEdit, reset]);
 
   const updateProjectMutation = useUpdateProject();
 
   const onSubmit = (data: UpdateProjectDto) => {
-    if (!projectToEdit) return;
     updateProjectMutation.mutate(
-      { projectId: projectToEdit.id, data },
+      { projectId: project.id, data },
       {
         onSuccess: (_res, variables) => {
-          const updatedName = "name" in variables ? variables.name : projectToEdit?.name;
+          const updatedName = "name" in variables ? variables.name : project.name;
           toast.add({
             title: "Project updated",
-            description: `"${updatedName || projectToEdit?.name}" has been updated successfully.`,
+            description: `"${updatedName || project.name}" has been updated successfully.`,
             type: "success",
           });
-          closeEditProjectDialog();
+          setOpen(false);
         },
         onError: (err) => {
           toast.add({
@@ -83,7 +78,13 @@ export default function EditProjectDialog() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && closeEditProjectDialog()}>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md rounded-2xl p-6">
         <DialogHeader className="space-y-1 text-left">
           <DialogTitle className="card-heading">
@@ -163,7 +164,7 @@ export default function EditProjectDialog() {
               type="button"
               variant="outline"
               disabled={updateProjectMutation.isPending}
-              onClick={closeEditProjectDialog}
+              onClick={() => setOpen(false)}
               className="rounded-xl h-9 px-4 text-xs font-medium"
             >
               Cancel

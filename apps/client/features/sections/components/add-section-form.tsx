@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCreateSection } from "@/features/projects/hooks/use-create-section";
+import { useCreateSection } from "@/features/sections/hooks/use-create-section";
 import { PlusIcon, Loader2Icon } from "lucide-react";
 
 import {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -29,15 +30,18 @@ import { Button } from "@/components/ui/button";
 import { updateTaskLabelSchema, type UpdateTaskLabelDto } from "@todo/shared";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
+export interface EditLabelDialogProps {
+  label: TaskLabel;
+  onClose: () => void;
+}
+
 export default function EditLabelDialog({
   label,
-  setLabel,
-}: {
-  label: TaskLabel;
-  setLabel: (label: TaskLabel | null) => void;
-}) {
+  onClose,
+}: EditLabelDialogProps) {
+  const [open, setOpen] = useState(true);
 
-  const { control, handleSubmit, reset } = useForm<UpdateTaskLabelDto>({
+  const { control, handleSubmit } = useForm<UpdateTaskLabelDto>({
     resolver: zodResolver(updateTaskLabelSchema),
     defaultValues: {
       name: label.name,
@@ -52,30 +56,32 @@ export default function EditLabelDialog({
     updateLabelMutation.mutate(
       { id: label.id, data },
       {
-    onSuccess: () => {
-      toast.add({
-        title: "Label updated",
-        description: "The label was updated successfully.",
-        type: "success",
-      });
-    },
-    onError: () => {
-      toast.add({
-        title: "Error updating label",
-        description: "An unexpected error occurred.",
-        type: "error",
-      });
-    },
-    onSettled: () => {
-      reset();
-      setLabel(null);
-    }
-  });
+        onSuccess: () => {
+          toast.add({
+            title: "Label updated",
+            description: "The label was updated successfully.",
+            type: "success",
+          });
+          setOpen(false);
+        },
+        onError: () => {
+          toast.add({
+            title: "Error updating label",
+            description: "An unexpected error occurred.",
+            type: "error",
+          });
+        },
+      }
+    );
 
   return (
-    <Dialog open={!!label} onOpenChange={(open) => {
-      if (!open) setLabel(null);
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="card-heading">Edit Label</DialogTitle>
@@ -128,7 +134,7 @@ export default function EditLabelDialog({
           </FieldGroup>
         </form>
         <DialogFooter className="gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => setLabel(null)} className="rounded-xl h-9 px-4 text-xs font-medium">
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl h-9 px-4 text-xs font-medium">
             Cancel
           </Button>
           <Button type="submit" form="edit-task-label-form" className="rounded-xl h-9 px-4 text-xs font-semibold shadow-xs">Save Changes</Button>

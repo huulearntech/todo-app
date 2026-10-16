@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { sectionService } from "@/features/projects/services/section.service";
+import { sectionService } from "@/features/sections/services/section.service";
 import { sectionQueryKeys } from "@/lib/query/query-keys";
 import type { CreateSectionDto, SectionResponseDto } from "@todo/shared";
 

@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useProjects } from "@/features/projects/hooks/use-projects";
-import { useSections } from "@/features/projects/hooks/use-sections";
+import { useSections } from "@/features/sections/hooks/use-sections";
 import { useLabels } from "@/features/labels/hooks/use-labels";
 import { useCreateTask } from "@/features/tasks/hooks/use-create-task";
 import { useAutocompleteFilter } from "@/components/ui/autocomplete";

@@ -13,6 +13,23 @@ import { useDeleteLabelWithUndo } from "@/features/labels/hooks/use-delete-label
 import { LabelListItem } from "./label-list-item";
 import { DeleteLabelAlertDialog } from "./delete-label-alert-dialog";
 
+export function LabelListSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 w-full">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-32 rounded-lg" />
+        <Skeleton className="h-9 w-28 rounded-lg" />
+      </div>
+      <Skeleton className="h-10 w-full rounded-xl" />
+      <div className="space-y-3">
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function LabelList() {
   const { data: labels = [], isLoading } = useLabels();
 
@@ -21,27 +38,8 @@ export default function LabelList() {
 
   const { deleteLabelWithUndo } = useDeleteLabelWithUndo(labels);
 
-  const handleDeleteConfirm = () => {
-    if (!deletingLabel) return;
-    deleteLabelWithUndo(deletingLabel);
-    setDeletingLabel(null);
-  };
-
   if (isLoading) {
-    return (
-      <div className="flex flex-col gap-6 w-full">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-32 rounded-lg" />
-          <Skeleton className="h-9 w-28 rounded-lg" />
-        </div>
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="space-y-3">
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-        </div>
-      </div>
-    );
+    return <LabelListSkeleton />;
   }
 
   return (
@@ -83,16 +81,20 @@ export default function LabelList() {
 
       {/* Edit Label Dialog */}
       {editingLabel && (
-        <EditLabelDialog label={editingLabel} setLabel={setEditingLabel} />
+        <EditLabelDialog
+          label={editingLabel}
+          onClose={() => setEditingLabel(null)}
+        />
       )}
 
       {/* Delete Label Confirmation Dialog */}
-      <DeleteLabelAlertDialog
-        label={deletingLabel}
-        open={Boolean(deletingLabel)}
-        onOpenChange={(open) => !open && setDeletingLabel(null)}
-        onConfirm={handleDeleteConfirm}
-      />
+      {deletingLabel && (
+        <DeleteLabelAlertDialog
+          label={deletingLabel}
+          onClose={() => setDeletingLabel(null)}
+          onConfirm={(label) => deleteLabelWithUndo(label)}
+        />
+      )}
     </div>
   );
 }

@@ -5,8 +5,6 @@ import type { ProjectResponseDto as Project } from "@todo/shared";
 import EditProjectDialog from "@/features/projects/components/edit-project-dialog";
 
 interface EditProjectContextType {
-  projectToEdit: Project | null;
-  isOpen: boolean;
   openEditProjectDialog: (project: Project) => void;
   closeEditProjectDialog: () => void;
 }
@@ -27,14 +25,17 @@ export function EditProjectProvider({ children }: { children: ReactNode }) {
   return (
     <EditProjectContext.Provider
       value={{
-        projectToEdit,
-        isOpen: !!projectToEdit,
         openEditProjectDialog,
         closeEditProjectDialog,
       }}
     >
       {children}
-      <EditProjectDialog />
+      {projectToEdit && (
+        <EditProjectDialog
+          project={projectToEdit}
+          onClose={closeEditProjectDialog}
+        />
+      )}
     </EditProjectContext.Provider>
   );
 }

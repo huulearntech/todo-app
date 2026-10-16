@@ -105,7 +105,7 @@ export function TaskColumn({
               >
                 <MoreHorizontalIcon className="size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl p-1 shadow-md">
+              <DropdownMenuContent align="end">
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => section && onEdit(section)}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,40 +13,50 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export interface DeleteTaskAlertDialogProps {
-  task: { id: string; title: string } | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  task: { id: string; title: string };
+  onClose: () => void;
   onConfirm: (task: { id: string; title: string }) => void;
 }
 
 export function DeleteTaskAlertDialog({
   task,
-  open,
-  onOpenChange,
+  onClose,
   onConfirm,
 }: DeleteTaskAlertDialogProps) {
+  const [open, setOpen] = useState(true);
+
+  const handleDelete = () => {
+    onConfirm(task);
+    setOpen(false);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    >
       <AlertDialogContent className="rounded-2xl">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Task Permanently</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to permanently delete &ldquo;
-            {task?.title || "this task"}&rdquo;?
+            {task.title}&rdquo;?
             This action cannot be undone and will delete all occurrences of this task.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={() => setOpen(false)} className="rounded-xl">
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             className="rounded-xl"
-            onClick={() => {
-              if (task) {
-                onConfirm(task);
-                onOpenChange(false);
-              }
-            }}
+            onClick={handleDelete}
           >
             Delete Permanently
           </AlertDialogAction>
@@ -54,3 +65,4 @@ export function DeleteTaskAlertDialog({
     </AlertDialog>
   );
 }
+

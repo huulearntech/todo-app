@@ -33,6 +33,8 @@ export async function generateMetadata({
 
 import { FullSpaceLayout } from "@/components/layout/full-space-layout";
 
+import { KanbanBoardSkeleton } from "@/features/tasks/components/kanban/kanban-board-skeleton";
+
 export default async function ProjectLayout({
   children,
   params,
@@ -45,7 +47,7 @@ export default async function ProjectLayout({
   }
 
   return (
-    <Suspense>
+    <Suspense fallback={<KanbanBoardSkeleton />}>
       <ProjectViewProvider>
         <FullSpaceLayout header={<ProjectHeader projectName={project.name} />}>
           {children}

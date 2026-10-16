@@ -5,7 +5,7 @@ import { FolderIcon, ChevronDownIcon, CheckIcon, SearchIcon, LayersIcon } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSections } from "@/features/projects/hooks/use-sections";
+import { useSections } from "@/features/sections/hooks/use-sections";
 import { getColorConfig } from "@/lib/color-palette";
 import { cn } from "@/lib/utils";
 

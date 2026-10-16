@@ -24,20 +24,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/toast";
 
 import { MoreHorizontalIcon, PencilIcon, Trash2Icon, TagIcon } from "lucide-react";
 import EditLabelDialog from "@/features/labels/components/edit-label-dialog";
+import { DeleteLabelAlertDialog } from "@/features/labels/components/delete-label-alert-dialog";
+import { useDeleteLabel } from "@/features/labels/hooks/use-delete-label";
+import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 
 export default function LabelHeader() {
   const params = useParams();
@@ -45,6 +38,7 @@ export default function LabelHeader() {
   const labelId = params?.id as string;
 
   const { data: labels = [] } = useLabels();
+  const deleteLabel = useDeleteLabel();
 
   const currentLabel = labels.find((l) => l.id === labelId);
   const labelName = currentLabel?.name || "Label";
@@ -53,15 +47,17 @@ export default function LabelHeader() {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteConfirm = () => {
-    toast.add({
-      title: "Label deleted",
-      description: `"${labelName}" was deleted successfully.`,
-      type: "success",
+  const handleDeleteConfirm = (label: TaskLabel) => {
+    deleteLabel.mutate(label.id, {
+      onSuccess: () => {
+        toast.add({
+          title: "Label deleted",
+          description: `"${label.name}" was deleted successfully.`,
+          type: "success",
+        });
+        router.push("/labels");
+      },
     });
-
-    setIsDeleting(false);
-    router.push("/labels");
   };
 
   return (
@@ -130,31 +126,18 @@ export default function LabelHeader() {
       {isEditing && currentLabel && (
         <EditLabelDialog
           label={currentLabel}
-          setLabel={(val) => !val && setIsEditing(false)}
+          onClose={() => setIsEditing(false)}
         />
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Label</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <span className="font-semibold text-foreground">"{labelName}"</span>? Tasks tagged with this label will not be deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              className="rounded-lg"
-            >
-              Delete Label
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isDeleting && currentLabel && (
+        <DeleteLabelAlertDialog
+          label={currentLabel}
+          onClose={() => setIsDeleting(false)}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
     </>
   );
 }

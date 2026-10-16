@@ -74,7 +74,6 @@ function TaskCard({ task }: TaskCardProps) {
   };
 
   const setTask = useEditTaskDialogStore((state) => state.setTask);
-  const setDialogIsOpen = useEditTaskDialogStore((state) => state.setDialogIsOpen);
 
   const taskDueLocalTime = task.timeRange?.end
     ? new Date(task.timeRange.end).toLocaleString("en-US", {
@@ -89,7 +88,6 @@ function TaskCard({ task }: TaskCardProps) {
       className="group relative text-card-foreground bg-card border-border/80 hover:border-primary/50 shadow-xs transition-all rounded-xl p-2.5 cursor-pointer select-none"
       onClick={() => {
         setTask(task);
-        setDialogIsOpen(true);
       }}
     >
       <ItemHeader>
