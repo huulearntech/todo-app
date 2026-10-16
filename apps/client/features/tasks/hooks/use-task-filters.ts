@@ -2,10 +2,9 @@
 
 import { useState, useCallback } from "react";
 import { TaskPriority } from "@todo/shared";
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import type { LabelItem } from "@/features/tasks/components/task-attribute-controls/labels-popover";
 
-const EMPTY_LABELS: LabelItem[] = [];
 
 export interface FilterableTask {
   title: string;

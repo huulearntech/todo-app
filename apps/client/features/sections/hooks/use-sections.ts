@@ -3,6 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { projectService } from "@/features/projects/services/project.service";
 import { sectionQueryKeys } from "@/lib/query/query-keys";
+import type { SectionResponseDto } from "@todo/shared";
+
+export const EMPTY_SECTIONS: SectionResponseDto[] = [];
 
 export function useSections(projectId: string) {
   return useQuery({

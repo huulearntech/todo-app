@@ -11,9 +11,9 @@ import {
   type RefObject,
 } from "react";
 import { useAuth } from "@/providers/AuthProvider";
-import { useProjects } from "@/features/projects/hooks/use-projects";
-import { useSections } from "@/features/sections/hooks/use-sections";
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects";
+import { useSections, EMPTY_SECTIONS } from "@/features/sections/hooks/use-sections";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { useCreateTask } from "@/features/tasks/hooks/use-create-task";
 import { useAutocompleteFilter } from "@/components/ui/autocomplete";
 import { toast } from "@/components/ui/toast";
@@ -33,9 +33,6 @@ import {
   DEFAULT_REMINDER_SUGGESTIONS,
 } from "@/features/tasks/utils/quick-task-parser";
 
-const EMPTY_PROJECTS: Array<{ id: string; name: string; colorKey?: string }> = [];
-const EMPTY_SECTIONS: Array<{ id: string; name: string; projectId: string }> = [];
-const EMPTY_LABELS: LabelItem[] = [];
 
 export interface UseQuickTaskStateOptions {
   defaultProjectId?: string;

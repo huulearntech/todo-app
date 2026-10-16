@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { getColorConfig } from "@/lib/color-palette";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -37,7 +37,7 @@ export default function LabelHeader() {
   const router = useRouter();
   const labelId = params?.id as string;
 
-  const { data: labels = [] } = useLabels();
+  const { data: labels = EMPTY_LABELS } = useLabels();
   const deleteLabel = useDeleteLabel();
 
   const currentLabel = labels.find((l) => l.id === labelId);

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { useProjects } from "@/features/projects/hooks/use-projects"
+import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects"
 import { getColorConfig } from "@/lib/color-palette"
 
 import {
@@ -30,14 +30,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import CreateProjectDialog from "./create-project-dialog"
-import { useEditProjectDialog } from "@/features/projects/context/edit-project-context"
+import { useModalStore } from "@/providers/MyStoreProvider"
 
 export function NavProjects() {
   const { isMobile } = useSidebar()
   const pathname = usePathname()
-  const { openEditProjectDialog } = useEditProjectDialog()
+  const openModal = useModalStore((state) => state.openModal)
 
-  const { data: projects = [], isLoading } = useProjects("non_default");
+  const { data: projects = EMPTY_PROJECTS, isLoading } = useProjects("non_default");
 
   if (isLoading) {
     return (
@@ -104,7 +104,7 @@ export function NavProjects() {
                   align={isMobile ? "end" : "start"}
                 >
                   <DropdownMenuItem
-                    onClick={() => openEditProjectDialog(item)}
+                    onClick={() => openModal({ type: "edit-project", project: item })}
                     className="rounded-lg gap-2 cursor-pointer"
                   >
                     <PencilIcon className="size-4 text-muted-foreground" />

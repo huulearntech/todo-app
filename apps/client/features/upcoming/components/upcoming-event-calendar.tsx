@@ -19,18 +19,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PlusIcon } from "lucide-react"
 import { useProjectTasks, EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks"
-import { useSections } from "@/features/sections/hooks/use-sections"
-import type { SectionResponseDto, TaskResponseDto as Task } from "@todo/shared"
+import { useSections, EMPTY_SECTIONS } from "@/features/sections/hooks/use-sections"
+import type { TaskResponseDto as Task } from "@todo/shared"
 import { useCreateSection } from "@/features/sections/hooks/use-create-section"
 import { useUpdateCalendarEvent } from "@/features/tasks/hooks/use-update-calendar-event"
 import { toast } from "@/components/ui/toast"
-import { useAddTaskDialogStore, useEditTaskDialogStore } from "@/providers/MyStoreProvider"
+import { useModalStore } from "@/providers/MyStoreProvider"
 
-const EMPTY_SECTIONS: SectionResponseDto[] = [];
 
 export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
-  const openAddTaskDialog = useAddTaskDialogStore((state) => state.openDialog);
-  const setTaskBeingEdited = useEditTaskDialogStore((state) => state.setTask);
+  const openModal = useModalStore((state) => state.openModal);
 
   const createSectionMutation = useCreateSection();
 
@@ -60,7 +58,7 @@ export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
       }
     }
 
-    openAddTaskDialog({ projectId, sectionId: targetSectionId });
+    openModal({ type: "add-task", projectId, sectionId: targetSectionId });
   };
 
   // NOTE: This part might be optimizable
@@ -124,7 +122,7 @@ export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
                 return;
               }
 
-              setTaskBeingEdited(occurence.event.data);
+              openModal({ type: "edit-task", task: occurence.event.data });
             }}
             onEventUpdate={(update) => {
               isDragUpdatingRef.current = true;

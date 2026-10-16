@@ -18,13 +18,13 @@ import { LoaderCircleIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import type { TaskResponseDto as Task } from "@todo/shared"
 import { taskService } from "@/features/tasks/services/task.service"
-import { useEditTaskDialogStore } from "@/providers/MyStoreProvider"
+import { useModalStore } from "@/providers/MyStoreProvider"
 import { cn } from "@/lib/utils"
 
 export default function TaskSearchBar({ className }: { className?: string }) {
   const [searchValue, setSearchValue] = useState("")
 
-  const setTask = useEditTaskDialogStore((state) => state.setTask)
+  const openModal = useModalStore((state) => state.openModal)
 
   const [debouncedSearchValue] = useDebouncedValue(searchValue, { wait: 300 })
 
@@ -84,7 +84,7 @@ export default function TaskSearchBar({ className }: { className?: string }) {
                   value={task}
                   className="rounded-lg cursor-pointer text-xs py-1.5 px-2 hover:bg-muted/50"
                   onClick={() => {
-                    setTask(task)
+                    openModal({ type: "edit-task", task })
                   }}
                 >
                   <div className="flex items-center gap-2 truncate">

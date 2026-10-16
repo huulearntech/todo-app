@@ -1,14 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useHotkey } from "@tanstack/react-hotkeys";
-import { useAuth } from "@/providers/AuthProvider";
-import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
+import { useModalStore } from "@/providers/MyStoreProvider";
 import { UnifiedTaskAddForm } from "./unified-task-add-form";
 
 export function AddTaskDialogTrigger({
@@ -18,13 +17,13 @@ export function AddTaskDialogTrigger({
   sectionId: string;
   projectId?: string;
 }) {
-  const openDialog = useAddTaskDialogStore((state) => state.openDialog);
+  const openModal = useModalStore((state) => state.openModal);
 
   return (
     <Button
       variant="ghost"
       onClick={() => {
-        openDialog({ projectId, sectionId });
+        openModal({ type: "add-task", projectId, sectionId });
       }}
       className="text-xs font-medium text-muted-foreground hover:text-foreground">
       <Plus className="size-3.5" />
@@ -33,35 +32,26 @@ export function AddTaskDialogTrigger({
   );
 }
 
-export default function AddTaskDialog() {
-  const { user } = useAuth();
-  const projectId = useAddTaskDialogStore((state) => state.projectId);
-  const sectionId = useAddTaskDialogStore((state) => state.sectionId);
-  const dialogIsOpen = useAddTaskDialogStore((state) => state.dialogIsOpen);
-  const openDialog = useAddTaskDialogStore((state) => state.openDialog);
-  const closeDialog = useAddTaskDialogStore((state) => state.closeDialog);
+export interface AddTaskDialogProps {
+  projectId?: string;
+  sectionId?: string;
+  onClose: () => void;
+}
 
-  // Global hotkey: Q triggers Add Task dialog anywhere in the app for authenticated users
-  useHotkey(
-    "Q",
-    () => openDialog(),
-    {
-      enabled: Boolean(user) && !dialogIsOpen,
-    }
-  );
-
-  if (!user) {
-    return null;
-  }
+export default function AddTaskDialog({
+  projectId,
+  sectionId,
+  onClose,
+}: AddTaskDialogProps) {
+  const [open, setOpen] = useState(true);
 
   return (
     <Dialog
-      open={dialogIsOpen}
-      onOpenChange={(open) => {
-        if (open) {
-          openDialog();
-        } else {
-          closeDialog();
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) {
+          onClose();
         }
       }}
     >
@@ -73,8 +63,8 @@ export default function AddTaskDialog() {
           defaultProjectId={projectId}
           defaultSectionId={sectionId}
           autoFocus={true}
-          onSuccess={closeDialog}
-          onCancel={closeDialog}
+          onSuccess={() => setOpen(false)}
+          onCancel={() => setOpen(false)}
         />
       </DialogContent>
     </Dialog>

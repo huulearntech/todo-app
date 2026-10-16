@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
 import { useUpdateTask } from "@/features/tasks/hooks/use-update-task";
 import { updateTaskSchema } from "@todo/shared/browser";
 import type { TaskResponseDto as Task } from "@todo/shared";
@@ -20,15 +19,15 @@ import {
 } from "@/components/ui/breadcrumb";
 import { TaskForm } from "@/features/tasks/components/task-form";
 
-export interface EditTaskDialogContentProps {
+export interface EditTaskDialogProps {
   task: Task;
   onClose: () => void;
 }
 
-export function EditTaskDialogContent({
+export default function EditTaskDialog({
   task,
   onClose,
-}: EditTaskDialogContentProps) {
+}: EditTaskDialogProps) {
   const [open, setOpen] = useState(true);
 
   const editTaskMutation = useUpdateTask({
@@ -88,22 +87,5 @@ export function EditTaskDialogContent({
         />
       </DialogContent>
     </Dialog>
-  );
-}
-
-export default function EditTaskDialog() {
-  const task = useEditTaskDialogStore((state) => state.task);
-  const setTask = useEditTaskDialogStore((state) => state.setTask);
-
-  if (!task) {
-    return null;
-  }
-
-  return (
-    <EditTaskDialogContent
-      key={task.id}
-      task={task}
-      onClose={() => setTask(null)}
-    />
   );
 }

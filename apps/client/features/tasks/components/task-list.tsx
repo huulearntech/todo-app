@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDueTodayTasks } from "@/features/tasks/hooks/use-due-today-tasks";
+import { EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks";
 import type { DragEndEvent } from "@dnd-kit/core";
 import TaskCard from "@/features/tasks/components/task-card";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/components/reui/sortable";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2Icon, Plus } from "lucide-react";
-import { useAddTaskDialogStore } from "@/providers/MyStoreProvider";
+import { useModalStore } from "@/providers/MyStoreProvider";
 import type { TaskResponseDto as Task } from "@todo/shared";
 import {
   PostponeDropZone,
@@ -26,16 +27,16 @@ export { calculatePostponedDate };
 
 export default function TaskList() {
   const { data: initialTasks, isLoading } = useDueTodayTasks();
-  const openDialog = useAddTaskDialogStore((state) => state.openDialog);
+  const openModal = useModalStore((state) => state.openModal);
   const { postponeWithUndo } = usePostponeTaskWithUndo();
 
   // Local state for drag-and-drop sortable items, synchronized when query results change
   const [prevInitialTasks, setPrevInitialTasks] = useState(initialTasks);
-  const [items, setItems] = useState<Task[]>(initialTasks ?? []);
+  const [items, setItems] = useState<Task[]>(initialTasks ?? EMPTY_TASKS);
 
   if (initialTasks !== prevInitialTasks) {
     setPrevInitialTasks(initialTasks);
-    setItems(initialTasks ?? []);
+    setItems(initialTasks ?? EMPTY_TASKS);
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -92,7 +93,7 @@ export default function TaskList() {
           </p>
           <Button
             type="button"
-            onClick={() => openDialog()}
+            onClick={() => openModal({ type: "add-task" })}
             className="gap-2 font-medium shadow-xs"
           >
             <Plus className="size-4" />

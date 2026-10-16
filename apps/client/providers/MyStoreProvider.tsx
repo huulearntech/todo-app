@@ -3,43 +3,32 @@
 import { type ReactNode, createContext, useRef, useContext } from "react";
 import { useStore } from "zustand";
 
-import { type AddTaskDialogStore, addTaskDialogStore } from "@/features/tasks/stores/add-task-dialog.store";
-import { type EditTaskDialogStore, editTaskDialogStore } from "@/features/tasks/stores/edit-task-dialog.store";
+import { type ModalStore, createModalStore } from "@/features/modals/stores/modal.store";
 
 export type MyStoreContextType = {
-  addTaskDialogStore: ReturnType<typeof addTaskDialogStore>;
-  editTaskDialogStore: ReturnType<typeof editTaskDialogStore>;
-}
+  modalStore: ReturnType<typeof createModalStore>;
+};
 
 export const MyStoreContext = createContext<MyStoreContextType | undefined>(undefined);
 
-
 export function MyStoreProvider({ children }: { children: ReactNode }) {
-  const addTaskRef = useRef(addTaskDialogStore());
-  const editTaskRef = useRef(editTaskDialogStore());
+  const modalStoreRef = useRef(createModalStore());
 
   return (
-    <MyStoreContext.Provider value={{
-      addTaskDialogStore: addTaskRef.current,
-      editTaskDialogStore: editTaskRef.current,
-    }}>
+    <MyStoreContext.Provider
+      value={{
+        modalStore: modalStoreRef.current,
+      }}
+    >
       {children}
     </MyStoreContext.Provider>
   );
 }
 
-export function useAddTaskDialogStore<T,>(selector: (state: AddTaskDialogStore) => T): T {
+export function useModalStore<T>(selector: (state: ModalStore) => T): T {
   const store = useContext(MyStoreContext);
   if (!store) {
-    throw new Error("useAddTaskDialogStore must be used within a AddTaskDialogStoreProvider");
+    throw new Error("useModalStore must be used within a MyStoreProvider");
   }
-  return useStore(store.addTaskDialogStore, selector);
-}
-
-export function useEditTaskDialogStore<T,>(selector: (state: EditTaskDialogStore) => T): T {
-  const store = useContext(MyStoreContext);
-  if (!store) {
-    throw new Error("useEditTaskDialogStore must be used within a AddTaskDialogStoreProvider");
-  }
-  return useStore(store.editTaskDialogStore, selector);
+  return useStore(store.modalStore, selector);
 }

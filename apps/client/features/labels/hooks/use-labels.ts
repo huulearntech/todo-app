@@ -6,6 +6,8 @@ import { labelQueryKeys } from "@/lib/query/query-keys";
 
 import type { TaskLabelResponseDto } from "@todo/shared";
 
+export const EMPTY_LABELS: TaskLabelResponseDto[] = [];
+
 export function useLabels<TData = TaskLabelResponseDto[]>(options?: {
   select?: (data: TaskLabelResponseDto[]) => TData;
 }) {

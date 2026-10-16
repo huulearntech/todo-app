@@ -8,7 +8,7 @@ import { TagsIcon } from "lucide-react";
 
 import AddLabelDialog from "@/features/labels/components/add-label-dialog";
 import EditLabelDialog from "@/features/labels/components/edit-label-dialog";
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { useDeleteLabelWithUndo } from "@/features/labels/hooks/use-delete-label-with-undo";
 import { LabelListItem } from "./label-list-item";
 import { DeleteLabelAlertDialog } from "./delete-label-alert-dialog";
@@ -31,7 +31,7 @@ export function LabelListSkeleton() {
 }
 
 export default function LabelList() {
-  const { data: labels = [], isLoading } = useLabels();
+  const { data: labels = EMPTY_LABELS, isLoading } = useLabels();
 
   const [editingLabel, setEditingLabel] = useState<TaskLabel | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<TaskLabel | null>(null);

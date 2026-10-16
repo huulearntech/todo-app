@@ -5,9 +5,11 @@ import axios, {
 } from "axios";
 import { getBackendApiUrl } from "./server/config";
 
+const isBackend = (typeof window === "undefined")
+
 export const apiClient: AxiosInstance = axios.create({
   baseURL:
-    typeof window === "undefined"
+    isBackend
       ? getBackendApiUrl()
       : "/api",
   timeout: 10000,
@@ -18,7 +20,7 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
+  if (!isBackend) {
     config.headers.set(
       "x-timezone",
       Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -31,7 +33,7 @@ let refreshPromise: Promise<void> | null = null;
 
 async function refreshAccessToken(): Promise<void> {
   const url =
-    typeof window === "undefined"
+    isBackend
       ? `${getBackendApiUrl()}/auth/refresh-token`
       : "/api/auth/refresh-token";
   await axios.post(url, {}, { withCredentials: true });

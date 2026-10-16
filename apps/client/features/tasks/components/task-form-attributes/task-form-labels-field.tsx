@@ -16,7 +16,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { LabelComboboxItem } from "./label-combobox-item";
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { getColorConfig } from "@/lib/color-palette";
 import { TagIcon, XIcon } from "lucide-react";
 
@@ -25,7 +25,7 @@ export interface TaskFormLabelsFieldProps {
 }
 
 export function TaskFormLabelsField({ control }: TaskFormLabelsFieldProps) {
-  const { data: labels = [] } = useLabels({
+  const { data: labels = EMPTY_LABELS } = useLabels({
     select: (data) =>
       data.map((label) => ({
         id: label.id,

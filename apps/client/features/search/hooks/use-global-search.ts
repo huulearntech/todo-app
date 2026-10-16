@@ -5,6 +5,12 @@ import { searchService } from "@/features/search/services/search.service";
 import { searchQueryKeys } from "@/lib/query/query-keys";
 import type { SearchResultsDto } from "@todo/shared";
 
+export const EMPTY_SEARCH_RESULTS: SearchResultsDto = Object.freeze({
+  projects: [],
+  labels: [],
+  tasks: [],
+});
+
 export function useGlobalSearch(query: string) {
   const trimmedQuery = query.trim();
 
@@ -12,7 +18,7 @@ export function useGlobalSearch(query: string) {
     queryKey: searchQueryKeys.global(trimmedQuery),
     queryFn: async () => {
       if (!trimmedQuery) {
-        return { projects: [], labels: [], tasks: [] };
+        return EMPTY_SEARCH_RESULTS;
       }
       return searchService.search(trimmedQuery);
     },

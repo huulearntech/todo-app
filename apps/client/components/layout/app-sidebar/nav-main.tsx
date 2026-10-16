@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useAddTaskDialogStore } from "@/providers/MyStoreProvider"
+import { useModalStore } from "@/providers/MyStoreProvider"
 import { Kbd } from "@/components/ui/kbd"
 
 const items = [
@@ -44,13 +44,13 @@ const items = [
 
 export function NavMain() {
   const pathname = usePathname()
-  const openDialog = useAddTaskDialogStore((state) => state.openDialog)
+  const openModal = useModalStore((state) => state.openModal)
 
   return (
     <SidebarGroup className="p-0">
       <SidebarMenu className="gap-0.5">
         <SidebarMenuItem>
-          <SidebarMenuButton onClick={() => openDialog()} tooltip="Add task (Q)">
+          <SidebarMenuButton onClick={() => openModal({ type: "add-task" })} tooltip="Add task (Q)">
             <PlusIcon className="rounded-full bg-primary text-primary-foreground" />
             <div className="w-full flex items-center justify-between">
               <span className="shrink-0 font-semibold text-primary">Add task</span>

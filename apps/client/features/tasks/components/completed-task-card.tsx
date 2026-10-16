@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import type { CompletedOccurrenceResponseDto } from "@todo/shared";
 import { useToggleTaskComplete } from "@/features/tasks/hooks/use-toggle-task-complete";
 import { useDeleteOccurrence } from "@/features/tasks/hooks/use-delete-occurrence";
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { getColorConfig } from "@/lib/color-palette";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ function CompletedTaskCard({
 }: CompletedTaskCardProps) {
   const toggleCompleteMutation = useToggleTaskComplete();
   const deleteOccurrenceMutation = useDeleteOccurrence();
-  const { data: allLabels = [] } = useLabels();
+  const { data: allLabels = EMPTY_LABELS } = useLabels();
 
   const labelsMap = useMemo(
     () => new Map(allLabels.map((l) => [l.id, l])),

@@ -1,7 +1,8 @@
 "use client";
 
-import { useLabels } from "@/features/labels/hooks/use-labels";
+import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { useLabelTasks } from "@/features/tasks/hooks/use-label-tasks";
+import { EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks";
 import TaskCard from "@/features/tasks/components/task-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/reui/badge";
@@ -27,11 +28,11 @@ export function LabelTaskListSkeleton() {
 }
 
 export default function LabelTaskList({ labelId }: { labelId: string }) {
-  const { data: labels = [], isLoading: isLoadingLabels } = useLabels();
+  const { data: labels = EMPTY_LABELS, isLoading: isLoadingLabels } = useLabels();
   const label = labels.find((l) => l.id === labelId);
 
   const {
-    data: tasks = [],
+    data: tasks = EMPTY_TASKS,
     isLoading: isLoadingTasks,
     error,
   } = useLabelTasks(labelId);

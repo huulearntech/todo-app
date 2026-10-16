@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useProjectCompletedTasks } from "@/features/tasks/hooks/use-project-completed-tasks";
+import { useProjectCompletedTasks, EMPTY_COMPLETED_OCCURRENCES } from "@/features/tasks/hooks/use-project-completed-tasks";
 import { useDeleteTask } from "@/features/tasks/hooks/use-delete-task";
 import CompletedTaskCard from "@/features/tasks/components/completed-task-card";
 import { KanbanFilterBar } from "@/features/tasks/components/kanban-filter-bar";
@@ -25,7 +25,7 @@ export default function ProjectCompletedTasks({
   backHref,
   backLabel = "Back to active tasks",
 }: ProjectCompletedTasksProps) {
-  const { data: occurrences = [], isLoading, error } = useProjectCompletedTasks(projectId);
+  const { data: occurrences = EMPTY_COMPLETED_OCCURRENCES, isLoading, error } = useProjectCompletedTasks(projectId);
   const deleteTaskMutation = useDeleteTask();
 
   const {

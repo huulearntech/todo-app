@@ -10,9 +10,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar/app-sidebar";
 import Script from "next/script";
 
 import { MyStoreProvider } from "@/providers/MyStoreProvider";
-import EditTaskDialog from "@/features/tasks/components/edit-task-dialog";
-import AddTaskDialog from "@/features/tasks/components/add-task-dialog";
-import { EditProjectProvider } from "@/features/projects/context/edit-project-context";
+import { ModalProvider } from "@/features/modals/components/modal-provider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 
 const geistSans = Geist({
@@ -54,26 +52,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <QueryProvider>
             <AuthProvider initialUser={initialUser}>
               <MyStoreProvider>
-                <EditProjectProvider>
-                  <TooltipProvider>
-                    <SidebarProvider
-                      defaultOpen={false}
-                      className="h-svh max-h-svh overflow-hidden"
-                      style={
-                        {
-                          "--sidebar-width": "350px",
-                        } as React.CSSProperties
-                      }
-                    >
-                      {initialUser && <AppSidebar />}
-                      {children}
-                      <Toaster />
-                      {initialUser && <EditTaskDialog />}
-                      {initialUser && <AddTaskDialog />}
-
-                    </SidebarProvider>
-                  </TooltipProvider>
-                </EditProjectProvider>
+                <TooltipProvider>
+                  <SidebarProvider
+                    defaultOpen={false}
+                    className="h-svh max-h-svh overflow-hidden"
+                    style={
+                      {
+                        "--sidebar-width": "350px",
+                      } as React.CSSProperties
+                    }
+                  >
+                    {initialUser && <AppSidebar />}
+                    {children}
+                    <Toaster />
+                    {initialUser && <ModalProvider />}
+                  </SidebarProvider>
+                </TooltipProvider>
               </MyStoreProvider>
             </AuthProvider>
           </QueryProvider>

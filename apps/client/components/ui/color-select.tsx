@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useColors } from "@/hooks/colors/use-colors";
+import { useColors, EMPTY_COLORS } from "@/hooks/colors/use-colors";
 import { getColorConfig } from "@/lib/color-palette";
 import {
   Select,
@@ -32,7 +32,7 @@ export function ColorSelect({
   placeholder = "Select color",
   showHex = true,
 }: ColorSelectProps) {
-  const { data: colors = [] } = useColors();
+  const { data: colors = EMPTY_COLORS } = useColors();
   const selectedColor = colors.find((c) => c.key === value);
   const selectedConfig = getColorConfig(value);
 

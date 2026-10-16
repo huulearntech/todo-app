@@ -5,7 +5,7 @@ import { FolderIcon, ChevronDownIcon, CheckIcon, SearchIcon, LayersIcon } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSections } from "@/features/sections/hooks/use-sections";
+import { useSections, EMPTY_SECTIONS } from "@/features/sections/hooks/use-sections";
 import { getColorConfig } from "@/lib/color-palette";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +37,9 @@ export function ProjectSectionPopover({
   );
 
   // Load sections for currentProjectId to ensure activeSection is always resolved for display
-  const { data: currentProjectSections = [] } = useSections(currentProjectId || "");
+  const { data: currentProjectSections = EMPTY_SECTIONS } = useSections(currentProjectId || "");
   const {
-    data: activeProjectSections = [],
+    data: activeProjectSections = EMPTY_SECTIONS,
     isLoading: isActiveSectionsLoading,
     isFetching: isActiveSectionsFetching,
   } = useSections(effectiveProjectId || "");

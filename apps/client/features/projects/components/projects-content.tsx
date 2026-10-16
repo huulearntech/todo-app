@@ -1,6 +1,6 @@
 "use client";
 
-import { useProjects } from "@/features/projects/hooks/use-projects";
+import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects";
 import AddProjectDialog from "@/features/projects/components/add-project-dialog";
 import { ProjectList } from "@/features/projects/components/project-list";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export function ProjectsContent({
 }: {
   defaultProjectId: string;
 }) {
-  const { data: projects = [], isLoading } = useProjects("non_default");
+  const { data: projects = EMPTY_PROJECTS, isLoading } = useProjects("non_default");
 
   return (
     <>

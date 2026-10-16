@@ -16,9 +16,9 @@ import {
   RepeatIcon,
   TagIcon,
 } from "lucide-react";
-import { useEditTaskDialogStore } from "@/providers/MyStoreProvider";
+import { useModalStore } from "@/providers/MyStoreProvider";
 import { useToggleTaskComplete } from "@/features/tasks/hooks/use-toggle-task-complete";
-import { useTaskLabels } from "@/features/labels/hooks/use-task-labels";
+import { useTaskLabels, EMPTY_TASK_LABELS } from "@/features/labels/hooks/use-task-labels";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { cn } from "cn";
@@ -64,7 +64,7 @@ function TaskCard({ task }: TaskCardProps) {
   const reminderText = hasReminders ? formatReminderTooltip(task.reminders) : "";
 
   const toggleCompleteMutation = useToggleTaskComplete();
-  const { data: labels = [] } = useTaskLabels(task);
+  const { data: labels = EMPTY_TASK_LABELS } = useTaskLabels(task);
 
   const handleCheckedChange = (checked: boolean) => {
     toggleCompleteMutation.mutate({
@@ -73,7 +73,7 @@ function TaskCard({ task }: TaskCardProps) {
     });
   };
 
-  const setTask = useEditTaskDialogStore((state) => state.setTask);
+  const openModal = useModalStore((state) => state.openModal);
 
   const taskDueLocalTime = task.timeRange?.end
     ? new Date(task.timeRange.end).toLocaleString("en-US", {
@@ -87,7 +87,7 @@ function TaskCard({ task }: TaskCardProps) {
       variant="outline"
       className="group relative text-card-foreground bg-card border-border/80 hover:border-primary/50 shadow-xs transition-all rounded-xl p-2.5 cursor-pointer select-none"
       onClick={() => {
-        setTask(task);
+        openModal({ type: "edit-task", task });
       }}
     >
       <ItemHeader>

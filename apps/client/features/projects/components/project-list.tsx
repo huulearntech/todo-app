@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { ProjectResponseDto as Project } from "@todo/shared";
-import { useEditProjectDialog } from "@/features/projects/context/edit-project-context";
+import { useModalStore } from "@/providers/MyStoreProvider";
 import { ProjectCard } from "./project-card";
 import AddProjectDialog from "./add-project-dialog";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export function ProjectList({
   isLoading,
   defaultProjectId,
 }: ProjectListProps) {
-  const { openEditProjectDialog } = useEditProjectDialog();
+  const openModal = useModalStore((state) => state.openModal);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredProjects = useMemo(() => {
@@ -117,7 +117,7 @@ export function ProjectList({
               key={project.id}
               project={project}
               isDefault={defaultProjectId === project.id}
-              onEdit={openEditProjectDialog}
+              onEdit={(project) => openModal({ type: "edit-project", project })}
               onCopyLink={handleCopyLink}
             />
           ))}
