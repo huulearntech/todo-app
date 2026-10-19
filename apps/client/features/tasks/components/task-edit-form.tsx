@@ -15,14 +15,14 @@ import { Button } from "@/components/ui/button";
 import { FieldError, FieldGroup } from "@/components/ui/field";
 import { Loader2Icon } from "lucide-react";
 
-import { TaskFormPriorityField } from "./task-form-attributes/task-form-priority-field";
-import { TaskFormLabelsField } from "./task-form-attributes/task-form-labels-field";
-import { TaskFormScheduleField } from "./task-form-attributes/task-form-schedule-field";
-import { TaskFormReminderField } from "./task-form-attributes/task-form-reminder-field";
+import { TaskEditPriorityField } from "./task-edit-fields/task-edit-priority-field";
+import { TaskEditLabelsField } from "./task-edit-fields/task-edit-labels-field";
+import { TaskEditScheduleField } from "./task-edit-fields/task-edit-schedule-field";
+import { TaskEditReminderField } from "./task-edit-fields/task-edit-reminder-field";
 
 export { priorityConfig } from "../constants/priority";
 
-export interface TaskFormProps {
+export interface TaskEditFormProps {
   defaultValues: CreateTaskInput;
   onSubmit: (data: CreateTaskOutput) => void;
   onCancel: () => void;
@@ -32,7 +32,7 @@ export interface TaskFormProps {
   autoFocusTitle?: boolean;
 }
 
-export function TaskForm({
+export function TaskEditForm({
   defaultValues,
   onSubmit,
   onCancel,
@@ -40,7 +40,7 @@ export function TaskForm({
   submitLabel = "Save changes",
   submittingLabel = "Saving...",
   autoFocusTitle = true,
-}: TaskFormProps) {
+}: TaskEditFormProps) {
   const {
     control,
     handleSubmit,
@@ -98,10 +98,10 @@ export function TaskForm({
         {/* Right Sidebar: Attributes Controls */}
         <aside className="p-5 bg-muted/20 dark:bg-muted/10 overflow-y-auto custom-kanban-scroll space-y-5">
           <FieldGroup className="space-y-4">
-            <TaskFormPriorityField control={control} />
-            <TaskFormLabelsField control={control} />
-            <TaskFormScheduleField control={control} />
-            <TaskFormReminderField control={control} watch={watch} />
+            <TaskEditPriorityField control={control} />
+            <TaskEditLabelsField control={control} />
+            <TaskEditScheduleField control={control} />
+            <TaskEditReminderField control={control} watch={watch} />
           </FieldGroup>
         </aside>
       </div>
@@ -137,3 +137,8 @@ export function TaskForm({
     </form>
   );
 }
+
+// Backward compatibility aliases
+export { TaskEditForm as TaskForm };
+export type { TaskEditFormProps as TaskFormProps };
+

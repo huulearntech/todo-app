@@ -17,9 +17,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useQuickTaskState } from "@/features/tasks/hooks/use-quick-task-state";
 import { TaskAttributeToolbar } from "./task-attribute-controls/task-attribute-toolbar";
-import { TaskFormFooter } from "./task-attribute-controls/task-form-footer";
+import { QuickTaskFormFooter } from "./task-attribute-controls/quick-task-form-footer";
 
-export interface UnifiedTaskAddFormProps {
+export interface TaskQuickAddFormProps {
   variant?: "dialog" | "inline";
   defaultProjectId?: string;
   defaultSectionId?: string;
@@ -30,7 +30,7 @@ export interface UnifiedTaskAddFormProps {
   onCancel?: () => void;
 }
 
-export function UnifiedTaskAddForm({
+export function TaskQuickAddForm({
   defaultProjectId,
   defaultSectionId,
   autoFocus = false,
@@ -38,7 +38,7 @@ export function UnifiedTaskAddForm({
   placeholder = "Task name, e.g. Design review #Work/Sprint 1 %urgent p1 {tomorrow at 3pm}...",
   onSuccess,
   onCancel,
-}: UnifiedTaskAddFormProps) {
+}: TaskQuickAddFormProps) {
   const taskInputRef = useRef<HTMLInputElement>(null);
   const inputRowRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -213,7 +213,7 @@ export function UnifiedTaskAddForm({
       />
 
       {/* 4. Footer Row (Project / Section selector & Submit / Cancel buttons) */}
-      <TaskFormFooter
+      <QuickTaskFormFooter
         currentProjectId={activeProjectId}
         currentSectionId={activeSectionId}
         projects={projects}
@@ -225,3 +225,8 @@ export function UnifiedTaskAddForm({
     </form>
   );
 }
+
+// Backward compatibility aliases
+export { TaskQuickAddForm as UnifiedTaskAddForm };
+export type { TaskQuickAddFormProps as UnifiedTaskAddFormProps };
+

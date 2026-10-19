@@ -4,7 +4,7 @@ import DndKanban from "@/features/tasks/components/dnd-kanban";
 import { UpcomingEventCalendar } from "@/features/upcoming/components/upcoming-event-calendar";
 import { useProjectView } from "@/features/projects/components/project-view-context";
 
-export default function ProjectContent({ projectId }: { projectId: string }) {
+export default function ProjectViewSwitcher({ projectId }: { projectId: string }) {
   const { view } = useProjectView();
 
   return view === "kanban" ? (
@@ -13,3 +13,7 @@ export default function ProjectContent({ projectId }: { projectId: string }) {
     <UpcomingEventCalendar projectId={projectId} />
   );
 }
+
+// Backward compatibility alias
+export { ProjectViewSwitcher as ProjectContent };
+

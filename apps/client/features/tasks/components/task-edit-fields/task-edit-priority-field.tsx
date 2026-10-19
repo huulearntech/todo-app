@@ -19,11 +19,11 @@ import { priorityConfig } from "@/features/tasks/constants/priority";
 import { FlagIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface TaskFormPriorityFieldProps {
+export interface TaskEditPriorityFieldProps {
   control: Control<CreateTaskInput, any, any>;
 }
 
-export function TaskFormPriorityField({ control }: TaskFormPriorityFieldProps) {
+export function TaskEditPriorityField({ control }: TaskEditPriorityFieldProps) {
   return (
     <Controller
       name="priority"

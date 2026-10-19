@@ -20,11 +20,11 @@ import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { getColorConfig } from "@/lib/color-palette";
 import { TagIcon, XIcon } from "lucide-react";
 
-export interface TaskFormLabelsFieldProps {
+export interface TaskEditLabelsFieldProps {
   control: Control<CreateTaskInput, any, any>;
 }
 
-export function TaskFormLabelsField({ control }: TaskFormLabelsFieldProps) {
+export function TaskEditLabelsField({ control }: TaskEditLabelsFieldProps) {
   const { data: labels = EMPTY_LABELS } = useLabels({
     select: (data) =>
       data.map((label) => ({

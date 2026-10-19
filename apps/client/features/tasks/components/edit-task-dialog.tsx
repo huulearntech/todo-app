@@ -17,7 +17,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { TaskForm } from "@/features/tasks/components/task-form";
+import { TaskEditForm } from "@/features/tasks/components/task-edit-form";
 
 export interface EditTaskDialogProps {
   task: Task;
@@ -73,8 +73,8 @@ export default function EditTaskDialog({
           <DialogTitle className="sr-only">Edit Task: {task.title}</DialogTitle>
         </DialogHeader>
 
-        {/* Shared Todoist Task Form */}
-        <TaskForm
+        {/* Detailed Task Edit Form */}
+        <TaskEditForm
           defaultValues={updateTaskSchema.encode(task)}
           onSubmit={(data) => {
             editTaskMutation.mutate({ taskId: task.id, data });

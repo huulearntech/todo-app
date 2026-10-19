@@ -1,4 +1,4 @@
-import ProjectContent from "@/features/projects/components/project-content";
+import ProjectViewSwitcher from "@/features/projects/components/project-view-switcher";
 
 // NOTE: Consider adding parameters like "year=", "month=", "week=",...
 export default async function ProjectPage({
@@ -8,5 +8,5 @@ export default async function ProjectPage({
 }) {
   const { id: projectId } = await params;
 
-  return <ProjectContent projectId={projectId} />;
+  return <ProjectViewSwitcher projectId={projectId} />;
 }

@@ -1,7 +1,7 @@
 import { Entity, Column, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/database/base.entity';
 import { Task } from '../entities/task.entity';
-import { RecurrenceTransformer } from '@/src/common/transformers/rrule_plpgsql.transformer';
+import { RecurrenceTransformer } from '@/src/common/transformers/recurrence.transformer';
 import { type RRule } from '@todo/shared';
 
 @Entity('task_recurrences')

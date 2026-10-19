@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { StandardPageLayout } from "@/components/layout/standard-page-layout";
 import { requireUser } from "@/lib/server/auth";
-import { ProjectsContent } from "@/features/projects/components/projects-content";
+import { ProjectsPageContent } from "@/features/projects/components/projects-page-content";
 
 export const metadata: Metadata = {
   title: "Projects",
@@ -13,7 +13,7 @@ export default async function ProjectsPage() {
 
   return (
     <StandardPageLayout>
-      <ProjectsContent defaultProjectId={user.defaultProjectId} />
+      <ProjectsPageContent defaultProjectId={user.defaultProjectId} />
     </StandardPageLayout>
   );
 }

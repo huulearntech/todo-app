@@ -18,11 +18,11 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { ClockIcon } from "lucide-react";
 
-export interface TaskFormScheduleFieldProps {
+export interface TaskEditScheduleFieldProps {
   control: Control<CreateTaskInput, any, any>;
 }
 
-export function TaskFormScheduleField({ control }: TaskFormScheduleFieldProps) {
+export function TaskEditScheduleField({ control }: TaskEditScheduleFieldProps) {
   return (
     <Controller
       name="timeRange"

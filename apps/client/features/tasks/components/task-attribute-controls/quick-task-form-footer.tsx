@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CornerDownLeftIcon, Loader2Icon } from "lucide-react";
 import { ProjectSectionPopover } from "./project-section-popover";
 
-export interface TaskFormFooterProps {
+export interface QuickTaskFormFooterProps {
   currentProjectId?: string;
   currentSectionId?: string;
   projects: Array<{ id: string; name: string; colorKey?: string }>;
@@ -14,7 +14,7 @@ export interface TaskFormFooterProps {
   isPending: boolean;
 }
 
-export function TaskFormFooter({
+export function QuickTaskFormFooter({
   currentProjectId,
   currentSectionId,
   projects,
@@ -22,7 +22,7 @@ export function TaskFormFooter({
   onCancel,
   canSubmit,
   isPending,
-}: TaskFormFooterProps) {
+}: QuickTaskFormFooterProps) {
   return (
     <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40 mt-1">
       {/* Left: Project & Section Selector */}
@@ -65,3 +65,7 @@ export function TaskFormFooter({
     </div>
   );
 }
+
+// Backward compatibility alias
+export { QuickTaskFormFooter as TaskFormFooter };
+export type { QuickTaskFormFooterProps as TaskFormFooterProps };

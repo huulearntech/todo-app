@@ -16,15 +16,15 @@ import {
 } from "@/components/ui/field";
 import { AlarmClockIcon } from "lucide-react";
 
-export interface TaskFormReminderFieldProps {
+export interface TaskEditReminderFieldProps {
   control: Control<CreateTaskInput, any, any>;
   watch: UseFormWatch<any>;
 }
 
-export function TaskFormReminderField({
+export function TaskEditReminderField({
   control,
   watch,
-}: TaskFormReminderFieldProps) {
+}: TaskEditReminderFieldProps) {
   return (
     <Controller
       name="reminders"

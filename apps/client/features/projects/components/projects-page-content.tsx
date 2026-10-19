@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FolderIcon, PlusIcon } from "lucide-react";
 
-export function ProjectsContent({
+export function ProjectsPageContent({
   defaultProjectId,
 }: {
   defaultProjectId: string;
@@ -58,3 +58,7 @@ export function ProjectsContent({
     </>
   );
 }
+
+// Backward compatibility alias
+export { ProjectsPageContent as ProjectsContent };
+

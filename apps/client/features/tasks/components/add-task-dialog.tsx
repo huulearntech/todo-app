@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useModalStore } from "@/providers/MyStoreProvider";
-import { UnifiedTaskAddForm } from "./unified-task-add-form";
+import { TaskQuickAddForm } from "./task-quick-add-form";
 
 export function AddTaskDialogTrigger({
   sectionId,
@@ -59,7 +59,7 @@ export default function AddTaskDialog({
         showCloseButton={false}
         className="sm:max-w-[700px] max-h-[90vh] sm:max-h-[calc(100vh-3rem)] p-0 gap-0 overflow-hidden rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-2xl flex flex-col"
       >
-        <UnifiedTaskAddForm
+        <TaskQuickAddForm
           defaultProjectId={projectId}
           defaultSectionId={sectionId}
           autoFocus={true}
