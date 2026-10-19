@@ -11,6 +11,8 @@ import { BaseEntity } from '../../common/database/base.entity';
 import { User } from '../users/user.entity';
 import { Section } from '../sections/section.entity';
 import { TrigramIndex } from '../../common/decorators/trigram-index.decorator';
+import { ProjectMember } from './entities/project-member.entity';
+import { ProjectInvitation } from './entities/project-invitation.entity';
 
 @Entity('projects')
 @Index(['ownerId', 'id'])
@@ -40,4 +42,12 @@ export class Project extends BaseEntity {
 
   @OneToMany(() => Section, (section) => section.project, { cascade: true })
   sections!: Section[];
+
+  @OneToMany(() => ProjectMember, (member) => member.project, { cascade: true })
+  members!: ProjectMember[];
+
+  @OneToMany(() => ProjectInvitation, (invitation) => invitation.project, {
+    cascade: true,
+  })
+  invitations!: ProjectInvitation[];
 }

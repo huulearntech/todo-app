@@ -17,11 +17,13 @@ import {
   TaskPriority,
   Weekday,
   type RRule,
+  ProjectRole,
 } from '@todo/shared';
 
 import { User } from '@/src/modules/users/user.entity';
 import { TaskLabel } from '@/src/modules/task-labels/task-label.entity';
 import { MailerSchedulerService } from '@/src/modules/mailer/services/mailer-scheduler.service';
+import { ProjectAccessService } from '@/src/modules/projects/authorization/project-access.service';
 
 describe('TaskService', () => {
   let service: TaskService;
@@ -176,6 +178,13 @@ describe('TaskService', () => {
         {
           provide: MailerSchedulerService,
           useValue: mailerSchedulerService,
+        },
+        {
+          provide: ProjectAccessService,
+          useValue: {
+            assertCan: jest.fn().mockResolvedValue(ProjectRole.OWNER),
+            getRole: jest.fn().mockResolvedValue(ProjectRole.OWNER),
+          },
         },
       ],
     }).compile();
@@ -420,7 +429,8 @@ describe('TaskService', () => {
       });
 
       expect(taskRepository.findOne).toHaveBeenCalledWith({
-        where: { id: taskId, section: { project: { ownerId } } },
+        where: { id: taskId },
+        relations: { section: { project: true } },
       });
       expect(dataSource.query).toHaveBeenCalledTimes(1);
       const queryCall = dataSource.query.mock.calls[0];

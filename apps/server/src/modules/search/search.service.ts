@@ -38,8 +38,8 @@ export class SearchService {
               p.color_key AS "colorKey",
               similarity(p.name, $1) AS score
             FROM projects p
-            WHERE p.owner_id = $2
-              AND (p.name % $1 OR p.name ILIKE ('%' || $3 || '%'))
+            INNER JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $2
+            WHERE (p.name % $1 OR p.name ILIKE ('%' || $3 || '%'))
             ORDER BY score DESC, p.created_at DESC
             LIMIT 6
           ),
@@ -70,8 +70,8 @@ export class SearchService {
             FROM tasks t
             INNER JOIN sections s ON s.id = t.section_id
             INNER JOIN projects p ON p.id = s.project_id
-            WHERE p.owner_id = $2
-              AND (t.title % $1 OR t.title ILIKE ('%' || $3 || '%'))
+            INNER JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $2
+            WHERE (t.title % $1 OR t.title ILIKE ('%' || $3 || '%'))
             ORDER BY score DESC, t.created_at DESC
             LIMIT 10
           )

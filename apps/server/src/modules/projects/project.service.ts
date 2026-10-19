@@ -7,11 +7,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Project } from './project.entity';
+import { ProjectMember } from './entities/project-member.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { User } from '../users/user.entity';
 import { ProjectFilterDto } from './dto/project-filter.dto';
-
+import { ProjectRole } from '@todo/shared';
+import { ProjectAccessService } from './authorization/project-access.service';
 import { ColorService } from '../colors/color.service';
 
 @Injectable()
@@ -19,8 +21,11 @@ export class ProjectService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    @InjectRepository(ProjectMember)
+    private readonly memberRepository: Repository<ProjectMember>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
   async createProject(
@@ -38,14 +43,22 @@ export class ProjectService {
     });
 
     const saved = await this.projectRepository.save(project);
+
+    // Ensure the project owner is recorded as an OWNER member
+    const member = this.memberRepository.create({
+      projectId: saved.id,
+      userId: ownerId,
+      role: ProjectRole.OWNER,
+    });
+    await this.memberRepository.save(member);
+
     return (await this.getProjectById(saved.id)) ?? saved;
   }
 
-  async getProjectsByOwnerIdAndFilter(
-    ownerId: string,
+  async getProjectsForUser(
+    userId: string,
     filter: ProjectFilterDto,
-  ): Promise<Project[]> {
-    // TODO: pagination
+  ): Promise<(Project & { role: ProjectRole })[]> {
     return this.projectRepository.manager.transaction(
       async (transactionalEntityManager) => {
         await transactionalEntityManager.query(
@@ -54,10 +67,16 @@ export class ProjectService {
 
         const queryBuilder = transactionalEntityManager
           .createQueryBuilder(Project, 'project')
-          .where('project.ownerId = :ownerId', { ownerId });
+          .innerJoin(
+            ProjectMember,
+            'pm',
+            'pm.projectId = project.id AND pm.userId = :userId',
+            { userId },
+          )
+          .addSelect('pm.role', 'user_role');
 
         if (filter.isDefault !== undefined) {
-          queryBuilder.innerJoin(User, 'user', 'user.id = project.ownerId');
+          queryBuilder.innerJoin(User, 'user', 'user.id = :userId', { userId });
           if (filter.isDefault) {
             queryBuilder.andWhere('project.id = user.defaultProjectId');
           } else {
@@ -72,23 +91,51 @@ export class ProjectService {
           queryBuilder.orderBy('project.createdAt', 'DESC');
         }
 
-        return queryBuilder.getMany();
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+        return entities.map((entity, index) => {
+          (entity as any).role = raw[index]?.user_role ?? raw[index]?.pm_role;
+          return entity as Project & { role: ProjectRole };
+        });
       },
     );
   }
 
-  async getProjectById(id: string, ownerId?: string): Promise<Project | null> {
-    return this.projectRepository.findOne({
-      where: ownerId ? { id, ownerId } : { id },
-    });
+  async getProjectsByOwnerIdAndFilter(
+    ownerId: string,
+    filter: ProjectFilterDto,
+  ): Promise<Project[]> {
+    return this.getProjectsForUser(ownerId, filter);
+  }
+
+  async getProjectById(
+    id: string,
+    userId?: string,
+  ): Promise<(Project & { role?: ProjectRole }) | null> {
+    if (userId) {
+      const role = await this.projectAccessService.getRole(userId, id);
+      if (!role) {
+        return null;
+      }
+      const project = await this.projectRepository.findOne({ where: { id } });
+      if (project) {
+        (project as any).role = role;
+      }
+      return project;
+    }
+
+    return this.projectRepository.findOne({ where: { id } });
   }
 
   async updateProject(
     id: string,
     updatedProject: Partial<UpdateProjectDto>,
-    ownerId?: string,
+    userId?: string,
   ): Promise<Project> {
-    const project = await this.getProjectById(id, ownerId);
+    if (userId) {
+      await this.projectAccessService.assertCan(userId, id, 'project:update');
+    }
+
+    const project = await this.getProjectById(id, userId);
     if (!project) {
       throw new NotFoundException('Project not found');
     }
@@ -106,17 +153,21 @@ export class ProjectService {
     }
 
     await this.projectRepository.save(project);
-    return (await this.getProjectById(id, ownerId)) ?? project;
+    return (await this.getProjectById(id, userId)) ?? project;
   }
 
-  async deleteProject(id: string, ownerId: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { id: ownerId } });
+  async deleteProject(id: string, userId: string): Promise<void> {
+    await this.projectAccessService.assertCan(userId, id, 'project:delete');
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
     if (user && user.defaultProjectId === id) {
       throw new ConflictException('Cannot delete default inbox project');
     }
 
     const project = await this.projectRepository.findOne({
-      where: { id, ownerId },
+      where: { id },
     });
     if (!project) {
       throw new NotFoundException('Project not found');

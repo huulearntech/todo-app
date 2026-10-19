@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SectionModule } from '../sections/section.module';
+import { ProjectAccessModule } from '../projects/authorization/project-access.module';
 
 import { Task } from './entities/task.entity';
 import { TaskRecurrence } from './entities/task-recurrence.entity';
@@ -29,6 +30,7 @@ import { TaskLabel } from '../task-labels/task-label.entity';
     ]),
     SectionModule,
     MailerModule,
+    ProjectAccessModule,
   ],
   controllers: [TasksController],
   providers: [TaskService],

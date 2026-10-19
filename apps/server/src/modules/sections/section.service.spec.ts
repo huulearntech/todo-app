@@ -3,19 +3,38 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { SectionService } from './section.service';
 import { Section } from './section.entity';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ProjectAccessService } from '../projects/authorization/project-access.service';
+import { ProjectRole } from '@todo/shared';
 
 describe('SectionService', () => {
   let service: SectionService;
   let mockSectionRepo: any;
+  let mockProjectAccessService: any;
+  let mockQb: any;
 
   beforeEach(async () => {
+    mockQb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      getOne: jest.fn(),
+      getMany: jest.fn(),
+    };
+
     mockSectionRepo = {
       query: jest.fn(),
       create: jest.fn((val) => val),
       findOne: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
-      createQueryBuilder: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue(mockQb),
+    };
+
+    mockProjectAccessService = {
+      assertCan: jest.fn().mockResolvedValue(ProjectRole.OWNER),
+      getRole: jest.fn().mockResolvedValue(ProjectRole.OWNER),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -24,6 +43,10 @@ describe('SectionService', () => {
         {
           provide: getRepositoryToken(Section),
           useValue: mockSectionRepo,
+        },
+        {
+          provide: ProjectAccessService,
+          useValue: mockProjectAccessService,
         },
       ],
     }).compile();
@@ -45,6 +68,11 @@ describe('SectionService', () => {
         colorKey: 'red',
       });
 
+      expect(mockProjectAccessService.assertCan).toHaveBeenCalledWith(
+        'user-1',
+        'proj-1',
+        'section:create',
+      );
       expect(mockSectionRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           ownerId: 'user-1',
@@ -73,8 +101,8 @@ describe('SectionService', () => {
   });
 
   describe('updateSectionOrder', () => {
-    it('should call move_section_lexorank with parameters after checking ownership', async () => {
-      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2' });
+    it('should call move_section_lexorank with parameters after checking membership', async () => {
+      mockQb.getOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
       mockSectionRepo.query.mockResolvedValue([]);
 
       await service.updateSectionOrder({
@@ -83,17 +111,20 @@ describe('SectionService', () => {
         prevId: 'sec-1',
       });
 
-      expect(mockSectionRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 'sec-2', project: { ownerId: 'user-1' } },
-      });
+      expect(mockSectionRepo.createQueryBuilder).toHaveBeenCalled();
+      expect(mockProjectAccessService.assertCan).toHaveBeenCalledWith(
+        'user-1',
+        'proj-1',
+        'section:update',
+      );
       expect(mockSectionRepo.query).toHaveBeenCalledWith(
         expect.stringContaining('move_section_lexorank('),
         ['sec-2', 'sec-1'],
       );
     });
 
-    it('should throw NotFoundException if section not owned by user', async () => {
-      mockSectionRepo.findOne.mockResolvedValue(null);
+    it('should throw NotFoundException if section not accessible by user', async () => {
+      mockQb.getOne.mockResolvedValue(null);
 
       await expect(
         service.updateSectionOrder({
@@ -105,7 +136,7 @@ describe('SectionService', () => {
     });
 
     it('should throw BadRequestException if bounds invalid (22000)', async () => {
-      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2' });
+      mockQb.getOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
       const error: any = new Error(
         'A section cannot be positioned after itself',
       );

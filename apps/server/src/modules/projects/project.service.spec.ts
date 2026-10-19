@@ -1,9 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { Project } from './project.entity';
 import { User } from '../users/user.entity';
+
+import { ProjectMember } from './entities/project-member.entity';
+import { ProjectAccessService } from './authorization/project-access.service';
+import { ProjectRole } from '@todo/shared';
 
 describe('ProjectService', () => {
   let service: ProjectService;
@@ -16,6 +20,17 @@ describe('ProjectService', () => {
     manager: {
       transaction: jest.Mock;
     };
+  };
+  let memberRepository: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    find: jest.Mock;
+    delete: jest.Mock;
+  };
+  let projectAccessService: {
+    getRole: jest.Mock;
+    assertCan: jest.Mock;
   };
   let userRepository: {
     findOne: jest.Mock;
@@ -37,6 +52,19 @@ describe('ProjectService', () => {
       },
     };
 
+    memberRepository = {
+      create: jest.fn((entity: any) => entity),
+      save: jest.fn((entity: any) => Promise.resolve(entity)),
+      findOne: jest.fn(),
+      find: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    projectAccessService = {
+      getRole: jest.fn().mockResolvedValue(ProjectRole.OWNER),
+      assertCan: jest.fn().mockResolvedValue(ProjectRole.OWNER),
+    };
+
     userRepository = {
       findOne: jest.fn().mockResolvedValue({
         id: ownerId,
@@ -52,8 +80,16 @@ describe('ProjectService', () => {
           useValue: projectRepository,
         },
         {
+          provide: getRepositoryToken(ProjectMember),
+          useValue: memberRepository,
+        },
+        {
           provide: getRepositoryToken(User),
           useValue: userRepository,
+        },
+        {
+          provide: ProjectAccessService,
+          useValue: projectAccessService,
         },
       ],
     }).compile();
