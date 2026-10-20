@@ -9,5 +9,8 @@ export * from "./enums/color-palette.enum.js";
 export * from "./enums/project-role.enum.js";
 export * from "./enums/project-invitation-status.enum.js";
 
+// Permissions
+export * from "./permissions/project-permissions.js";
+
 // Utils
 export * from "./utils/index.js";

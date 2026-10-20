@@ -32,8 +32,8 @@ export async function generateMetadata({
 }
 
 import { FullSpaceLayout } from "@/components/layout/full-space-layout";
-
 import { KanbanBoardSkeleton } from "@/features/tasks/components/kanban/kanban-board-skeleton";
+import { ProjectAbilityProvider } from "@/features/projects/permissions";
 
 export default async function ProjectLayout({
   children,
@@ -48,11 +48,20 @@ export default async function ProjectLayout({
 
   return (
     <Suspense fallback={<KanbanBoardSkeleton />}>
-      <ProjectViewProvider>
-        <FullSpaceLayout header={<ProjectHeader projectName={project.name} />}>
-          {children}
-        </FullSpaceLayout>
-      </ProjectViewProvider>
+      <ProjectAbilityProvider role={project.role}>
+        <ProjectViewProvider>
+          <FullSpaceLayout
+            header={
+              <ProjectHeader
+                projectName={project.name}
+                projectId={project.id}
+              />
+            }
+          >
+            {children}
+          </FullSpaceLayout>
+        </ProjectViewProvider>
+      </ProjectAbilityProvider>
     </Suspense>
   );
 }

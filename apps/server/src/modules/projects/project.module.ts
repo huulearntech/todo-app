@@ -10,6 +10,7 @@ import { ProjectInvitation } from './entities/project-invitation.entity';
 import { TaskModule } from '../tasks/task.module';
 import { SectionModule } from '../sections/section.module';
 import { ProjectAccessModule } from './authorization/project-access.module';
+import { MailerModule } from '../mailer/mailer.module';
 
 import { User } from '../users/user.entity';
 
@@ -19,6 +20,7 @@ import { User } from '../users/user.entity';
     TaskModule,
     SectionModule,
     ProjectAccessModule,
+    MailerModule,
   ],
   controllers: [ProjectController, ProjectMemberController],
   providers: [ProjectService, ProjectMemberService],

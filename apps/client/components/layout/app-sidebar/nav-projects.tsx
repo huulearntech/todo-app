@@ -1,16 +1,23 @@
-"use client"
+"use client";
 
-import { usePathname } from "next/navigation"
-import Link from "next/link"
-import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects"
-import { getColorConfig } from "@/lib/color-palette"
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects";
+import { useDeleteProject } from "@/features/projects/hooks/use-delete-project";
+import { useRemoveMember } from "@/features/projects/hooks/use-remove-member";
+import { useAuth } from "@/providers/AuthProvider";
+import { getColorConfig } from "@/lib/color-palette";
+import { roleCan, ProjectRole } from "@todo/shared";
 
 import {
   HashIcon,
   MoreHorizontalIcon,
   PencilIcon,
   Trash2Icon,
-} from "lucide-react"
+  UsersIcon,
+  LogOutIcon,
+  PlusIcon,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -18,7 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -28,17 +35,19 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
   useSidebar,
-} from "@/components/ui/sidebar"
-import AddProjectDialog from "@/features/projects/components/add-project-dialog"
-import { useModalStore } from "@/providers/MyStoreProvider"
-import { PlusIcon } from "lucide-react"
+} from "@/components/ui/sidebar";
+import AddProjectDialog from "@/features/projects/components/add-project-dialog";
+import { useModalStore } from "@/providers/MyStoreProvider";
 
 export function NavProjects() {
-  const { isMobile } = useSidebar()
-  const pathname = usePathname()
-  const openModal = useModalStore((state) => state.openModal)
+  const { isMobile } = useSidebar();
+  const pathname = usePathname();
+  const openModal = useModalStore((state) => state.openModal);
+  const { user } = useAuth();
+  const deleteProject = useDeleteProject();
 
-  const { data: projects = EMPTY_PROJECTS, isLoading } = useProjects("non_default");
+  const { data: projects = EMPTY_PROJECTS, isLoading } =
+    useProjects("non_default");
 
   if (isLoading) {
     return (
@@ -52,7 +61,7 @@ export function NavProjects() {
           <SidebarMenuSkeleton showIcon />
         </SidebarMenu>
       </SidebarGroup>
-    )
+    );
   }
 
   return (
@@ -70,9 +79,15 @@ export function NavProjects() {
 
       <SidebarMenu className="gap-0.5 mt-0.5">
         {projects.map((item) => {
-          const projectUrl = `/projects/${item.id}`
-          const isActive = pathname === projectUrl || pathname.startsWith(`${projectUrl}/`)
-          const config = getColorConfig(item.colorKey)
+          const projectUrl = `/projects/${item.id}`;
+          const isActive =
+            pathname === projectUrl || pathname.startsWith(`${projectUrl}/`);
+          const config = getColorConfig(item.colorKey);
+
+          const canUpdate = roleCan(item.role, "project:update");
+          const canDelete = roleCan(item.role, "project:delete");
+          const isOwner = item.role === ProjectRole.OWNER;
+          const isShared = item.role && item.role !== ProjectRole.OWNER;
 
           return (
             <SidebarMenuItem key={item.id}>
@@ -84,7 +99,12 @@ export function NavProjects() {
                 <HashIcon
                   className={`size-4 shrink-0 ${config.badgeTextClass}`}
                 />
-                <span className="truncate">{item.name}</span>
+                <span className="truncate flex-1">{item.name}</span>
+                {isShared && (
+                  <span title={`Shared (${item.role})`} className="inline-flex shrink-0 ml-auto">
+                    <UsersIcon className="size-3 text-muted-foreground opacity-60" />
+                  </span>
+                )}
               </SidebarMenuButton>
 
               <DropdownMenu>
@@ -92,7 +112,7 @@ export function NavProjects() {
                   render={
                     <SidebarMenuAction
                       showOnHover
-                      className="hover:bg-sidebar-accent rounded-md"
+                      className="hover:bg-sidebar-accent rounded-md cursor-pointer"
                     />
                   }
                 >
@@ -104,25 +124,52 @@ export function NavProjects() {
                   side={isMobile ? "bottom" : "right"}
                   align={isMobile ? "end" : "start"}
                 >
-                  <DropdownMenuItem
-                    onClick={() => openModal({ type: "edit-project", project: item })}
-                    className="rounded-lg gap-2 cursor-pointer"
-                  >
-                    <PencilIcon className="size-4 text-muted-foreground" />
-                    <span>Edit Project</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="my-1 bg-border/50" />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="rounded-lg gap-2 cursor-pointer"
-                  >
-                    <Trash2Icon className="size-4" />
-                    <span>Delete Project</span>
-                  </DropdownMenuItem>
+                  {canUpdate && (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        openModal({ type: "edit-project", project: item })
+                      }
+                      className="rounded-lg gap-2 cursor-pointer"
+                    >
+                      <PencilIcon className="size-4 text-muted-foreground" />
+                      <span>Edit Project</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {!isOwner && item.role && user?.id && (
+                    <ProjectLeaveMenuItem
+                      projectId={item.id}
+                      userId={user.id}
+                    />
+                  )}
+
+                  {canDelete && (
+                    <>
+                      {canUpdate && (
+                        <DropdownMenuSeparator className="my-1 bg-border/50" />
+                      )}
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+                            )
+                          ) {
+                            deleteProject.mutate(item.id);
+                          }
+                        }}
+                        className="rounded-lg gap-2 cursor-pointer"
+                      >
+                        <Trash2Icon className="size-4" />
+                        <span>Delete Project</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
-          )
+          );
         })}
 
         <SidebarMenuItem>
@@ -140,5 +187,31 @@ export function NavProjects() {
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
-  )
+  );
+}
+
+function ProjectLeaveMenuItem({
+  projectId,
+  userId,
+}: {
+  projectId: string;
+  userId: string;
+}) {
+  const removeMember = useRemoveMember(projectId);
+
+  return (
+    <DropdownMenuItem
+      variant="destructive"
+      onClick={() => {
+        if (confirm("Are you sure you want to leave this project?")) {
+          removeMember.mutate(userId);
+        }
+      }}
+      disabled={removeMember.isPending}
+      className="rounded-lg gap-2 cursor-pointer"
+    >
+      <LogOutIcon className="size-4" />
+      <span>Leave Project</span>
+    </DropdownMenuItem>
+  );
 }

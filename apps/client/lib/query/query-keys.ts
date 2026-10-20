@@ -9,6 +9,10 @@ export const projectQueryKeys = {
     type ? ([...projectQueryKeys.all, type] as const) : projectQueryKeys.all,
   nonDefault: () => ["projects", "non_default"] as const,
   detail: (id: string) => [...projectQueryKeys.all, id] as const,
+  members: (projectId: string) =>
+    [...projectQueryKeys.detail(projectId), "members"] as const,
+  invitations: (projectId: string) =>
+    [...projectQueryKeys.detail(projectId), "invitations"] as const,
 };
 
 export const sectionQueryKeys = {

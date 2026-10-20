@@ -18,6 +18,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { TaskEditForm } from "@/features/tasks/components/task-edit-form";
+import { useProjectAbilityContext } from "@/features/projects/permissions";
 
 export interface EditTaskDialogProps {
   task: Task;
@@ -29,6 +30,8 @@ export default function EditTaskDialog({
   onClose,
 }: EditTaskDialogProps) {
   const [open, setOpen] = useState(true);
+  const ability = useProjectAbilityContext();
+  const canUpdate = ability.can("task:update");
 
   const editTaskMutation = useUpdateTask({
     onSuccess: () => {
@@ -84,6 +87,7 @@ export default function EditTaskDialog({
           submitLabel="Save changes"
           submittingLabel="Saving..."
           autoFocusTitle={false}
+          readOnly={!canUpdate}
         />
       </DialogContent>
     </Dialog>

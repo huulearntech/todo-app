@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,15 +29,34 @@ import {
   KanbanIcon,
   CalendarIcon,
   CheckIcon,
+  EyeIcon,
 } from "lucide-react";
 import { useProjectView } from "@/features/projects/components/project-view-context";
+import { useProjectAbilityContext } from "@/features/projects/permissions";
+import { ProjectMemberAvatarStack } from "@/features/projects/components/project-member-avatar-stack";
+import { ShareProjectDialog } from "@/features/projects/components/share-project-dialog";
+import { ProjectRole } from "@todo/shared";
 
-export default function ProjectHeader({ projectName }: { projectName: string }) {
+interface ProjectHeaderProps {
+  projectName: string;
+  projectId?: string;
+  isDefault?: boolean;
+}
+
+export default function ProjectHeader({
+  projectName,
+  projectId: propProjectId,
+  isDefault = false,
+}: ProjectHeaderProps) {
   const params = useParams();
   const pathname = usePathname();
-  const projectId = params?.id as string;
+  const routeProjectId = params?.id as string;
+  const projectId = propProjectId || routeProjectId;
   const isCompletedPage = pathname?.endsWith("/completed");
   const { view, setView } = useProjectView();
+  const ability = useProjectAbilityContext();
+
+  const isViewer = ability.role === ProjectRole.VIEWER;
 
   return (
     <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b border-border/60 sticky top-0 z-10 bg-card">
@@ -56,7 +76,9 @@ export default function ProjectHeader({ projectName }: { projectName: string }) 
             {isCompletedPage ? (
               <>
                 <BreadcrumbItem>
-                  <BreadcrumbLink render={<Link href={`/projects/${projectId}`} />}>
+                  <BreadcrumbLink
+                    render={<Link href={`/projects/${projectId}`} />}
+                  >
                     {projectName}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
@@ -68,15 +90,34 @@ export default function ProjectHeader({ projectName }: { projectName: string }) 
                 </BreadcrumbItem>
               </>
             ) : (
-              <BreadcrumbItem>
+              <BreadcrumbItem className="flex items-center gap-2">
                 <BreadcrumbPage>{projectName}</BreadcrumbPage>
+                {isViewer && (
+                  <Badge
+                    variant="outline"
+                    className="text-[11px] text-muted-foreground gap-1 font-normal py-0.5"
+                  >
+                    <EyeIcon className="size-3" />
+                    View only
+                  </Badge>
+                )}
               </BreadcrumbItem>
             )}
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
+        {!isDefault && projectId && (
+          <>
+            <ProjectMemberAvatarStack projectId={projectId} />
+            <ShareProjectDialog
+              projectId={projectId}
+              projectName={projectName}
+            />
+          </>
+        )}
+
         <DropdownMenu>
           <DropdownMenuTrigger
             render={(props) => (
@@ -84,14 +125,17 @@ export default function ProjectHeader({ projectName }: { projectName: string }) 
                 {...props}
                 variant="ghost"
                 size="icon-sm"
-                className="text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg shrink-0"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg shrink-0 cursor-pointer"
               />
             )}
           >
             <MoreHorizontalIcon className="size-4" />
             <span className="sr-only">Project View Options</span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1 shadow-md">
+          <DropdownMenuContent
+            align="end"
+            className="w-48 rounded-xl p-1 shadow-md"
+          >
             <DropdownMenuGroup>
               <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground font-medium">
                 Views
@@ -135,7 +179,6 @@ export default function ProjectHeader({ projectName }: { projectName: string }) 
                 )}
               </DropdownMenuItem>
             </DropdownMenuGroup>
-
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

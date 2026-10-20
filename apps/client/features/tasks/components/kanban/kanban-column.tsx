@@ -26,6 +26,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useProjectAbilityContext } from "@/features/projects/permissions";
+
 export interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
   "value" | "children"
@@ -36,10 +38,13 @@ export interface TaskCardProps extends Omit<
 }
 
 export function TaskCard({ task, asHandle, isOverlay, ...props }: TaskCardProps) {
-  const Wrapper = asHandle && !isOverlay ? KanbanItemHandle : Fragment;
+  const ability = useProjectAbilityContext();
+  const canMoveTask = ability.can("task:move");
+
+  const Wrapper = asHandle && !isOverlay && canMoveTask ? KanbanItemHandle : Fragment;
 
   return (
-    <KanbanItem value={task.id} {...props}>
+    <KanbanItem value={task.id} disabled={!canMoveTask} {...props}>
       <Wrapper>
         <TaskItemListView task={task} />
       </Wrapper>
@@ -69,11 +74,19 @@ export function TaskColumn({
   onDelete,
   ...props
 }: TaskColumnProps) {
+  const ability = useProjectAbilityContext();
+  const canUpdateSection = ability.can("section:update");
+  const canMoveSection = canUpdateSection;
+  const canDeleteSection = ability.can("section:delete");
+  const canCreateTask = ability.can("task:create");
+
   const title = section?.name || "Untitled section";
   const colorConfig = getColorConfig(section?.colorKey);
 
+  const hasSectionActions = canUpdateSection || canDeleteSection;
+
   return (
-    <KanbanColumn value={value} {...props}>
+    <KanbanColumn value={value} disabled={!canMoveSection} {...props}>
       <Card
         className={cn(
           "mb-2.5 transition-colors border-border/80",
@@ -91,45 +104,55 @@ export function TaskColumn({
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={(triggerProps) => (
-                  <Button
-                    {...triggerProps}
-                    size="icon-xs"
-                    variant="ghost"
-                    className="opacity-0 group-hover/kanban-column:opacity-100 data-popup-open:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground transition-opacity rounded-md"
-                    aria-label={`Section options for ${title}`}
-                  />
-                )}
-              >
-                <MoreHorizontalIcon className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    onClick={() => section && onEdit(section)}
-                    className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                  >
-                    <PencilIcon className="size-3.5 text-muted-foreground" />
-                    <span>Edit section</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="my-1 bg-border/50" />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => section && onDelete(section)}
-                    className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
-                  >
-                    <Trash2Icon className="size-3.5" />
-                    <span>Delete section</span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {hasSectionActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={(triggerProps) => (
+                    <Button
+                      {...triggerProps}
+                      size="icon-xs"
+                      variant="ghost"
+                      className="opacity-0 group-hover/kanban-column:opacity-100 data-popup-open:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground transition-opacity rounded-md"
+                      aria-label={`Section options for ${title}`}
+                    />
+                  )}
+                >
+                  <MoreHorizontalIcon className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup>
+                    {canUpdateSection && (
+                      <DropdownMenuItem
+                        onClick={() => section && onEdit(section)}
+                        className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
+                      >
+                        <PencilIcon className="size-3.5 text-muted-foreground" />
+                        <span>Edit section</span>
+                      </DropdownMenuItem>
+                    )}
+                    {canUpdateSection && canDeleteSection && (
+                      <DropdownMenuSeparator className="my-1 bg-border/50" />
+                    )}
+                    {canDeleteSection && (
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => section && onDelete(section)}
+                        className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
+                      >
+                        <Trash2Icon className="size-3.5" />
+                        <span>Delete section</span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
-            <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" className="rounded-md" />}>
-              <GripVerticalIcon className="size-4" />
-            </KanbanColumnHandle>
+            {canMoveSection && (
+              <KanbanColumnHandle render={<Button size="icon-xs" variant="ghost" className="rounded-md" />}>
+                <GripVerticalIcon className="size-4" />
+              </KanbanColumnHandle>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -142,7 +165,9 @@ export function TaskColumn({
                 isOverlay={isOverlay}
               />
             ))}
-            <AddTaskDialogTrigger sectionId={value} projectId={projectId} />
+            {canCreateTask && (
+              <AddTaskDialogTrigger sectionId={value} projectId={projectId} />
+            )}
           </KanbanColumnContent>
         </CardContent>
       </Card>

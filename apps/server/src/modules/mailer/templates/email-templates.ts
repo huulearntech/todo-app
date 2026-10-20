@@ -220,3 +220,28 @@ export function getMagicLinkEmailTemplate(
     `,
   });
 }
+
+export function getProjectInvitationEmailTemplate(
+  inviterName: string,
+  projectName: string,
+  role: string,
+  actionUrl: string,
+): string {
+  const safeInviter = escapeHtml(inviterName);
+  const safeProject = escapeHtml(projectName);
+  const safeRole = escapeHtml(role.toLowerCase());
+
+  return baseEmailTemplate({
+    title: `You've been invited to collaborate on ${safeProject}`,
+    contentHtml: `
+      <h2>You've been invited!</h2>
+      <p>Hi there,</p>
+      <p><strong>${safeInviter}</strong> has invited you to collaborate on the project <strong>${safeProject}</strong> as a <strong>${safeRole}</strong>.</p>
+      <p>Click the button below to accept the invitation and start collaborating with your team:</p>
+      <a href="${actionUrl}" class="button">Accept Invitation</a>
+      <p style="margin-top: 20px; font-size: 13px; color: #6b7280;">This invitation will expire in 7 days.</p>
+      <p style="font-size: 13px; color: #6b7280;">If you don't have an account yet, you will be prompted to create one when accepting.</p>
+    `,
+  });
+}
+

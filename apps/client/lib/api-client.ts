@@ -31,9 +31,13 @@ apiClient.interceptors.request.use((config) => {
 
 let refreshPromise: Promise<void> | null = null;
 
+export function _resetQueueState(): void {
+  refreshPromise = null;
+}
+
 async function refreshAccessToken(): Promise<void> {
   const url =
-    isBackend
+    typeof window === "undefined"
       ? `${getBackendApiUrl()}/auth/refresh-token`
       : "/api/auth/refresh-token";
   await axios.post(url, {}, { withCredentials: true });
@@ -48,11 +52,17 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const isRefreshEndpoint =
-      typeof originalRequest.url === "string" &&
-      originalRequest.url.includes("/auth/refresh-token");
+    if (typeof window === "undefined") {
+      return Promise.reject(error);
+    }
 
-    if (error.response.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
+    const requestUrl = typeof originalRequest.url === "string" ? originalRequest.url : "";
+    const isAuthEndpoint =
+      requestUrl.includes("/auth/sign-in") ||
+      requestUrl.includes("/auth/sign-up") ||
+      requestUrl.includes("/auth/refresh-token");
+
+    if (error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {

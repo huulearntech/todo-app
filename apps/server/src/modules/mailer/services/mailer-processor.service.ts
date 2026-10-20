@@ -16,6 +16,7 @@ import {
   getWelcomeEmailTemplate,
   getPasswordResetEmailTemplate,
   getMagicLinkEmailTemplate,
+  getProjectInvitationEmailTemplate,
   getTaskReminderEmailTemplate,
   getRecurringReminderEmailTemplate,
 } from '../templates/email-templates';
@@ -80,6 +81,15 @@ export class MailerProcessor extends WorkerHost {
       case 'magic-link':
         html = getMagicLinkEmailTemplate(
           data.context.name,
+          data.context.actionUrl ?? '#',
+        );
+        break;
+
+      case 'project-invitation':
+        html = getProjectInvitationEmailTemplate(
+          data.context.name,
+          data.context.projectName ?? 'a project',
+          data.context.role ?? 'editor',
           data.context.actionUrl ?? '#',
         );
         break;

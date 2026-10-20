@@ -30,6 +30,7 @@ export interface TaskEditFormProps {
   submitLabel?: string;
   submittingLabel?: string;
   autoFocusTitle?: boolean;
+  readOnly?: boolean;
 }
 
 export function TaskEditForm({
@@ -40,6 +41,7 @@ export function TaskEditForm({
   submitLabel = "Save changes",
   submittingLabel = "Saving...",
   autoFocusTitle = true,
+  readOnly = false,
 }: TaskEditFormProps) {
   const {
     control,
@@ -70,8 +72,9 @@ export function TaskEditForm({
                   {...field}
                   id="task-title-input"
                   placeholder="Task title or what needs to be done..."
-                  className="text-lg md:text-xl font-semibold placeholder:text-muted-foreground/40 border-0 px-2 py-1.5 rounded-none focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent h-auto text-foreground"
-                  autoFocus={autoFocusTitle}
+                  disabled={readOnly}
+                  className="text-lg md:text-xl font-semibold placeholder:text-muted-foreground/40 border-0 px-2 py-1.5 rounded-none focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent h-auto text-foreground disabled:opacity-90"
+                  autoFocus={!readOnly && autoFocusTitle}
                 />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </div>
@@ -86,8 +89,9 @@ export function TaskEditForm({
                 <Textarea
                   {...field}
                   id="task-description-input"
-                  placeholder="Add description, notes, or details..."
-                  className="min-h-[120px] md:min-h-[160px] text-sm text-muted-foreground placeholder:text-muted-foreground/40 border-0 px-2 py-1.5 rounded-none focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent resize-none leading-relaxed flex-1"
+                  placeholder={readOnly ? "No description provided." : "Add description, notes, or details..."}
+                  disabled={readOnly}
+                  className="min-h-[120px] md:min-h-[160px] text-sm text-muted-foreground placeholder:text-muted-foreground/40 border-0 px-2 py-1.5 rounded-none focus-visible:ring-0 focus-visible:outline-none shadow-none bg-transparent resize-none leading-relaxed flex-1 disabled:opacity-90"
                 />
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </div>
@@ -109,29 +113,42 @@ export function TaskEditForm({
       {/* Footer Actions Bar */}
       <div className="border-t border-border/40 px-5 py-3 bg-muted/20 flex items-center justify-end gap-3 shrink-0">
         <div className="flex items-center gap-2 ml-auto">
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-xl h-9 text-xs font-medium px-4"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="task-form"
-            disabled={isSubmitting || isPending}
-            className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs"
-          >
-            {isPending ? (
-              <>
-                <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
-                {submittingLabel}
-              </>
-            ) : (
-              submitLabel
-            )}
-          </Button>
+          {readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl h-9 text-xs font-medium px-4"
+              onClick={onCancel}
+            >
+              Close
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl h-9 text-xs font-medium px-4"
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="task-form"
+                disabled={isSubmitting || isPending}
+                className="rounded-xl h-9 text-xs font-semibold px-4 shadow-xs"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
+                    {submittingLabel}
+                  </>
+                ) : (
+                  submitLabel
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </form>

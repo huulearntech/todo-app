@@ -20,6 +20,7 @@ import { useModalStore } from "@/providers/MyStoreProvider";
 import { useToggleTaskComplete } from "@/features/tasks/hooks/use-toggle-task-complete";
 import { useTaskLabels, EMPTY_TASK_LABELS } from "@/features/labels/hooks/use-task-labels";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useProjectAbilityContext } from "@/features/projects/permissions";
 
 import { cn } from "cn";
 
@@ -73,6 +74,9 @@ function TaskCard({ task }: TaskCardProps) {
     });
   };
 
+  const ability = useProjectAbilityContext();
+  const canComplete = ability.can("task:complete");
+
   const openModal = useModalStore((state) => state.openModal);
 
   const taskDueLocalTime = task.timeRange?.end
@@ -105,11 +109,13 @@ function TaskCard({ task }: TaskCardProps) {
 
         <Checkbox
           checked={false}
+          disabled={!canComplete || toggleCompleteMutation.isPending}
           onCheckedChange={handleCheckedChange}
           className={cn(
             "rounded-full size-6 border-2 dark:bg-transparent transition-colors",
             "data-checked:text-white dark:data-checked:text-background",
-            priorityCheckboxStyles[task.priority] ?? priorityCheckboxStyles.low
+            priorityCheckboxStyles[task.priority] ?? priorityCheckboxStyles.low,
+            !canComplete && "opacity-40 cursor-not-allowed"
           )}
           onClick={(e) => e.stopPropagation()}
         />

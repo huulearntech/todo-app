@@ -28,8 +28,12 @@ import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
 import { groupBySection } from "@/features/tasks/utils/kanban-helpers";
 import { TaskColumn } from "./kanban/kanban-column";
 import { KanbanBoardSkeleton } from "./kanban/kanban-board-skeleton";
+import { useProjectAbilityContext } from "@/features/projects/permissions";
 
 function DndKanban({ projectId }: { projectId: string }) {
+  const ability = useProjectAbilityContext();
+  const canCreateSection = ability.can("section:create");
+
   const { user } = useAuth();
   const isInbox = user?.defaultProjectId === projectId;
   const completedHref = isInbox ? "/inbox/completed" : `/projects/${projectId}/completed`;
@@ -191,27 +195,31 @@ function DndKanban({ projectId }: { projectId: string }) {
               );
             })}
 
-            <div data-slot="kanban-column">
-              <AddSectionForm ref={addSectionRef} projectId={projectId} />
-            </div>
+            {canCreateSection && (
+              <div data-slot="kanban-column">
+                <AddSectionForm ref={addSectionRef} projectId={projectId} />
+              </div>
+            )}
           </KanbanBoard>
           <KanbanOverlay className="bg-muted/10 rounded-md border-2 border-dashed" />
         </Kanban>
       </section>
 
       {/* Floating Action Button */}
-      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
-        <Button
-          type="button"
-          size="lg"
-          onClick={handleFloatingAddSectionClick}
-          className="rounded-full shadow-lg hover:shadow-xl bg-primary text-primary-foreground flex items-center gap-2 px-4 h-11 transition-all active:scale-95 cursor-pointer"
-          aria-label="Add new section"
-        >
-          <PlusIcon className="size-4.5" />
-          <span className="font-semibold text-xs sm:text-sm">New Section</span>
-        </Button>
-      </div>
+      {canCreateSection && (
+        <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
+          <Button
+            type="button"
+            size="lg"
+            onClick={handleFloatingAddSectionClick}
+            className="rounded-full shadow-lg hover:shadow-xl bg-primary text-primary-foreground flex items-center gap-2 px-4 h-11 transition-all active:scale-95 cursor-pointer"
+            aria-label="Add new section"
+          >
+            <PlusIcon className="size-4.5" />
+            <span className="font-semibold text-xs sm:text-sm">New Section</span>
+          </Button>
+        </div>
+      )}
 
       {/* Edit Section Dialog */}
       {sectionToEdit && (

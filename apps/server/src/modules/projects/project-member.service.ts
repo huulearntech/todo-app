@@ -4,7 +4,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { MailerSchedulerService } from '../mailer/services/mailer-scheduler.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import crypto from 'node:crypto';
@@ -31,6 +34,8 @@ export class ProjectMemberService {
     private readonly userRepository: Repository<User>,
     private readonly projectAccessService: ProjectAccessService,
     private readonly dataSource: DataSource,
+    @Optional() private readonly configService?: ConfigService,
+    @Optional() private readonly mailerSchedulerService?: MailerSchedulerService,
   ) {}
 
   async getMembers(
@@ -225,6 +230,34 @@ export class ProjectMemberService {
         invitedById: actingUserId,
       });
       invitation = await this.invitationRepository.save(newInvitation);
+    }
+
+    const inviter = await this.userRepository.findOne({
+      where: { id: actingUserId },
+    });
+    const inviterName = inviter?.name || inviter?.email || 'A team member';
+    const frontendBaseUrl =
+      this.configService?.get<string>('FRONTEND_URL') ||
+      'http://localhost:3000';
+    const acceptUrl = `${frontendBaseUrl}/invitations/accept?token=${rawToken}`;
+
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+    const projectName = project?.name || 'Todo Project';
+
+    if (this.mailerSchedulerService) {
+      await this.mailerSchedulerService.sendImmediateEmail({
+        to: normalizedEmail,
+        subject: `You've been invited to collaborate on "${projectName}"`,
+        templateType: 'project-invitation',
+        context: {
+          name: inviterName,
+          projectName,
+          role: dto.role,
+          actionUrl: acceptUrl,
+        },
+      });
     }
 
     return { invitation, token: rawToken };

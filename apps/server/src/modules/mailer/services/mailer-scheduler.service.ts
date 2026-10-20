@@ -14,11 +14,13 @@ import {
 export interface SendImmediateEmailParams {
   to: string;
   subject: string;
-  templateType: 'welcome' | 'password-reset' | 'magic-link' | 'custom';
+  templateType: 'welcome' | 'password-reset' | 'magic-link' | 'project-invitation' | 'custom';
   context: {
     name: string;
     actionUrl?: string;
     customBody?: string;
+    projectName?: string;
+    role?: string;
   };
 }
 
