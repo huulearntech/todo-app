@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { colorKeySchema, colorResponseSchema } from "./color.schema.js";
+import { colorKeySchema } from "./color.schema.js";
 import { ProjectRole } from "../../enums/project-role.enum.js";
 import { ProjectInvitationStatus } from "../../enums/project-invitation-status.enum.js";
 
@@ -32,25 +32,47 @@ export const updateProjectSchema = z.object({
 
 export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
 
+export const projectMemberResponseSchema = z.object({
+  id: z.uuid(),
+  projectId: z.uuid(),
+  userId: z.uuid(),
+  role: z.enum(ProjectRole),
+  user: z
+    .object({
+      id: z.uuid(),
+      name: z.string(),
+      email: z.string(),
+      avatarUrl: z.string().nullable().optional(),
+    })
+    .optional(),
+  createdAt: z.string().datetime().optional(),
+});
+
+export type ProjectMemberResponseDto = z.infer<typeof projectMemberResponseSchema>;
 
 export const projectResponseSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   description: z.string().optional(),
-  colorKey: colorKeySchema.optional(),
-  color: colorResponseSchema.optional(),
-  role: z.enum(ProjectRole).optional(),
+  colorKey: colorKeySchema.default("slate"),
+  members: z.array(projectMemberResponseSchema).default([]),
 });
 
 export type ProjectResponseDto = z.infer<typeof projectResponseSchema>;
 
-
 export const projectFilterSchema = z.object({
   name: z.string(),
   isDefault: z.stringbool(),
+  scope: z.enum(["all", "owned", "shared"]).default("all"),
 }).partial();
 
 export type ProjectFilterDto = z.infer<typeof projectFilterSchema>;
+
+export const transferProjectSchema = z.object({
+  newOwnerId: z.string().uuid("Invalid user ID"),
+});
+
+export type TransferProjectDto = z.infer<typeof transferProjectSchema>;
 
 export const createInvitationSchema = z.object({
   email: z
@@ -74,24 +96,6 @@ export const acceptInvitationSchema = z.object({
 });
 
 export type AcceptInvitationDto = z.infer<typeof acceptInvitationSchema>;
-
-export const projectMemberResponseSchema = z.object({
-  id: z.uuid(),
-  projectId: z.uuid(),
-  userId: z.uuid(),
-  role: z.enum(ProjectRole),
-  user: z
-    .object({
-      id: z.uuid(),
-      name: z.string(),
-      email: z.string(),
-      avatarUrl: z.string().nullable().optional(),
-    })
-    .optional(),
-  createdAt: z.string().datetime().optional(),
-});
-
-export type ProjectMemberResponseDto = z.infer<typeof projectMemberResponseSchema>;
 
 export const projectInvitationResponseSchema = z.object({
   id: z.uuid(),

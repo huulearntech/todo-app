@@ -58,7 +58,7 @@ export class ProjectService {
   async getProjectsForUser(
     userId: string,
     filter: ProjectFilterDto,
-  ): Promise<(Project & { role: ProjectRole })[]> {
+  ): Promise<Project[]> {
     return this.projectRepository.manager.transaction(
       async (transactionalEntityManager) => {
         await transactionalEntityManager.query(
@@ -73,7 +73,18 @@ export class ProjectService {
             'pm.projectId = project.id AND pm.userId = :userId',
             { userId },
           )
-          .addSelect('pm.role', 'user_role');
+          .leftJoinAndSelect('project.members', 'members')
+          .leftJoinAndSelect('members.user', 'member_user');
+
+        if (filter.scope === 'owned') {
+          queryBuilder.andWhere('pm.role = :ownerRole', {
+            ownerRole: ProjectRole.OWNER,
+          });
+        } else if (filter.scope === 'shared') {
+          queryBuilder.andWhere('pm.role != :ownerRole', {
+            ownerRole: ProjectRole.OWNER,
+          });
+        }
 
         if (filter.isDefault !== undefined) {
           queryBuilder.innerJoin(User, 'user', 'user.id = :userId', { userId });
@@ -91,11 +102,7 @@ export class ProjectService {
           queryBuilder.orderBy('project.createdAt', 'DESC');
         }
 
-        const { entities, raw } = await queryBuilder.getRawAndEntities();
-        return entities.map((entity, index) => {
-          (entity as any).role = raw[index]?.user_role ?? raw[index]?.pm_role;
-          return entity as Project & { role: ProjectRole };
-        });
+        return queryBuilder.getMany();
       },
     );
   }
@@ -110,20 +117,27 @@ export class ProjectService {
   async getProjectById(
     id: string,
     userId?: string,
-  ): Promise<(Project & { role?: ProjectRole }) | null> {
+  ): Promise<Project | null> {
     if (userId) {
       const role = await this.projectAccessService.getRole(userId, id);
       if (!role) {
         return null;
       }
-      const project = await this.projectRepository.findOne({ where: { id } });
-      if (project) {
-        (project as any).role = role;
-      }
-      return project;
     }
 
-    return this.projectRepository.findOne({ where: { id } });
+    return this.projectRepository.findOne({
+      where: { id },
+      relations: {
+        members: {
+          user: true,
+        },
+      },
+      order: {
+        members: {
+          createdAt: 'ASC',
+        },
+      },
+    });
   }
 
   async updateProject(

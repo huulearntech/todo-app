@@ -7,6 +7,12 @@ import { useProjectAbility, type ProjectAbility } from "./use-project-ability";
 const defaultAbility: ProjectAbility = {
   role: undefined,
   can: () => false,
+  assignableRoles: [],
+  canChangeMemberRole: () => false,
+  canRemoveMember: () => false,
+  canInviteWithRole: () => false,
+  canLeave: false,
+  isReadOnly: false,
 };
 
 const ProjectAbilityContext = createContext<ProjectAbility>(defaultAbility);

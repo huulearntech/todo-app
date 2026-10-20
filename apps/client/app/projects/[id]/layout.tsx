@@ -34,6 +34,8 @@ export async function generateMetadata({
 import { FullSpaceLayout } from "@/components/layout/full-space-layout";
 import { KanbanBoardSkeleton } from "@/features/tasks/components/kanban/kanban-board-skeleton";
 import { ProjectAbilityProvider } from "@/features/projects/permissions";
+import { getOptionalUser } from "@/lib/server/auth";
+import { getProjectMember } from "@/features/projects/utils/project-helpers";
 
 export default async function ProjectLayout({
   children,
@@ -46,9 +48,13 @@ export default async function ProjectLayout({
     notFound();
   }
 
+  const user = await getOptionalUser();
+  const myMember = getProjectMember(project, user?.id);
+  const myRole = myMember?.role;
+
   return (
     <Suspense fallback={<KanbanBoardSkeleton />}>
-      <ProjectAbilityProvider role={project.role}>
+      <ProjectAbilityProvider role={myRole}>
         <ProjectViewProvider>
           <FullSpaceLayout
             header={

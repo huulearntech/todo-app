@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects";
@@ -7,7 +8,12 @@ import { useDeleteProject } from "@/features/projects/hooks/use-delete-project";
 import { useRemoveMember } from "@/features/projects/hooks/use-remove-member";
 import { useAuth } from "@/providers/AuthProvider";
 import { getColorConfig } from "@/lib/color-palette";
-import { roleCan, ProjectRole } from "@todo/shared";
+import { roleCan, canLeaveProject, ProjectRole, type ProjectResponseDto } from "@todo/shared";
+import {
+  getProjectMember,
+  isProjectShared,
+} from "@/features/projects/utils/project-helpers";
+import { OwnerLeaveGuardDialog } from "@/features/projects/components/owner-leave-guard-dialog";
 
 import {
   HashIcon,
@@ -45,6 +51,8 @@ export function NavProjects() {
   const openModal = useModalStore((state) => state.openModal);
   const { user } = useAuth();
   const deleteProject = useDeleteProject();
+  const [guardProject, setGuardProject] =
+    useState<ProjectResponseDto | null>(null);
 
   const { data: projects = EMPTY_PROJECTS, isLoading } =
     useProjects("non_default");
@@ -84,10 +92,14 @@ export function NavProjects() {
             pathname === projectUrl || pathname.startsWith(`${projectUrl}/`);
           const config = getColorConfig(item.colorKey);
 
-          const canUpdate = roleCan(item.role, "project:update");
-          const canDelete = roleCan(item.role, "project:delete");
-          const isOwner = item.role === ProjectRole.OWNER;
-          const isShared = item.role && item.role !== ProjectRole.OWNER;
+          const myMember = getProjectMember(item, user?.id);
+          const myRole = myMember?.role;
+          const isOwner = myRole === ProjectRole.OWNER;
+          const isShared = isProjectShared(item);
+
+          const canUpdate = roleCan(myRole, "project:update");
+          const canDelete = roleCan(myRole, "project:delete");
+          const canLeave = canLeaveProject(myRole);
 
           return (
             <SidebarMenuItem key={item.id}>
@@ -101,7 +113,7 @@ export function NavProjects() {
                 />
                 <span className="truncate flex-1">{item.name}</span>
                 {isShared && (
-                  <span title={`Shared (${item.role})`} className="inline-flex shrink-0 ml-auto">
+                  <span title={myRole ? `Shared (${myRole})` : "Shared"} className="inline-flex shrink-0 ml-auto">
                     <UsersIcon className="size-3 text-muted-foreground opacity-60" />
                   </span>
                 )}
@@ -136,12 +148,20 @@ export function NavProjects() {
                     </DropdownMenuItem>
                   )}
 
-                  {!isOwner && item.role && user?.id && (
+                  {canLeave && user?.id ? (
                     <ProjectLeaveMenuItem
                       projectId={item.id}
                       userId={user.id}
                     />
-                  )}
+                  ) : isOwner ? (
+                    <DropdownMenuItem
+                      onClick={() => setGuardProject(item)}
+                      className="rounded-lg gap-2 cursor-pointer text-muted-foreground hover:text-destructive"
+                    >
+                      <LogOutIcon className="size-4" />
+                      <span>Leave Project</span>
+                    </DropdownMenuItem>
+                  ) : null}
 
                   {canDelete && (
                     <>
@@ -186,6 +206,15 @@ export function NavProjects() {
           />
         </SidebarMenuItem>
       </SidebarMenu>
+
+      {guardProject && (
+        <OwnerLeaveGuardDialog
+          open={Boolean(guardProject)}
+          onOpenChange={(open) => !open && setGuardProject(null)}
+          project={guardProject}
+          currentUserId={user?.id}
+        />
+      )}
     </SidebarGroup>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ProjectRole } from "@todo/shared";
+import { ProjectRole, type ProjectMemberResponseDto } from "@todo/shared";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,9 @@ import {
   UserPlusIcon,
   UsersIcon,
   LogOutIcon,
+  CrownIcon,
 } from "lucide-react";
+import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 import { toast } from "@/components/ui/toast";
 
 type AssignableRole =
@@ -67,6 +69,8 @@ export function ShareProjectDialog({
   const [role, setRole] = useState<AssignableRole>(ProjectRole.EDITOR);
   const [recentTokens, setRecentTokens] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [transferTarget, setTransferTarget] =
+    useState<ProjectMemberResponseDto | null>(null);
 
   const { user } = useAuth();
   const ability = useProjectAbilityContext();
@@ -83,8 +87,6 @@ export function ShareProjectDialog({
   const revokeInvitation = useRevokeInvitation(projectId);
 
   const canInvite = ability.can("member:invite");
-  const canManageMembers = ability.can("member:manage");
-  const isOwner = ability.role === ProjectRole.OWNER;
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,11 +182,11 @@ export function ShareProjectDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ProjectRole.VIEWER}>Viewer</SelectItem>
-                  <SelectItem value={ProjectRole.EDITOR}>Editor</SelectItem>
-                  {isOwner && (
-                    <SelectItem value={ProjectRole.ADMIN}>Admin</SelectItem>
-                  )}
+                  {ability.assignableRoles.map((r) => (
+                    <SelectItem key={r} value={r} className="capitalize">
+                      {r}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button
@@ -226,14 +228,13 @@ export function ShareProjectDialog({
                 {members.map((member) => {
                   const isCurrentUser = member.userId === user?.id;
                   const isMemberOwner = member.role === ProjectRole.OWNER;
-                  const isTargetAdmin = member.role === ProjectRole.ADMIN;
-                  const isActingAdmin = ability.role === ProjectRole.ADMIN;
-
-                  // Admin cannot edit or remove another Admin
-                  const canEditThisMember =
-                    canManageMembers &&
-                    !isMemberOwner &&
-                    !(isActingAdmin && isTargetAdmin);
+                  const canEditThisMember = ability.assignableRoles.some((r) =>
+                    ability.canChangeMemberRole(member.role, r),
+                  );
+                  const canRemoveThisMember = ability.canRemoveMember(
+                    member.role,
+                    isCurrentUser,
+                  );
 
                   const initials = (
                     member.user?.name ||
@@ -298,17 +299,19 @@ export function ShareProjectDialog({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={ProjectRole.VIEWER}>
-                                Viewer
-                              </SelectItem>
-                              <SelectItem value={ProjectRole.EDITOR}>
-                                Editor
-                              </SelectItem>
-                              {isOwner && (
-                                <SelectItem value={ProjectRole.ADMIN}>
-                                  Admin
-                                </SelectItem>
-                              )}
+                              {ability.assignableRoles
+                                .filter((r) =>
+                                  ability.canChangeMemberRole(member.role, r),
+                                )
+                                .map((r) => (
+                                  <SelectItem
+                                    key={r}
+                                    value={r}
+                                    className="capitalize"
+                                  >
+                                    {r}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                         ) : (
@@ -320,8 +323,23 @@ export function ShareProjectDialog({
                           </Badge>
                         )}
 
+                        {/* Transfer Ownership Action */}
+                        {ability.can("project:transfer") &&
+                        !isMemberOwner &&
+                        !isCurrentUser ? (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-muted-foreground hover:text-amber-500 cursor-pointer shrink-0"
+                            title="Transfer ownership to this member"
+                            onClick={() => setTransferTarget(member)}
+                          >
+                            <CrownIcon className="size-3.5" />
+                          </Button>
+                        ) : null}
+
                         {/* Remove or Leave Action */}
-                        {isCurrentUser && !isMemberOwner ? (
+                        {isCurrentUser && canRemoveThisMember ? (
                           <Button
                             variant="ghost"
                             size="icon-xs"
@@ -332,7 +350,7 @@ export function ShareProjectDialog({
                           >
                             <LogOutIcon className="size-3.5" />
                           </Button>
-                        ) : canEditThisMember ? (
+                        ) : canRemoveThisMember ? (
                           <Button
                             variant="ghost"
                             size="icon-xs"
@@ -415,6 +433,19 @@ export function ShareProjectDialog({
           )}
         </div>
       </DialogContent>
+
+      <TransferOwnershipDialog
+        open={!!transferTarget}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setTransferTarget(null);
+        }}
+        projectId={projectId}
+        projectName={projectName}
+        targetMember={transferTarget}
+        onSuccess={() => {
+          setTransferTarget(null);
+        }}
+      />
     </Dialog>
   );
 }

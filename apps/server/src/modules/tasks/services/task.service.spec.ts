@@ -56,6 +56,10 @@ describe('TaskService', () => {
     scheduleRecurringTaskReminder: jest.Mock;
     cancelRecurringTaskReminder: jest.Mock;
   };
+  let projectAccessService: {
+    assertCan: jest.Mock;
+    getRole: jest.Mock;
+  };
 
   beforeEach(async () => {
     const defaultManager = {
@@ -190,6 +194,7 @@ describe('TaskService', () => {
     }).compile();
 
     service = module.get<TaskService>(TaskService);
+    projectAccessService = module.get(ProjectAccessService);
   });
 
   describe('createTask', () => {
@@ -289,15 +294,19 @@ describe('TaskService', () => {
       taskReminderRepository.find.mockResolvedValue([]);
 
       await expect(
-        service.updateTask('task-1', {
-          reminders: [
-            {
-              type: 'relative',
-              minuteOffset: 15,
-              channel: 'email',
-            },
-          ],
-        }),
+        service.updateTask(
+          'task-1',
+          {
+            reminders: [
+              {
+                type: 'relative',
+                minuteOffset: 15,
+                channel: 'email',
+              },
+            ],
+          },
+          '11111111-1111-1111-1111-111111111111',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -305,9 +314,13 @@ describe('TaskService', () => {
       taskRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.updateTask('non-existent-id', {
-          title: 'New Title',
-        }),
+        service.updateTask(
+          'non-existent-id',
+          {
+            title: 'New Title',
+          },
+          '11111111-1111-1111-1111-111111111111',
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(taskRepository.save).not.toHaveBeenCalled();
     });
@@ -342,9 +355,13 @@ describe('TaskService', () => {
         .mockResolvedValueOnce(populatedTask);
       taskRepository.save.mockResolvedValue(savedTask);
 
-      const result = await service.updateTask('task-1', {
-        title: 'New Title',
-      });
+      const result = await service.updateTask(
+        'task-1',
+        {
+          title: 'New Title',
+        },
+        '11111111-1111-1111-1111-111111111111',
+      );
 
       expect(taskRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'New Title' }),
@@ -418,7 +435,10 @@ describe('TaskService', () => {
     const prevId = '44444444-4444-4444-4444-444444444444';
 
     it('should call move_task_lexorank in one DB query after checking ownership', async () => {
-      taskRepository.findOne.mockResolvedValue({ id: taskId });
+      taskRepository.findOne.mockResolvedValue({
+        id: taskId,
+        section: { projectId: 'project-1' },
+      });
       dataSource.query.mockResolvedValue([{ id: taskId, lexorank: 's' }]);
 
       await service.updateTaskOrder({
@@ -452,7 +472,10 @@ describe('TaskService', () => {
     });
 
     it('should throw BadRequestException if invalid positioning is requested (22000)', async () => {
-      taskRepository.findOne.mockResolvedValue({ id: taskId });
+      taskRepository.findOne.mockResolvedValue({
+        id: taskId,
+        section: { projectId: 'project-1' },
+      });
       const dbError: any = new Error(
         'A task cannot be positioned after itself',
       );
@@ -907,6 +930,150 @@ describe('TaskService', () => {
       await expect(
         service.deleteOccurrenceById(userId, occurrenceId),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('deleteTask', () => {
+    const actingUserId = 'user-uuid-1';
+    const taskId = 'task-uuid-1';
+
+    it('should delete task and cancel reminders when authorized', async () => {
+      taskRepository.findOne.mockResolvedValue({
+        id: taskId,
+        section: { projectId: 'proj-1' },
+        reminders: [{ id: 'rem-1' }],
+      });
+      taskRepository.delete.mockResolvedValue({ affected: 1 });
+
+      await service.deleteTask(taskId, actingUserId);
+
+      expect(projectAccessService.assertCan).toHaveBeenCalledWith(
+        actingUserId,
+        'proj-1',
+        'task:delete',
+      );
+      expect(taskRepository.delete).toHaveBeenCalledWith(taskId);
+      expect(mailerSchedulerService.cancelTaskReminder).toHaveBeenCalledWith(
+        'rem-1',
+      );
+    });
+
+    it('should throw NotFoundException if task does not exist', async () => {
+      taskRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deleteTask(taskId, actingUserId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException (concealing existence) when user is not a project member', async () => {
+      taskRepository.findOne.mockResolvedValue({
+        id: taskId,
+        section: { projectId: 'proj-1' },
+      });
+      projectAccessService.assertCan.mockRejectedValue(
+        new NotFoundException('Project not found'),
+      );
+
+      await expect(
+        service.deleteTask(taskId, actingUserId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when user has insufficient role (e.g. viewer)', async () => {
+      taskRepository.findOne.mockResolvedValue({
+        id: taskId,
+        section: { projectId: 'proj-1' },
+      });
+      projectAccessService.assertCan.mockRejectedValue(
+        new ForbiddenException(
+          'Insufficient permissions for action: task:delete',
+        ),
+      );
+
+      await expect(
+        service.deleteTask(taskId, actingUserId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('collaborator task operations', () => {
+    it('should allow editor to postpone task in shared project', async () => {
+      const editorId = 'editor-user-id';
+      const taskId = 'task-uuid-1';
+      const mockTask: any = {
+        id: taskId,
+        title: 'Collaborative Task',
+        completedAt: null,
+        timeRange: {
+          start: '2026-10-07T10:00:00.000Z',
+          end: '2026-10-07T11:00:00.000Z',
+        },
+        section: { projectId: 'shared-proj-1' },
+        recurrence: null,
+      };
+
+      taskRepository.findOne.mockResolvedValue(mockTask);
+      taskRepository.save.mockImplementation((t) => Promise.resolve(t));
+      taskReminderRepository.find.mockResolvedValue([]);
+      userRepository.findOne.mockResolvedValue({
+        id: editorId,
+        email: 'editor@example.com',
+      });
+
+      const postponeTo = new Date('2026-10-09T10:00:00.000Z');
+      const result = await service.postponeTask(editorId, taskId, postponeTo);
+
+      expect(projectAccessService.assertCan).toHaveBeenCalledWith(
+        editorId,
+        'shared-proj-1',
+        'task:update',
+      );
+      expect(result.timeRange?.start).toBe(postponeTo.toISOString());
+    });
+
+    it('should check task:move on both source and target projects when moving tasks across projects', async () => {
+      const editorId = 'editor-user-id';
+      const taskId = 'task-uuid-1';
+      const mockTask: any = {
+        id: taskId,
+        sectionId: 'sec-source',
+        section: { projectId: 'proj-source' },
+      };
+
+      taskRepository.findOne
+        .mockResolvedValueOnce(mockTask)
+        .mockResolvedValueOnce({ ...mockTask, sectionId: 'sec-target' });
+      taskRepository.save.mockResolvedValue({
+        ...mockTask,
+        sectionId: 'sec-target',
+      });
+      sectionRepository.findOne.mockResolvedValue({
+        id: 'sec-target',
+        projectId: 'proj-target',
+      });
+
+      await service.updateTask(
+        taskId,
+        { sectionId: 'sec-target' },
+        editorId,
+      );
+
+      expect(projectAccessService.assertCan).toHaveBeenCalledWith(
+        editorId,
+        'proj-source',
+        'task:update',
+      );
+      expect(projectAccessService.assertCan).toHaveBeenCalledWith(
+        editorId,
+        'proj-source',
+        'task:move',
+      );
+      expect(projectAccessService.assertCan).toHaveBeenCalledWith(
+        editorId,
+        'proj-target',
+        'task:move',
+      );
     });
   });
 });

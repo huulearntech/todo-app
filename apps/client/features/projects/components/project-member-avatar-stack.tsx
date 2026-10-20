@@ -6,16 +6,23 @@ import {
   EMPTY_MEMBERS,
 } from "@/features/projects/hooks/use-project-members";
 
+import type { ProjectMemberResponseDto } from "@todo/shared";
+
 interface ProjectMemberAvatarStackProps {
   projectId: string;
+  members?: ProjectMemberResponseDto[];
   maxDisplay?: number;
 }
 
 export function ProjectMemberAvatarStack({
   projectId,
+  members: propMembers,
   maxDisplay = 3,
 }: ProjectMemberAvatarStackProps) {
-  const { data: members = EMPTY_MEMBERS } = useProjectMembers(projectId);
+  const { data: fetchedMembers = EMPTY_MEMBERS } = useProjectMembers(
+    propMembers ? "" : projectId,
+  );
+  const members = propMembers ?? fetchedMembers;
 
   if (!members || members.length <= 1) {
     return null;

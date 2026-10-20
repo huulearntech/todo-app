@@ -11,6 +11,7 @@ import {
 import { handleDatabaseOrderingError } from '../../common/utils/database-error.util';
 import { ProjectAccessService } from '../projects/authorization/project-access.service';
 import { ProjectMember } from '../projects/entities/project-member.entity';
+import { ProjectRole, type ProjectAction } from '@todo/shared';
 
 @Injectable()
 export class SectionService {
@@ -92,29 +93,37 @@ export class SectionService {
     return this.sectionRepository.findOne({ where: { id } });
   }
 
-  async updateSection(
+  async loadSectionForAction(
     userId: string,
-    id: string,
-    updatedSection: Partial<Section>,
-  ): Promise<Section> {
-    const section = await this.sectionRepository
-      .createQueryBuilder('section')
-      .innerJoin(
-        ProjectMember,
-        'pm',
-        'pm.projectId = section.projectId AND pm.userId = :userId',
-        { userId },
-      )
-      .where('section.id = :id', { id })
-      .getOne();
+    sectionId: string,
+    action: ProjectAction,
+  ): Promise<{ section: Section; role: ProjectRole }> {
+    const section = await this.sectionRepository.findOne({
+      where: { id: sectionId },
+      relations: { project: true },
+    });
 
     if (!section) {
       throw new NotFoundException('Section not found');
     }
 
-    await this.projectAccessService.assertCan(
+    const role = await this.projectAccessService.assertCan(
       userId,
       section.projectId,
+      action,
+    );
+
+    return { section, role };
+  }
+
+  async updateSection(
+    userId: string,
+    id: string,
+    updatedSection: Partial<Section>,
+  ): Promise<Section> {
+    const { section } = await this.loadSectionForAction(
+      userId,
+      id,
       'section:update',
     );
 
@@ -131,26 +140,7 @@ export class SectionService {
     id: string;
     prevId: string | null;
   }): Promise<void> {
-    const section = await this.sectionRepository
-      .createQueryBuilder('section')
-      .innerJoin(
-        ProjectMember,
-        'pm',
-        'pm.projectId = section.projectId AND pm.userId = :userId',
-        { userId: ownerId },
-      )
-      .where('section.id = :id', { id })
-      .getOne();
-
-    if (!section) {
-      throw new NotFoundException('Section not found');
-    }
-
-    await this.projectAccessService.assertCan(
-      ownerId,
-      section.projectId,
-      'section:update',
-    );
+    await this.loadSectionForAction(ownerId, id, 'section:update');
 
     try {
       await this.sectionRepository.query(
@@ -168,27 +158,7 @@ export class SectionService {
   }
 
   async deleteSection(userId: string, id: string): Promise<void> {
-    const section = await this.sectionRepository
-      .createQueryBuilder('section')
-      .innerJoin(
-        ProjectMember,
-        'pm',
-        'pm.projectId = section.projectId AND pm.userId = :userId',
-        { userId },
-      )
-      .where('section.id = :id', { id })
-      .getOne();
-
-    if (!section) {
-      throw new NotFoundException('Section not found');
-    }
-
-    await this.projectAccessService.assertCan(
-      userId,
-      section.projectId,
-      'section:delete',
-    );
-
+    await this.loadSectionForAction(userId, id, 'section:delete');
     await this.sectionRepository.delete({ id });
   }
 }

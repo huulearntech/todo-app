@@ -5,6 +5,7 @@ import type {
   CreateInvitationDto,
   UpdateMemberRoleDto,
   AcceptInvitationDto,
+  TransferProjectDto,
   ProjectRole,
 } from "@todo/shared";
 
@@ -81,6 +82,17 @@ export const projectMemberService = {
       `/projects/invitations/accept`,
       dto,
     );
+    return response.data;
+  },
+
+  transferOwnership: async (
+    projectId: string,
+    dto: TransferProjectDto,
+  ): Promise<{ success: boolean; newOwnerId: string }> => {
+    const response = await apiClient.post<{
+      success: boolean;
+      newOwnerId: string;
+    }>(`/projects/${projectId}/transfer`, dto);
     return response.data;
   },
 };

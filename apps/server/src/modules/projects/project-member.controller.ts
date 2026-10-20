@@ -14,6 +14,7 @@ import { ProjectMemberService } from './project-member.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { TransferProjectDto } from './dto/transfer-project.dto';
 import {
   CurrentUser,
   type JwtUser,
@@ -97,5 +98,19 @@ export class ProjectMemberController {
     @Body() body: AcceptInvitationDto,
   ) {
     return this.projectMemberService.acceptInvitation(user.id, body);
+  }
+
+  @Post(':projectId/transfer')
+  @HttpCode(HttpStatus.OK)
+  async transferOwnership(
+    @CurrentUser() user: JwtUser,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Body() body: TransferProjectDto,
+  ) {
+    return this.projectMemberService.transferOwnership(
+      user.id,
+      projectId,
+      body,
+    );
   }
 }

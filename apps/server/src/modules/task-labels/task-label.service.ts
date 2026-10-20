@@ -27,7 +27,7 @@ export class TaskLabelService {
     });
 
     const saved = await this.taskLabelRepository.save(taskLabel);
-    return (await this.getTaskLabelById(saved.id)) ?? saved;
+    return (await this.getTaskLabelById(saved.id, ownerId)) ?? saved;
   }
 
   async getTaskLabelsByOwnerId(ownerId: string): Promise<TaskLabel[]> {
@@ -39,24 +39,24 @@ export class TaskLabelService {
 
   async getTaskLabelById(
     id: string,
-    ownerId?: string,
+    ownerId: string,
   ): Promise<TaskLabel | null> {
     return this.taskLabelRepository.findOne({
-      where: ownerId ? { id, ownerId } : { id },
+      where: { id, ownerId },
     });
   }
 
   async updateTaskLabel(
     id: string,
     updatedTaskLabel: Partial<UpdateTaskLabelDto>,
-    ownerId?: string,
+    ownerId: string,
   ): Promise<TaskLabel | null> {
     const taskLabel = await this.getTaskLabelById(id, ownerId);
     if (!taskLabel) {
       return null;
     }
 
-    if (ownerId && taskLabel.ownerId !== ownerId) {
+    if (taskLabel.ownerId !== ownerId) {
       return null;
     }
 
@@ -73,7 +73,7 @@ export class TaskLabelService {
     }
 
     await this.taskLabelRepository.save(taskLabel);
-    return this.getTaskLabelById(id);
+    return this.getTaskLabelById(id, ownerId);
   }
 
   async deleteTaskLabel({

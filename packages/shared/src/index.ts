@@ -11,6 +11,7 @@ export * from "./enums/project-invitation-status.enum.js";
 
 // Permissions
 export * from "./permissions/project-permissions.js";
+export * from "./permissions/member-policy.js";
 
 // Utils
 export * from "./utils/index.js";

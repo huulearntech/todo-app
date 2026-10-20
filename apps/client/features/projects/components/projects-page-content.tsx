@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects";
 import AddProjectDialog from "@/features/projects/components/add-project-dialog";
 import { ProjectList } from "@/features/projects/components/project-list";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FolderIcon, PlusIcon } from "lucide-react";
 
 export function ProjectsPageContent({
@@ -12,7 +14,11 @@ export function ProjectsPageContent({
 }: {
   defaultProjectId: string;
 }) {
-  const { data: projects = EMPTY_PROJECTS, isLoading } = useProjects("non_default");
+  const [scope, setScope] = useState<"all" | "owned" | "shared">("all");
+  const { data: projects = EMPTY_PROJECTS, isLoading } = useProjects({
+    isDefault: false,
+    scope,
+  });
 
   return (
     <>
@@ -48,6 +54,26 @@ export function ProjectsPageContent({
             </Button>
           }
         />
+      </div>
+
+      {/* Scope Filter Tabs */}
+      <div className="flex items-center justify-between">
+        <Tabs
+          value={scope}
+          onValueChange={(val) => setScope(val as "all" | "owned" | "shared")}
+        >
+          <TabsList variant="line" className="gap-4">
+            <TabsTrigger value="all" className="cursor-pointer">
+              All Projects
+            </TabsTrigger>
+            <TabsTrigger value="owned" className="cursor-pointer">
+              Owned by me
+            </TabsTrigger>
+            <TabsTrigger value="shared" className="cursor-pointer">
+              Shared with me
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <ProjectList

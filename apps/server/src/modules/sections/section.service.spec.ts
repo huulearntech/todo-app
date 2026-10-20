@@ -102,7 +102,7 @@ describe('SectionService', () => {
 
   describe('updateSectionOrder', () => {
     it('should call move_section_lexorank with parameters after checking membership', async () => {
-      mockQb.getOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
+      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
       mockSectionRepo.query.mockResolvedValue([]);
 
       await service.updateSectionOrder({
@@ -111,7 +111,10 @@ describe('SectionService', () => {
         prevId: 'sec-1',
       });
 
-      expect(mockSectionRepo.createQueryBuilder).toHaveBeenCalled();
+      expect(mockSectionRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'sec-2' },
+        relations: { project: true },
+      });
       expect(mockProjectAccessService.assertCan).toHaveBeenCalledWith(
         'user-1',
         'proj-1',
@@ -124,7 +127,7 @@ describe('SectionService', () => {
     });
 
     it('should throw NotFoundException if section not accessible by user', async () => {
-      mockQb.getOne.mockResolvedValue(null);
+      mockSectionRepo.findOne.mockResolvedValue(null);
 
       await expect(
         service.updateSectionOrder({
@@ -136,7 +139,7 @@ describe('SectionService', () => {
     });
 
     it('should throw BadRequestException if bounds invalid (22000)', async () => {
-      mockQb.getOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
+      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
       const error: any = new Error(
         'A section cannot be positioned after itself',
       );

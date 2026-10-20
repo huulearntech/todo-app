@@ -35,7 +35,6 @@ import { useProjectView } from "@/features/projects/components/project-view-cont
 import { useProjectAbilityContext } from "@/features/projects/permissions";
 import { ProjectMemberAvatarStack } from "@/features/projects/components/project-member-avatar-stack";
 import { ShareProjectDialog } from "@/features/projects/components/share-project-dialog";
-import { ProjectRole } from "@todo/shared";
 
 interface ProjectHeaderProps {
   projectName: string;
@@ -56,7 +55,7 @@ export default function ProjectHeader({
   const { view, setView } = useProjectView();
   const ability = useProjectAbilityContext();
 
-  const isViewer = ability.role === ProjectRole.VIEWER;
+  const isReadOnly = ability.isReadOnly;
 
   return (
     <header className="px-4 flex h-16 shrink-0 justify-between items-center border-b border-border/60 sticky top-0 z-10 bg-card">
@@ -92,7 +91,7 @@ export default function ProjectHeader({
             ) : (
               <BreadcrumbItem className="flex items-center gap-2">
                 <BreadcrumbPage>{projectName}</BreadcrumbPage>
-                {isViewer && (
+                {isReadOnly && (
                   <Badge
                     variant="outline"
                     className="text-[11px] text-muted-foreground gap-1 font-normal py-0.5"

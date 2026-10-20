@@ -442,4 +442,118 @@ describe('ProjectMemberService', () => {
       expect(mockTransactionManager.save).toHaveBeenCalledTimes(2); // save inv & save member
     });
   });
+
+  describe('transferOwnership', () => {
+    const actingOwnerId = 'owner-uuid';
+    const newOwnerId = 'new-owner-uuid';
+    const projectId = 'project-uuid';
+
+    it('should throw BadRequestException when transferring to oneself', async () => {
+      await expect(
+        service.transferOwnership(actingOwnerId, projectId, {
+          newOwnerId: actingOwnerId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ConflictException when attempting to transfer default inbox', async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        id: actingOwnerId,
+        defaultProjectId: projectId,
+      });
+
+      await expect(
+        service.transferOwnership(actingOwnerId, projectId, { newOwnerId }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw NotFoundException when project is not found', async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        id: actingOwnerId,
+        defaultProjectId: 'other-default-id',
+      });
+      mockTransactionManager.findOne.mockResolvedValueOnce(null); // project
+
+      await expect(
+        service.transferOwnership(actingOwnerId, projectId, { newOwnerId }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when acting user is not the owner', async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        id: actingOwnerId,
+        defaultProjectId: 'other-default-id',
+      });
+      mockTransactionManager.findOne.mockResolvedValueOnce({
+        id: projectId,
+        ownerId: 'different-owner-id',
+      });
+
+      await expect(
+        service.transferOwnership(actingOwnerId, projectId, { newOwnerId }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException when target user is not a member of the project', async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        id: actingOwnerId,
+        defaultProjectId: 'other-default-id',
+      });
+      mockTransactionManager.findOne
+        .mockResolvedValueOnce({
+          id: projectId,
+          ownerId: actingOwnerId,
+        }) // project
+        .mockResolvedValueOnce(null); // targetMember
+
+      await expect(
+        service.transferOwnership(actingOwnerId, projectId, { newOwnerId }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should transfer ownership atomically and demote current owner to admin', async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        id: actingOwnerId,
+        defaultProjectId: 'other-default-id',
+      });
+
+      const projectEntity = {
+        id: projectId,
+        ownerId: actingOwnerId,
+      };
+      const targetMemberEntity = {
+        id: 'target-mem-id',
+        projectId,
+        userId: newOwnerId,
+        role: ProjectRole.EDITOR,
+      };
+      const currentOwnerMemberEntity = {
+        id: 'owner-mem-id',
+        projectId,
+        userId: actingOwnerId,
+        role: ProjectRole.OWNER,
+      };
+
+      mockTransactionManager.findOne
+        .mockResolvedValueOnce(projectEntity) // project
+        .mockResolvedValueOnce(targetMemberEntity) // targetMember
+        .mockResolvedValueOnce(currentOwnerMemberEntity); // currentOwnerMember
+
+      const result = await service.transferOwnership(actingOwnerId, projectId, {
+        newOwnerId,
+      });
+
+      expect(result).toEqual({ success: true, newOwnerId });
+      expect(projectEntity.ownerId).toBe(newOwnerId);
+      expect(targetMemberEntity.role).toBe(ProjectRole.OWNER);
+      expect(currentOwnerMemberEntity.role).toBe(ProjectRole.ADMIN);
+      expect(mockTransactionManager.save).toHaveBeenCalledWith(
+        currentOwnerMemberEntity,
+      );
+      expect(mockTransactionManager.save).toHaveBeenCalledWith(
+        targetMemberEntity,
+      );
+      expect(mockTransactionManager.save).toHaveBeenCalledWith(projectEntity);
+    });
+  });
 });

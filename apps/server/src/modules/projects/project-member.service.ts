@@ -16,10 +16,17 @@ import { ProjectInvitation } from './entities/project-invitation.entity';
 import { Project } from './project.entity';
 import { User } from '../users/user.entity';
 import { ProjectAccessService } from './authorization/project-access.service';
-import { ProjectRole, ProjectInvitationStatus } from '@todo/shared';
+import {
+  ProjectRole,
+  ProjectInvitationStatus,
+  canChangeMemberRole,
+  canRemoveMember,
+  canInviteWithRole,
+} from '@todo/shared';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { TransferProjectDto } from './dto/transfer-project.dto';
 
 @Injectable()
 export class ProjectMemberService {
@@ -89,17 +96,20 @@ export class ProjectMemberService {
       throw new NotFoundException('Member not found');
     }
 
-    if (actingRole === ProjectRole.ADMIN) {
-      if (targetMember.role === ProjectRole.ADMIN) {
+    if (!canChangeMemberRole(actingRole, targetMember.role, dto.role)) {
+      if (actingRole === ProjectRole.ADMIN && targetMember.role === ProjectRole.ADMIN) {
         throw new ForbiddenException(
           'Administrators cannot change roles of other administrators',
         );
       }
-      if (dto.role === ProjectRole.ADMIN) {
+      if (actingRole === ProjectRole.ADMIN && dto.role === ProjectRole.ADMIN) {
         throw new ForbiddenException(
           'Only project owners can promote members to administrator',
         );
       }
+      throw new ForbiddenException(
+        'Insufficient permissions to change this member role',
+      );
     }
 
     targetMember.role = dto.role;
@@ -143,12 +153,17 @@ export class ProjectMemberService {
       'member:manage',
     );
 
-    if (
-      actingRole === ProjectRole.ADMIN &&
-      targetMember.role === ProjectRole.ADMIN
-    ) {
+    if (!canRemoveMember(actingRole, targetMember.role, false)) {
+      if (
+        actingRole === ProjectRole.ADMIN &&
+        targetMember.role === ProjectRole.ADMIN
+      ) {
+        throw new ForbiddenException(
+          'Administrators cannot remove other administrators',
+        );
+      }
       throw new ForbiddenException(
-        'Administrators cannot remove other administrators',
+        'Insufficient permissions to remove this member',
       );
     }
 
@@ -176,9 +191,14 @@ export class ProjectMemberService {
       );
     }
 
-    if (actingRole === ProjectRole.ADMIN && dto.role === ProjectRole.ADMIN) {
+    if (!canInviteWithRole(actingRole, dto.role)) {
+      if (actingRole === ProjectRole.ADMIN && dto.role === ProjectRole.ADMIN) {
+        throw new ForbiddenException(
+          'Only project owners can invite administrators',
+        );
+      }
       throw new ForbiddenException(
-        'Only project owners can invite administrators',
+        'Insufficient permissions to invite with this role',
       );
     }
 
@@ -367,6 +387,70 @@ export class ProjectMemberService {
     return {
       projectId: invitation.projectId,
       role: invitation.role,
+    };
+  }
+
+  async transferOwnership(
+    actingUserId: string,
+    projectId: string,
+    dto: TransferProjectDto,
+  ): Promise<{ success: boolean; newOwnerId: string }> {
+    if (actingUserId === dto.newOwnerId) {
+      throw new BadRequestException('Cannot transfer ownership to yourself');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: actingUserId },
+    });
+    if (user && user.defaultProjectId === projectId) {
+      throw new ConflictException('Cannot transfer default inbox project');
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const project = await manager.findOne(Project, {
+        where: { id: projectId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!project) {
+        throw new NotFoundException('Project not found');
+      }
+
+      if (project.ownerId !== actingUserId) {
+        throw new ForbiddenException(
+          'Only the project owner can transfer ownership',
+        );
+      }
+
+      const targetMember = await manager.findOne(ProjectMember, {
+        where: { projectId, userId: dto.newOwnerId },
+      });
+
+      if (!targetMember) {
+        throw new NotFoundException(
+          'Target user is not a member of this project',
+        );
+      }
+
+      const currentOwnerMember = await manager.findOne(ProjectMember, {
+        where: { projectId, userId: actingUserId },
+      });
+
+      project.ownerId = dto.newOwnerId;
+      targetMember.role = ProjectRole.OWNER;
+
+      if (currentOwnerMember) {
+        currentOwnerMember.role = ProjectRole.ADMIN;
+        await manager.save(currentOwnerMember);
+      }
+
+      await manager.save(targetMember);
+      await manager.save(project);
+    });
+
+    return {
+      success: true,
+      newOwnerId: dto.newOwnerId,
     };
   }
 }

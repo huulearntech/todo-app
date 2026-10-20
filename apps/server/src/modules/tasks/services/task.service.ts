@@ -12,6 +12,7 @@ import {
   In,
   Repository,
   SelectQueryBuilder,
+  type FindOptionsRelations,
 } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { Task } from '../entities/task.entity';
@@ -26,6 +27,8 @@ import {
   formatRRuleString,
   TaskOccurrenceStatus,
   TaskPriority,
+  ProjectRole,
+  type ProjectAction,
 } from '@todo/shared';
 import { calculateNextOccurrence } from '../utils/recurrence.util';
 
@@ -240,6 +243,62 @@ export class TaskService {
         reminders: true,
       },
     });
+  }
+
+  async loadTaskForAction(
+    userId: string,
+    taskId: string,
+    action: ProjectAction,
+    options?: {
+      relations?: FindOptionsRelations<Task>;
+      manager?: EntityManager;
+    },
+  ): Promise<{ task: Task; role: ProjectRole }> {
+    const repo =
+      options?.manager && typeof options.manager.getRepository === 'function'
+        ? options.manager.getRepository(Task)
+        : this.taskRepository;
+
+    const baseRelations: FindOptionsRelations<Task> = {
+      section: { project: true },
+    };
+
+    const mergedRelations: FindOptionsRelations<Task> = options?.relations
+      ? {
+          ...options.relations,
+          section: {
+            project: true,
+            ...(typeof options.relations.section === 'object'
+              ? options.relations.section
+              : {}),
+          },
+        }
+      : baseRelations;
+
+    const task = await repo.findOne({
+      where: { id: taskId },
+      relations: mergedRelations,
+    });
+
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${taskId} not found`);
+    }
+
+    const projectId =
+      task.section?.projectId ??
+      task.section?.project?.id ??
+      (task.section?.project as { ownerId?: string })?.ownerId;
+    if (!projectId) {
+      throw new NotFoundException('Task project not found');
+    }
+
+    const role = await this.projectAccessService.assertCan(
+      userId,
+      projectId,
+      action,
+    );
+
+    return { task, role };
   }
 
   private baseTaskQuery(
@@ -577,34 +636,21 @@ export class TaskService {
   async updateTask(
     id: string,
     updatedTask: UpdateTaskDto,
-    actingUserId?: string,
+    actingUserId: string,
   ): Promise<Task> {
-    const task = await this.taskRepository.findOne({
-      where: { id },
-      relations: {
-        section: { project: true },
-        labels: true,
-        recurrence: true,
-        reminders: true,
+    const { task } = await this.loadTaskForAction(
+      actingUserId,
+      id,
+      'task:update',
+      {
+        relations: {
+          section: { project: true },
+          labels: true,
+          recurrence: true,
+          reminders: true,
+        },
       },
-    });
-
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
-    }
-
-    const ownerId = actingUserId ?? task.section?.project?.ownerId;
-    if (!ownerId) {
-      throw new ForbiddenException('Cannot determine task owner');
-    }
-
-    if (actingUserId) {
-      await this.projectAccessService.assertCan(
-        actingUserId,
-        task.section.projectId,
-        'task:update',
-      );
-    }
+    );
 
     if (updatedTask.sectionId && updatedTask.sectionId !== task.sectionId) {
       const targetSection = await this.sectionRepository.findOne({
@@ -618,19 +664,24 @@ export class TaskService {
         );
       }
 
-      if (actingUserId) {
+      if (targetSection.projectId !== task.section.projectId) {
         await this.projectAccessService.assertCan(
           actingUserId,
-          targetSection.projectId,
+          task.section.projectId,
           'task:move',
         );
       }
+      await this.projectAccessService.assertCan(
+        actingUserId,
+        targetSection.projectId,
+        'task:move',
+      );
     }
 
     if (updatedTask.labels && updatedTask.labels.length > 0) {
       const labelIds = updatedTask.labels.map((l) => l.id);
       const ownedLabelsCount = await this.taskLabelRepository.count({
-        where: { id: In(labelIds), ownerId },
+        where: { id: In(labelIds), ownerId: actingUserId },
       });
       if (ownedLabelsCount !== labelIds.length) {
         throw new ForbiddenException('One or more labels do not belong to you');
@@ -698,7 +749,7 @@ export class TaskService {
           const remEntities = remindersDto.map((remDto) =>
             manager.create(TaskReminder, {
               taskId: id,
-              userId: ownerId,
+              userId: actingUserId,
               type: remDto.type,
               minuteOffset:
                 remDto.minuteOffset ?? DEFAULT_REMINDER_OFFSET_MINUTES,
@@ -736,7 +787,7 @@ export class TaskService {
     }
 
     try {
-      await this.rescheduleTaskReminders(task, ownerId);
+      await this.rescheduleTaskReminders(task, actingUserId);
     } catch (err) {
       this.logger.error(
         `Failed to reschedule reminders for task ${task.id}`,
@@ -762,14 +813,14 @@ export class TaskService {
     sectionId: string;
     prevId: string | null;
   }): Promise<void> {
-    const task = await this.taskRepository.findOne({
-      where: { id: taskId },
-      relations: { section: { project: true } },
-    });
-
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${taskId} not found`);
-    }
+    const { task } = await this.loadTaskForAction(
+      ownerId,
+      taskId,
+      'task:move',
+      {
+        relations: { section: { project: true } },
+      },
+    );
 
     const section = await this.sectionRepository.findOne({
       where: { id: sectionId },
@@ -780,11 +831,13 @@ export class TaskService {
       throw new NotFoundException(`Section with ID ${sectionId} not found`);
     }
 
-    await this.projectAccessService.assertCan(
-      ownerId,
-      section.projectId,
-      'task:move',
-    );
+    if (section.projectId !== task.section.projectId) {
+      await this.projectAccessService.assertCan(
+        ownerId,
+        section.projectId,
+        'task:move',
+      );
+    }
 
     try {
       await this.dataSource.query(
@@ -802,23 +855,15 @@ export class TaskService {
     }
   }
 
-  async deleteTask(id: string, ownerId?: string): Promise<void> {
-    const task = await this.taskRepository.findOne({
-      where: { id },
-      relations: { section: { project: true }, reminders: true },
-    });
-
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
-    }
-
-    if (ownerId) {
-      await this.projectAccessService.assertCan(
-        ownerId,
-        task.section.projectId,
-        'task:delete',
-      );
-    }
+  async deleteTask(id: string, actingUserId: string): Promise<void> {
+    const { task } = await this.loadTaskForAction(
+      actingUserId,
+      id,
+      'task:delete',
+      {
+        relations: { section: { project: true }, reminders: true },
+      },
+    );
 
     const reminders = task.reminders ?? [];
 
@@ -1161,18 +1206,18 @@ export class TaskService {
     taskId: string,
     postponeTo: Date,
   ): Promise<Task> {
-    const task = await this.taskRepository.findOne({
-      where: { id: taskId, section: { project: { ownerId: userId } } },
-      relations: {
-        recurrence: true,
-        section: { project: true },
-        labels: true,
+    const { task } = await this.loadTaskForAction(
+      userId,
+      taskId,
+      'task:update',
+      {
+        relations: {
+          recurrence: true,
+          section: { project: true },
+          labels: true,
+        },
       },
-    });
-
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${taskId} not found`);
-    }
+    );
 
     task.timeRange = this.shiftTimeRange(task.timeRange, postponeTo);
     task.completedAt = null;
