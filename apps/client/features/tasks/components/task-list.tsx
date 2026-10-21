@@ -10,8 +10,7 @@ import {
   SortableItem,
   SortableItemHandle,
 } from "@/components/reui/sortable";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2Icon, Plus } from "lucide-react";
+import { TodayTasksEmptyState } from "./today-tasks-empty-state";
 import { useModalStore } from "@/providers/MyStoreProvider";
 import type { TaskResponseDto as Task } from "@todo/shared";
 import {
@@ -30,14 +29,9 @@ export default function TaskList() {
   const openModal = useModalStore((state) => state.openModal);
   const { postponeWithUndo } = usePostponeTaskWithUndo();
 
-  // Local state for drag-and-drop sortable items, synchronized when query results change
-  const [prevInitialTasks, setPrevInitialTasks] = useState(initialTasks);
-  const [items, setItems] = useState<Task[]>(initialTasks ?? EMPTY_TASKS);
-
-  if (initialTasks !== prevInitialTasks) {
-    setPrevInitialTasks(initialTasks);
-    setItems(initialTasks ?? EMPTY_TASKS);
-  }
+  // Transient local state for drag-and-drop sortable items; derived during render
+  const [dragItems, setDragItems] = useState<Task[] | null>(null);
+  const items = dragItems ?? initialTasks ?? EMPTY_TASKS;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -50,13 +44,14 @@ export default function TaskList() {
       if (!taskToPostpone) return;
 
       // Optimistic UI update in local sortable state
-      setItems((prev) => prev.filter((t) => t.id !== taskId));
+      setDragItems((prev) => (prev ?? items).filter((t) => t.id !== taskId));
 
       postponeWithUndo(taskToPostpone, originalIndex, (restoredTask, insertIndex) => {
-        setItems((prev) => {
-          if (prev.some((t) => t.id === restoredTask.id)) return prev;
-          const restored = [...prev];
-          const idx = insertIndex >= 0 && insertIndex <= prev.length ? insertIndex : prev.length;
+        setDragItems((prev) => {
+          const current = prev ?? items;
+          if (current.some((t) => t.id === restoredTask.id)) return prev;
+          const restored = [...current];
+          const idx = insertIndex >= 0 && insertIndex <= current.length ? insertIndex : current.length;
           restored.splice(idx, 0, restoredTask);
           return restored;
         });
@@ -79,36 +74,14 @@ export default function TaskList() {
   }
 
   if (items.length === 0) {
-    return (
-      <div className="flex flex-col gap-4 w-full">
-        <div className="py-16 sm:py-20 flex flex-col items-center justify-center text-center select-none">
-          <div className="size-16 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
-            <CheckCircle2Icon className="size-8 stroke-[1.75]" />
-          </div>
-          <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
-            All caught up for today
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1.5 mb-6 leading-relaxed">
-            Enjoy your free time, or add a task to plan ahead.
-          </p>
-          <Button
-            type="button"
-            onClick={() => openModal({ type: "add-task" })}
-            className="gap-2 font-medium shadow-xs"
-          >
-            <Plus className="size-4" />
-            Add task
-          </Button>
-        </div>
-      </div>
-    );
+    return <TodayTasksEmptyState onAddTask={() => openModal({ type: "add-task" })} />;
   }
 
   return (
     <div className="flex flex-col gap-4 w-full">
       <Sortable
         value={items}
-        onValueChange={setItems}
+        onValueChange={setDragItems}
         getItemValue={(item) => item.id}
         onDragEnd={handleDragEnd}
         onValueCommit={handleValueCommit}

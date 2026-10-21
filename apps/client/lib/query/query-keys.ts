@@ -13,6 +13,10 @@ export const projectQueryKeys = {
     [...projectQueryKeys.detail(projectId), "members"] as const,
   invitations: (projectId: string) =>
     [...projectQueryKeys.detail(projectId), "invitations"] as const,
+  collaboratorSuggestions: (projectId?: string, query?: string) =>
+    ["collaborators", "suggestions", { projectId, query }] as const,
+  invitationDetails: (token: string) =>
+    ["invitations", "details", token] as const,
 };
 
 export const sectionQueryKeys = {

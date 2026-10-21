@@ -20,7 +20,7 @@ export function ProjectMemberAvatarStack({
   maxDisplay = 3,
 }: ProjectMemberAvatarStackProps) {
   const { data: fetchedMembers = EMPTY_MEMBERS } = useProjectMembers(
-    propMembers ? "" : projectId,
+    propMembers ? undefined : projectId,
   );
   const members = propMembers ?? fetchedMembers;
 

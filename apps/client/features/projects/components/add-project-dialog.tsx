@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCreateProject } from "@/features/projects/hooks/use-create-project";
-import { PlusIcon, Loader2Icon } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { ColorSelect } from "@/components/ui/color-select";
 
 import {
@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 import {
@@ -30,27 +29,17 @@ import { toast } from "@/components/ui/toast";
 import { createProjectSchema, type CreateProjectDto } from "@todo/shared";
 
 export interface AddProjectDialogProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  trigger?: React.ReactNode;
-  onSuccess?: () => void;
+  onClose: () => void;
 }
 
 export default function AddProjectDialog({
-  open: controlledOpen,
-  onOpenChange: setControlledOpen,
-  trigger,
-  onSuccess,
+  onClose,
 }: AddProjectDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = controlledOpen !== undefined;
-  const dialogOpen = isControlled ? controlledOpen : internalOpen;
-  const setDialogOpen = isControlled ? setControlledOpen! : setInternalOpen;
+  const [open, setOpen] = useState(true);
 
   const {
     control,
     handleSubmit,
-    formState: { errors },
     reset,
   } = useForm<CreateProjectDto>({
     resolver: zodResolver(createProjectSchema),
@@ -72,8 +61,7 @@ export default function AddProjectDialog({
           type: "success",
         });
         reset();
-        setDialogOpen(false);
-        onSuccess?.();
+        setOpen(false);
       },
       onError: (err) => {
         toast.add({
@@ -85,28 +73,16 @@ export default function AddProjectDialog({
     });
   };
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      reset();
-    }
-    setDialogOpen(nextOpen);
-  };
-
   return (
-    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
-      {trigger ? (
-        <DialogTrigger nativeButton={false} render={(props) => <div {...props} className="inline-flex w-full">{trigger}</div>} />
-      ) : (
-        <DialogTrigger
-          render={(props) => (
-            <Button {...props} className="gap-2 rounded-xl font-medium shrink-0">
-              <PlusIcon className="size-4" />
-              <span>Add Project</span>
-            </Button>
-          )}
-        />
-      )}
-
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader className="space-y-1 text-left">
           <DialogTitle className="card-heading">
@@ -186,7 +162,7 @@ export default function AddProjectDialog({
               type="button"
               variant="outline"
               disabled={createProjectMutation.isPending}
-              onClick={() => handleOpenChange(false)}
+              onClick={() => setOpen(false)}
               className="rounded-xl h-9 px-4 text-xs font-medium"
             >
               Cancel

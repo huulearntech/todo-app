@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import {
+  useState,
+  useCallback,
+  createContext,
+  useContext,
+  type ReactNode,
+} from "react";
 import { TaskPriority } from "@todo/shared";
 import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import type { LabelItem } from "@/features/tasks/components/task-attribute-controls/labels-popover";
-
 
 export interface FilterableTask {
   title: string;
@@ -12,7 +17,7 @@ export interface FilterableTask {
   labels?: Array<{ id: string }>;
 }
 
-export function useTaskFilters() {
+export function useTaskFiltersState() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
@@ -73,4 +78,29 @@ export function useTaskFilters() {
     availableLabels,
     matchesFilters,
   };
+}
+
+export type TaskFiltersContextValue = ReturnType<typeof useTaskFiltersState>;
+
+const TaskFiltersContext = createContext<TaskFiltersContextValue | null>(null);
+
+export interface TaskFiltersProviderProps {
+  children: ReactNode;
+}
+
+export function TaskFiltersProvider({ children }: TaskFiltersProviderProps) {
+  const filters = useTaskFiltersState();
+  return (
+    <TaskFiltersContext.Provider value={filters}>
+      {children}
+    </TaskFiltersContext.Provider>
+  );
+}
+
+export function useTaskFilters(): TaskFiltersContextValue {
+  const context = useContext(TaskFiltersContext);
+  if (!context) {
+    throw new Error("useTaskFilters must be used within a TaskFiltersProvider");
+  }
+  return context;
 }

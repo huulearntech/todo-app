@@ -48,37 +48,34 @@ const priorityOptions: Array<{
   },
 ];
 
+import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
+
 export interface KanbanFilterBarProps {
-  searchQuery?: string;
-  onSearchChange?: (query: string) => void;
   totalCount: number;
   filteredCount: number;
-  selectedPriorities: TaskPriority[];
-  onTogglePriority: (priority: TaskPriority) => void;
-  selectedLabelIds: string[];
-  onToggleLabel: (label: LabelItem) => void;
-  availableLabels: LabelItem[];
-  onClearFilters: () => void;
   className?: string;
   completedHref?: string;
   rightAction?: ReactNode;
 }
 
 export function KanbanFilterBar({
-  searchQuery = "",
-  onSearchChange,
   totalCount,
   filteredCount,
-  selectedPriorities,
-  onTogglePriority,
-  selectedLabelIds,
-  onToggleLabel,
-  availableLabels,
-  onClearFilters,
   className,
   completedHref,
   rightAction,
 }: KanbanFilterBarProps) {
+  const {
+    searchQuery,
+    setSearchQuery,
+    selectedPriorities,
+    handleTogglePriority,
+    selectedLabelIds,
+    handleToggleLabel,
+    availableLabels,
+    handleClearFilters,
+  } = useTaskFilters();
+
   const isFiltered =
     selectedPriorities.length > 0 ||
     selectedLabelIds.length > 0 ||
@@ -118,14 +115,14 @@ export function KanbanFilterBar({
           <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={searchQuery}
-            onChange={(e) => onSearchChange?.(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tasks..."
             className="h-7 text-xs pl-8 pr-7 bg-muted/30 border-border/60 rounded-lg placeholder:text-muted-foreground/70"
           />
           {Boolean(searchQuery) && (
             <button
               type="button"
-              onClick={() => onSearchChange?.("")}
+              onClick={() => setSearchQuery("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded"
             >
               <XIcon className="size-3" />
@@ -179,7 +176,7 @@ export function KanbanFilterBar({
                   <button
                     type="button"
                     key={opt.value}
-                    onClick={() => onTogglePriority(opt.value)}
+                    onClick={() => handleTogglePriority(opt.value)}
                     className={cn(
                       "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors text-left cursor-pointer",
                       isSelected
@@ -205,7 +202,7 @@ export function KanbanFilterBar({
         <LabelsPopover
           selectedLabels={selectedLabels}
           availableLabels={availableLabels}
-          onToggleLabel={onToggleLabel}
+          onToggleLabel={handleToggleLabel}
         />
 
         {/* Clear Filters Button */}
@@ -214,7 +211,7 @@ export function KanbanFilterBar({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={onClearFilters}
+            onClick={handleClearFilters}
             className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1 rounded-lg shrink-0"
           >
             <XIcon className="size-3.5" />

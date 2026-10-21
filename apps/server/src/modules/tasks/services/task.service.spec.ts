@@ -961,9 +961,9 @@ describe('TaskService', () => {
     it('should throw NotFoundException if task does not exist', async () => {
       taskRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.deleteTask(taskId, actingUserId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteTask(taskId, actingUserId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException (concealing existence) when user is not a project member', async () => {
@@ -975,9 +975,9 @@ describe('TaskService', () => {
         new NotFoundException('Project not found'),
       );
 
-      await expect(
-        service.deleteTask(taskId, actingUserId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteTask(taskId, actingUserId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw ForbiddenException when user has insufficient role (e.g. viewer)', async () => {
@@ -991,9 +991,9 @@ describe('TaskService', () => {
         ),
       );
 
-      await expect(
-        service.deleteTask(taskId, actingUserId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.deleteTask(taskId, actingUserId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -1053,11 +1053,7 @@ describe('TaskService', () => {
         projectId: 'proj-target',
       });
 
-      await service.updateTask(
-        taskId,
-        { sectionId: 'sec-target' },
-        editorId,
-      );
+      await service.updateTask(taskId, { sectionId: 'sec-target' }, editorId);
 
       expect(projectAccessService.assertCan).toHaveBeenCalledWith(
         editorId,

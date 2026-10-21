@@ -3,8 +3,9 @@
 import { useState } from "react";
 import type { TaskLabelResponseDto as TaskLabel } from "@todo/shared";
 import { Badge } from "@/components/reui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TagsIcon } from "lucide-react";
+import { TagsIcon, PlusIcon } from "lucide-react";
 
 import AddLabelDialog from "@/features/labels/components/add-label-dialog";
 import EditLabelDialog from "@/features/labels/components/edit-label-dialog";
@@ -33,6 +34,7 @@ export function LabelListSkeleton() {
 export default function LabelList() {
   const { data: labels = EMPTY_LABELS, isLoading } = useLabels();
 
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
   const [editingLabel, setEditingLabel] = useState<TaskLabel | null>(null);
   const [deletingLabel, setDeletingLabel] = useState<TaskLabel | null>(null);
 
@@ -64,7 +66,13 @@ export default function LabelList() {
             </p>
           </div>
         </div>
-        <AddLabelDialog />
+        <Button
+          onClick={() => setIsAddingLabel(true)}
+          className="gap-2 rounded-xl font-medium shrink-0 shadow-xs cursor-pointer"
+        >
+          <PlusIcon className="size-4" />
+          <span>Add Label</span>
+        </Button>
       </div>
 
       {/* Label List */}
@@ -78,6 +86,14 @@ export default function LabelList() {
           />
         ))}
       </ul>
+
+      {/* Add Label Dialog */}
+      {isAddingLabel && (
+        <AddLabelDialog
+          open={isAddingLabel}
+          onClose={() => setIsAddingLabel(false)}
+        />
+      )}
 
       {/* Edit Label Dialog */}
       {editingLabel && (

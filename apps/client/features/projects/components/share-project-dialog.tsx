@@ -8,21 +8,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/providers/AuthProvider";
-import { useProjectAbilityContext } from "@/features/projects/permissions";
+import { useProjectAbilityContext, useProjectAbility } from "@/features/projects/permissions";
+import { useProject } from "@/features/projects/hooks/use-project";
 import {
   useProjectMembers,
   EMPTY_MEMBERS,
@@ -35,117 +24,154 @@ import { useCreateInvitation } from "@/features/projects/hooks/use-create-invita
 import { useUpdateMemberRole } from "@/features/projects/hooks/use-update-member-role";
 import { useRemoveMember } from "@/features/projects/hooks/use-remove-member";
 import { useRevokeInvitation } from "@/features/projects/hooks/use-revoke-invitation";
+import { useResendInvitation } from "@/features/projects/hooks/use-resend-invitation";
 import {
-  CopyIcon,
+  useCollaboratorSuggestions,
+  EMPTY_SUGGESTIONS,
+} from "@/features/projects/hooks/use-collaborator-suggestions";
+import {
   Loader2Icon,
-  ShieldIcon,
-  Trash2Icon,
-  UserPlusIcon,
   UsersIcon,
-  LogOutIcon,
-  CrownIcon,
 } from "lucide-react";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 import { toast } from "@/components/ui/toast";
+import { ShareProjectInviteForm } from "./share-project/share-project-invite-form";
+import { ProjectMemberRow } from "./share-project/project-member-row";
+import { ProjectInvitationRow } from "./share-project/project-invitation-row";
+import { ShareProjectProvider } from "./share-project/share-project-context";
 
 type AssignableRole =
   | ProjectRole.ADMIN
   | ProjectRole.EDITOR
   | ProjectRole.VIEWER;
 
-interface ShareProjectDialogProps {
+export interface ShareProjectDialogProps {
   projectId: string;
-  projectName: string;
-  trigger?: React.ReactNode;
+  onClose: () => void;
 }
 
-export function ShareProjectDialog({
+export default function ShareProjectDialog({
   projectId,
-  projectName,
-  trigger,
+  onClose,
 }: ShareProjectDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<AssignableRole>(ProjectRole.EDITOR);
+  const [open, setOpen] = useState(true);
   const [recentTokens, setRecentTokens] = useState<Record<string, string>>({});
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [transferTarget, setTransferTarget] =
     useState<ProjectMemberResponseDto | null>(null);
 
   const { user } = useAuth();
-  const ability = useProjectAbilityContext();
+  const contextAbility = useProjectAbilityContext();
+
+  const { data: project } = useProject(projectId);
+  const projectName = project?.name || "Project";
 
   const { data: members = EMPTY_MEMBERS, isLoading: isLoadingMembers } =
-    useProjectMembers(open ? projectId : undefined);
+    useProjectMembers(projectId);
+
+  const currentMember = members.find((m) => m.userId === user?.id);
+  const resolvedRole = currentMember?.role ?? contextAbility.role;
+  const ability = useProjectAbility(resolvedRole);
+
   const { data: invitations = EMPTY_INVITATIONS } = useProjectInvitations(
-    open && ability.can("member:read") ? projectId : undefined,
+    ability.can("member:read") ? projectId : undefined,
   );
 
   const createInvitation = useCreateInvitation(projectId);
   const updateMemberRole = useUpdateMemberRole(projectId);
   const removeMember = useRemoveMember(projectId);
   const revokeInvitation = useRevokeInvitation(projectId);
+  const resendInvitation = useResendInvitation(projectId);
+
+  const { data: suggestions = EMPTY_SUGGESTIONS } = useCollaboratorSuggestions(
+    projectId,
+    "",
+    true,
+  );
 
   const canInvite = ability.can("member:invite");
 
-  const handleSendInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) return;
+  const handleSendInvite = async (email: string, role: ProjectRole) => {
+    const res = await createInvitation.mutateAsync({
+      email,
+      role: role as AssignableRole,
+    });
 
-    setErrorMessage(null);
-    try {
-      const res = await createInvitation.mutateAsync({
-        email: trimmedEmail,
-        role,
-      });
+    toast.add({
+      title: "Invitation sent",
+      description: `An email invitation was sent to ${email}`,
+      type: "success",
+    });
 
-      toast.add({
-        title: "Invitation sent",
-        description: `An email invitation was sent to ${trimmedEmail}`,
-        type: "success",
-      });
-
-      // Save token locally in case owner wants to also copy link directly
-      if (typeof window !== "undefined" && res.token) {
-        setRecentTokens((prev) => ({
-          ...prev,
-          [res.invitation.id]: `${window.location.origin}/invitations/accept?token=${res.token}`,
-        }));
-      }
-
-      setEmail("");
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response
-              ?.data?.message
-          : undefined;
-      setErrorMessage(msg || "Failed to send invitation. Please check the email.");
+    // Save token locally in case owner wants to also copy link directly
+    if (typeof window !== "undefined" && res.token) {
+      setRecentTokens((prev) => ({
+        ...prev,
+        [res.invitation.id]: `${window.location.origin}/invitations/accept?token=${res.token}`,
+      }));
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          trigger ? (
-            (props) => <span {...props}>{trigger}</span>
-          ) : (
-            (props) => (
-              <Button
-                {...props}
-                variant="outline"
-                size="sm"
-                className="gap-1.5 rounded-lg text-xs font-medium cursor-pointer"
-              >
-                <UserPlusIcon className="size-3.5 text-muted-foreground" />
-                <span>Share</span>
-              </Button>
-            )
-          )
+  const handleResend = (invitationId: string) => {
+    resendInvitation.mutate(invitationId, {
+      onSuccess: (data) => {
+        if (data.token) {
+          const fullUrl = `${window.location.origin}/invitations/accept?token=${data.token}`;
+          setRecentTokens((prev) => ({
+            ...prev,
+            [data.invitation.id]: fullUrl,
+          }));
         }
-      />
+      },
+    });
+  };
+
+  const handleCopyLink = (url: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      toast.add({
+        title: "Link copied",
+        description: "Invitation link copied to clipboard",
+        type: "success",
+      });
+    }
+  };
+
+  const shareProjectContextValue = {
+    projectId,
+    ability,
+    currentUserId: user?.id,
+    members,
+    invitations,
+    suggestions,
+    recentTokens,
+    isInviting: createInvitation.isPending,
+    isUpdatingRole: updateMemberRole.isPending,
+    isRemovingMember: removeMember.isPending,
+    isResendingInvite: resendInvitation.isPending,
+    isRevokingInvite: revokeInvitation.isPending,
+    onSendInvite: handleSendInvite,
+    onUpdateRole: (userId: string, role: ProjectRole) =>
+      updateMemberRole.mutate({
+        userId,
+        dto: { role: role as AssignableRole },
+      }),
+    onRemoveMember: (userId: string) => removeMember.mutate(userId),
+    onTransfer: (member: ProjectMemberResponseDto) => setTransferTarget(member),
+    onCopyLink: handleCopyLink,
+    onResendInvite: handleResend,
+    onRevokeInvite: (invitationId: string) => revokeInvitation.mutate(invitationId),
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[480px] w-full p-6 gap-5 overflow-hidden max-h-[85vh] flex flex-col">
         <DialogHeader className="gap-1 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base font-semibold truncate">
@@ -157,281 +183,46 @@ export function ShareProjectDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Invite Form */}
-        {canInvite && (
-          <form
-            onSubmit={handleSendInvite}
-            className="flex flex-col gap-2 shrink-0 w-full min-w-0"
-          >
-            <div className="flex items-center gap-2 w-full min-w-0">
-              <Input
-                type="email"
-                placeholder="colleague@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-9 text-xs flex-1 min-w-0"
-                disabled={createInvitation.isPending}
-              />
-              <Select
-                value={role}
-                onValueChange={(val) => val && setRole(val as AssignableRole)}
-                disabled={createInvitation.isPending}
-              >
-                <SelectTrigger className="w-24 shrink-0 h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ability.assignableRoles.map((r) => (
-                    <SelectItem key={r} value={r} className="capitalize">
-                      {r}
-                    </SelectItem>
+        <ShareProjectProvider value={shareProjectContextValue}>
+          {/* Invite Form */}
+          {canInvite && <ShareProjectInviteForm />}
+
+          {/* Scrollable Container for Members and Pending Invites */}
+          <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 -mr-1 pr-1 w-full min-w-0">
+            {/* Members List */}
+            <div className="flex flex-col gap-2 w-full min-w-0">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Members ({members.length})
+              </span>
+
+              {isLoadingMembers ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1 w-full min-w-0">
+                  {members.map((member) => (
+                    <ProjectMemberRow key={member.id} member={member} />
                   ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="submit"
-                size="sm"
-                className="h-9 px-3.5 text-xs shrink-0 cursor-pointer"
-                disabled={createInvitation.isPending || !email.trim()}
-              >
-                {createInvitation.isPending ? (
-                  <Loader2Icon className="size-3.5 animate-spin" />
-                ) : (
-                  "Invite"
-                )}
-              </Button>
+                </div>
+              )}
             </div>
 
-            {errorMessage && (
-              <p className="text-[11px] text-destructive leading-tight">
-                {errorMessage}
-              </p>
-            )}
-          </form>
-        )}
-
-        {/* Scrollable Container for Members and Pending Invites */}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 -mr-1 pr-1 w-full min-w-0">
-          {/* Members List */}
-          <div className="flex flex-col gap-2 w-full min-w-0">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Members ({members.length})
-            </span>
-
-            {isLoadingMembers ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1 w-full min-w-0">
-                {members.map((member) => {
-                  const isCurrentUser = member.userId === user?.id;
-                  const isMemberOwner = member.role === ProjectRole.OWNER;
-                  const canEditThisMember = ability.assignableRoles.some((r) =>
-                    ability.canChangeMemberRole(member.role, r),
-                  );
-                  const canRemoveThisMember = ability.canRemoveMember(
-                    member.role,
-                    isCurrentUser,
-                  );
-
-                  const initials = (
-                    member.user?.name ||
-                    member.user?.email ||
-                    "U"
-                  )
-                    .slice(0, 2)
-                    .toUpperCase();
-
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-muted/40 transition-colors gap-2 w-full min-w-0"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
-                        <Avatar className="size-7 shrink-0">
-                          <AvatarImage src="" />
-                          <AvatarFallback className="text-[11px] font-medium">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-xs font-medium truncate text-foreground">
-                              {member.user?.name || member.user?.email}
-                            </span>
-                            {isCurrentUser && (
-                              <span className="text-[10px] text-muted-foreground shrink-0">
-                                (you)
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-muted-foreground truncate">
-                            {member.user?.email}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isMemberOwner ? (
-                          <Badge
-                            variant="secondary"
-                            className="text-[11px] gap-1 font-normal shrink-0"
-                          >
-                            <ShieldIcon className="size-3 text-amber-500" />
-                            Owner
-                          </Badge>
-                        ) : canEditThisMember ? (
-                          <Select
-                            value={member.role}
-                            onValueChange={(val) => {
-                              if (val) {
-                                updateMemberRole.mutate({
-                                  userId: member.userId,
-                                  dto: { role: val as AssignableRole },
-                                });
-                              }
-                            }}
-                            disabled={updateMemberRole.isPending}
-                          >
-                            <SelectTrigger className="h-7 w-20 text-xs shrink-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ability.assignableRoles
-                                .filter((r) =>
-                                  ability.canChangeMemberRole(member.role, r),
-                                )
-                                .map((r) => (
-                                  <SelectItem
-                                    key={r}
-                                    value={r}
-                                    className="capitalize"
-                                  >
-                                    {r}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-[11px] capitalize shrink-0"
-                          >
-                            {member.role}
-                          </Badge>
-                        )}
-
-                        {/* Transfer Ownership Action */}
-                        {ability.can("project:transfer") &&
-                        !isMemberOwner &&
-                        !isCurrentUser ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground hover:text-amber-500 cursor-pointer shrink-0"
-                            title="Transfer ownership to this member"
-                            onClick={() => setTransferTarget(member)}
-                          >
-                            <CrownIcon className="size-3.5" />
-                          </Button>
-                        ) : null}
-
-                        {/* Remove or Leave Action */}
-                        {isCurrentUser && canRemoveThisMember ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground hover:text-destructive cursor-pointer shrink-0"
-                            title="Leave project"
-                            disabled={removeMember.isPending}
-                            onClick={() => removeMember.mutate(member.userId)}
-                          >
-                            <LogOutIcon className="size-3.5" />
-                          </Button>
-                        ) : canRemoveThisMember ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground hover:text-destructive cursor-pointer shrink-0"
-                            title="Remove member"
-                            disabled={removeMember.isPending}
-                            onClick={() => removeMember.mutate(member.userId)}
-                          >
-                            <Trash2Icon className="size-3.5" />
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Pending Invitations */}
+            {invitations.length > 0 && (
+              <div className="flex flex-col gap-2 border-t border-border/50 pt-3 w-full min-w-0">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Pending Invitations ({invitations.length})
+                </span>
+                <div className="flex flex-col gap-1 w-full min-w-0">
+                  {invitations.map((inv) => (
+                    <ProjectInvitationRow key={inv.id} invitation={inv} />
+                  ))}
+                </div>
               </div>
             )}
           </div>
-
-          {/* Pending Invitations */}
-          {invitations.length > 0 && (
-            <div className="flex flex-col gap-2 border-t border-border/50 pt-3 w-full min-w-0">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Pending Invitations ({invitations.length})
-              </span>
-              <div className="flex flex-col gap-1 w-full min-w-0">
-                {invitations.map((inv) => {
-                  const inviteUrl = recentTokens[inv.id];
-                  return (
-                    <div
-                      key={inv.id}
-                      className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/20 text-xs gap-2 w-full min-w-0"
-                    >
-                      <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                        <span className="truncate font-medium text-foreground">
-                          {inv.invitedEmail}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground capitalize">
-                          {inv.role} &bull; Invited
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        {inviteUrl && (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-                            title="Copy invitation link"
-                            onClick={async () => {
-                              await navigator.clipboard.writeText(inviteUrl);
-                              toast.add({
-                                title: "Copied",
-                                description:
-                                  "Invitation link copied to clipboard",
-                                type: "success",
-                              });
-                            }}
-                          >
-                            <CopyIcon className="size-3.5" />
-                          </Button>
-                        )}
-                        {canInvite && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 text-[11px] text-muted-foreground hover:text-destructive px-2 shrink-0 cursor-pointer"
-                            disabled={revokeInvitation.isPending}
-                            onClick={() => revokeInvitation.mutate(inv.id)}
-                          >
-                            Revoke
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        </ShareProjectProvider>
       </DialogContent>
 
       <TransferOwnershipDialog
@@ -440,7 +231,6 @@ export function ShareProjectDialog({
           if (!isOpen) setTransferTarget(null);
         }}
         projectId={projectId}
-        projectName={projectName}
         targetMember={transferTarget}
         onSuccess={() => {
           setTransferTarget(null);
@@ -449,3 +239,5 @@ export function ShareProjectDialog({
     </Dialog>
   );
 }
+
+export { ShareProjectDialog };

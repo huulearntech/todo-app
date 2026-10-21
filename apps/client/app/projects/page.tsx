@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default async function ProjectsPage() {
-  const user = await requireUser("/projects");
+  await requireUser("/projects");
 
   return (
     <StandardPageLayout>
-      <ProjectsPageContent defaultProjectId={user.defaultProjectId} />
+      <ProjectsPageContent />
     </StandardPageLayout>
   );
 }

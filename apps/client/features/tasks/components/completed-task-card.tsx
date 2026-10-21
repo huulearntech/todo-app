@@ -28,10 +28,10 @@ import {
   RepeatIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useModalStore } from "@/providers/MyStoreProvider";
 
 export interface CompletedTaskCardProps {
   occurrence: CompletedOccurrenceResponseDto;
-  onDeleteTaskPermanently?: (task: { id: string; title: string }) => void;
 }
 
 function formatCompletedAt(dateString?: string | null): string | undefined {
@@ -55,8 +55,8 @@ function formatCompletedAt(dateString?: string | null): string | undefined {
  */
 function CompletedTaskCard({
   occurrence,
-  onDeleteTaskPermanently,
 }: CompletedTaskCardProps) {
+  const openModal = useModalStore((state) => state.openModal);
   const toggleCompleteMutation = useToggleTaskComplete();
   const deleteOccurrenceMutation = useDeleteOccurrence();
   const { data: allLabels = EMPTY_LABELS } = useLabels();
@@ -246,9 +246,12 @@ function CompletedTaskCard({
 
           <DropdownMenuItem
             onClick={() =>
-              onDeleteTaskPermanently?.({
-                id: occurrence.id,
-                title: occurrence.title,
+              openModal({
+                type: "delete-task",
+                task: {
+                  id: occurrence.id,
+                  title: occurrence.title,
+                },
               })
             }
             className="cursor-pointer text-destructive focus:text-destructive"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   EventCalendar,
   type EventCalendarApi,
@@ -18,53 +18,31 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PlusIcon } from "lucide-react"
-import { useProjectTasks, EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks"
-import { useSections, EMPTY_SECTIONS } from "@/features/sections/hooks/use-sections"
 import type { TaskResponseDto as Task } from "@todo/shared"
-import { useCreateSection } from "@/features/sections/hooks/use-create-section"
+import {
+  useProjectCalendarEvents,
+  EMPTY_CALENDAR_EVENTS,
+} from "../hooks/use-project-calendar-events"
+import { useEnsureTaskSection } from "@/features/sections/hooks/use-ensure-task-section"
 import { useUpdateCalendarEvent } from "@/features/tasks/hooks/use-update-calendar-event"
-import { toast } from "@/components/ui/toast"
 import { useModalStore } from "@/providers/MyStoreProvider"
-
 
 export function UpcomingEventCalendar({ projectId }: { projectId: string }) {
   const openModal = useModalStore((state) => state.openModal);
 
-  const createSectionMutation = useCreateSection();
-
   const apiRef = useRef<EventCalendarApi<Task> | null>(null);
   const isDragUpdatingRef = useRef(false);
 
-  const { data: tasks = EMPTY_TASKS } = useProjectTasks(projectId);
-  const { data: sections = EMPTY_SECTIONS } = useSections(projectId);
+  const { data: calendarEvents = EMPTY_CALENDAR_EVENTS } =
+    useProjectCalendarEvents(projectId);
+  const { getOrCreateSectionId } = useEnsureTaskSection(projectId);
 
   const handleNewTask = async () => {
-    let targetSectionId = sections[0]?.id || tasks[0]?.sectionId;
-
-    if (!targetSectionId) {
-      try {
-        const response = await createSectionMutation.mutateAsync({
-          projectId,
-          name: "Tasks",
-        });
-        targetSectionId = response.data.id;
-      } catch {
-        toast.add({
-          title: "Error",
-          description: "Could not find or create a section for this project.",
-          type: "error",
-        });
-        return;
-      }
+    const targetSectionId = await getOrCreateSectionId();
+    if (targetSectionId) {
+      openModal({ type: "add-task", projectId, sectionId: targetSectionId });
     }
-
-    openModal({ type: "add-task", projectId, sectionId: targetSectionId });
   };
-
-  // NOTE: This part might be optimizable
-  const calendarEvents = useMemo(() => {
-    return tasks.map(mapTaskToCalendarEvent);
-  }, [tasks]);
 
   // Synchronize external tasks (query fetch, project switch, Add/Edit dialogs) into the calendar
   useEffect(() => {

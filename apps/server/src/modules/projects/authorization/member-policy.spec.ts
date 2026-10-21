@@ -118,21 +118,21 @@ describe('MemberPolicy', () => {
 
   describe('canRemoveMember', () => {
     it('should never allow removing the owner', () => {
-      expect(
-        canRemoveMember(ProjectRole.OWNER, ProjectRole.OWNER, false),
-      ).toBe(false);
-      expect(
-        canRemoveMember(ProjectRole.ADMIN, ProjectRole.OWNER, false),
-      ).toBe(false);
-      expect(
-        canRemoveMember(ProjectRole.OWNER, ProjectRole.OWNER, true),
-      ).toBe(false);
+      expect(canRemoveMember(ProjectRole.OWNER, ProjectRole.OWNER, false)).toBe(
+        false,
+      );
+      expect(canRemoveMember(ProjectRole.ADMIN, ProjectRole.OWNER, false)).toBe(
+        false,
+      );
+      expect(canRemoveMember(ProjectRole.OWNER, ProjectRole.OWNER, true)).toBe(
+        false,
+      );
     });
 
     it('should allow non-owner members to voluntarily leave', () => {
-      expect(
-        canRemoveMember(ProjectRole.ADMIN, ProjectRole.ADMIN, true),
-      ).toBe(true);
+      expect(canRemoveMember(ProjectRole.ADMIN, ProjectRole.ADMIN, true)).toBe(
+        true,
+      );
       expect(
         canRemoveMember(ProjectRole.EDITOR, ProjectRole.EDITOR, true),
       ).toBe(true);
@@ -142,9 +142,9 @@ describe('MemberPolicy', () => {
     });
 
     it('should allow owner to remove any non-owner member', () => {
-      expect(
-        canRemoveMember(ProjectRole.OWNER, ProjectRole.ADMIN, false),
-      ).toBe(true);
+      expect(canRemoveMember(ProjectRole.OWNER, ProjectRole.ADMIN, false)).toBe(
+        true,
+      );
       expect(
         canRemoveMember(ProjectRole.OWNER, ProjectRole.EDITOR, false),
       ).toBe(true);
@@ -154,9 +154,9 @@ describe('MemberPolicy', () => {
     });
 
     it('should restrict admin from removing other admins', () => {
-      expect(
-        canRemoveMember(ProjectRole.ADMIN, ProjectRole.ADMIN, false),
-      ).toBe(false);
+      expect(canRemoveMember(ProjectRole.ADMIN, ProjectRole.ADMIN, false)).toBe(
+        false,
+      );
       expect(
         canRemoveMember(ProjectRole.ADMIN, ProjectRole.EDITOR, false),
       ).toBe(true);

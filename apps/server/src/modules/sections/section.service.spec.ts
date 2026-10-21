@@ -102,7 +102,10 @@ describe('SectionService', () => {
 
   describe('updateSectionOrder', () => {
     it('should call move_section_lexorank with parameters after checking membership', async () => {
-      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
+      mockSectionRepo.findOne.mockResolvedValue({
+        id: 'sec-2',
+        projectId: 'proj-1',
+      });
       mockSectionRepo.query.mockResolvedValue([]);
 
       await service.updateSectionOrder({
@@ -139,7 +142,10 @@ describe('SectionService', () => {
     });
 
     it('should throw BadRequestException if bounds invalid (22000)', async () => {
-      mockSectionRepo.findOne.mockResolvedValue({ id: 'sec-2', projectId: 'proj-1' });
+      mockSectionRepo.findOne.mockResolvedValue({
+        id: 'sec-2',
+        projectId: 'proj-1',
+      });
       const error: any = new Error(
         'A section cannot be positioned after itself',
       );

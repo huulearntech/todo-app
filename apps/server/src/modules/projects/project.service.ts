@@ -114,10 +114,7 @@ export class ProjectService {
     return this.getProjectsForUser(ownerId, filter);
   }
 
-  async getProjectById(
-    id: string,
-    userId?: string,
-  ): Promise<Project | null> {
+  async getProjectById(id: string, userId?: string): Promise<Project | null> {
     if (userId) {
       const role = await this.projectAccessService.getRole(userId, id);
       if (!role) {

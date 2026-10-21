@@ -22,6 +22,8 @@ import {
   canChangeMemberRole,
   canRemoveMember,
   canInviteWithRole,
+  type InvitationDetailsResponseDto,
+  type CollaboratorSuggestionDto,
 } from '@todo/shared';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
@@ -42,7 +44,8 @@ export class ProjectMemberService {
     private readonly projectAccessService: ProjectAccessService,
     private readonly dataSource: DataSource,
     @Optional() private readonly configService?: ConfigService,
-    @Optional() private readonly mailerSchedulerService?: MailerSchedulerService,
+    @Optional()
+    private readonly mailerSchedulerService?: MailerSchedulerService,
   ) {}
 
   async getMembers(
@@ -97,7 +100,10 @@ export class ProjectMemberService {
     }
 
     if (!canChangeMemberRole(actingRole, targetMember.role, dto.role)) {
-      if (actingRole === ProjectRole.ADMIN && targetMember.role === ProjectRole.ADMIN) {
+      if (
+        actingRole === ProjectRole.ADMIN &&
+        targetMember.role === ProjectRole.ADMIN
+      ) {
         throw new ForbiddenException(
           'Administrators cannot change roles of other administrators',
         );
@@ -232,25 +238,21 @@ export class ProjectMemberService {
       },
     });
 
-    let invitation: ProjectInvitation;
     if (existingPending) {
-      existingPending.tokenHash = tokenHash;
-      existingPending.role = dto.role;
-      existingPending.expiresAt = expiresAt;
-      existingPending.invitedById = actingUserId;
-      invitation = await this.invitationRepository.save(existingPending);
-    } else {
-      const newInvitation = this.invitationRepository.create({
-        projectId,
-        invitedEmail: normalizedEmail,
-        role: dto.role,
-        status: ProjectInvitationStatus.PENDING,
-        tokenHash,
-        expiresAt,
-        invitedById: actingUserId,
-      });
-      invitation = await this.invitationRepository.save(newInvitation);
+      existingPending.status = ProjectInvitationStatus.REVOKED;
+      await this.invitationRepository.save(existingPending);
     }
+
+    const newInvitation = this.invitationRepository.create({
+      projectId,
+      invitedEmail: normalizedEmail,
+      role: dto.role,
+      status: ProjectInvitationStatus.PENDING,
+      tokenHash,
+      expiresAt,
+      invitedById: actingUserId,
+    });
+    const invitation = await this.invitationRepository.save(newInvitation);
 
     const inviter = await this.userRepository.findOne({
       where: { id: actingUserId },
@@ -326,10 +328,262 @@ export class ProjectMemberService {
     await this.invitationRepository.save(invitation);
   }
 
+  async resendInvitation(
+    actingUserId: string,
+    projectId: string,
+    invitationId: string,
+  ): Promise<{ invitation: ProjectInvitation; token: string }> {
+    await this.projectAccessService.assertCan(
+      actingUserId,
+      projectId,
+      'member:invite',
+    );
+
+    const existing = await this.invitationRepository.findOne({
+      where: { id: invitationId, projectId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (existing.status !== ProjectInvitationStatus.PENDING) {
+      throw new BadRequestException('Only pending invitations can be resent');
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // Mark previous as REVOKED so older link indicates it was replaced
+    existing.status = ProjectInvitationStatus.REVOKED;
+    await this.invitationRepository.save(existing);
+
+    // Create new pending invitation
+    const newInvitation = this.invitationRepository.create({
+      projectId,
+      invitedEmail: existing.invitedEmail,
+      role: existing.role,
+      status: ProjectInvitationStatus.PENDING,
+      tokenHash,
+      expiresAt,
+      invitedById: actingUserId,
+    });
+    const invitation = await this.invitationRepository.save(newInvitation);
+
+    const inviter = await this.userRepository.findOne({
+      where: { id: actingUserId },
+    });
+    const inviterName = inviter?.name || inviter?.email || 'A team member';
+    const frontendBaseUrl =
+      this.configService?.get<string>('FRONTEND_URL') ||
+      'http://localhost:3000';
+    const acceptUrl = `${frontendBaseUrl}/invitations/accept?token=${rawToken}`;
+
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+    const projectName = project?.name || 'Todo Project';
+
+    if (this.mailerSchedulerService) {
+      await this.mailerSchedulerService.sendImmediateEmail({
+        to: invitation.invitedEmail,
+        subject: `Reminder: You've been invited to collaborate on "${projectName}"`,
+        templateType: 'project-invitation',
+        context: {
+          name: inviterName,
+          projectName,
+          role: invitation.role,
+          actionUrl: acceptUrl,
+        },
+      });
+    }
+
+    return { invitation, token: rawToken };
+  }
+
+  async getInvitationDetails(
+    rawToken: string,
+    currentUserId?: string,
+  ): Promise<InvitationDetailsResponseDto> {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+
+    const invitation = await this.invitationRepository.findOne({
+      where: { tokenHash },
+      relations: { project: true, invitedBy: true },
+    });
+
+    if (!invitation) {
+      return { status: 'not_found' };
+    }
+
+    const projectName = invitation.project?.name || 'Project';
+    const inviterName =
+      invitation.invitedBy?.name ||
+      invitation.invitedBy?.email ||
+      'A collaborator';
+
+    // If caller is authenticated, check if already a member of this project
+    if (currentUserId) {
+      const existingMember = await this.memberRepository.findOne({
+        where: { projectId: invitation.projectId, userId: currentUserId },
+      });
+      if (existingMember) {
+        return {
+          status: 'already_member',
+          projectName,
+          invitedEmail: invitation.invitedEmail,
+          role: existingMember.role,
+          inviterName,
+          projectId: invitation.projectId,
+        };
+      }
+    }
+
+    // Check revoked / superseded status
+    if (invitation.status === ProjectInvitationStatus.REVOKED) {
+      const activePending = await this.invitationRepository.findOne({
+        where: {
+          projectId: invitation.projectId,
+          invitedEmail: invitation.invitedEmail,
+          status: ProjectInvitationStatus.PENDING,
+        },
+      });
+
+      if (activePending) {
+        return {
+          status: 'superseded',
+          projectName,
+          invitedEmail: invitation.invitedEmail,
+          role: invitation.role,
+          inviterName,
+          projectId: invitation.projectId,
+        };
+      }
+
+      return {
+        status: 'revoked',
+        projectName,
+        invitedEmail: invitation.invitedEmail,
+        role: invitation.role,
+        inviterName,
+        projectId: invitation.projectId,
+      };
+    }
+
+    // Check expired
+    if (
+      invitation.status === ProjectInvitationStatus.EXPIRED ||
+      invitation.expiresAt < new Date()
+    ) {
+      return {
+        status: 'expired',
+        projectName,
+        invitedEmail: invitation.invitedEmail,
+        role: invitation.role,
+        inviterName,
+        projectId: invitation.projectId,
+      };
+    }
+
+    // Check accepted
+    if (invitation.status === ProjectInvitationStatus.ACCEPTED) {
+      return {
+        status: 'already_member',
+        projectName,
+        invitedEmail: invitation.invitedEmail,
+        role: invitation.role,
+        inviterName,
+        projectId: invitation.projectId,
+      };
+    }
+
+    return {
+      status: 'valid',
+      projectName,
+      invitedEmail: invitation.invitedEmail,
+      role: invitation.role,
+      inviterName,
+      projectId: invitation.projectId,
+    };
+  }
+
+  async getCollaboratorSuggestions(
+    actingUserId: string,
+    projectId?: string,
+    query?: string,
+  ): Promise<CollaboratorSuggestionDto[]> {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('project_members', 'shared_pm', 'shared_pm.user_id = user.id')
+      .where((subQb) => {
+        const subQuery = subQb
+          .subQuery()
+          .select('my_pm.project_id')
+          .from(ProjectMember, 'my_pm')
+          .where('my_pm.user_id = :actingUserId')
+          .getQuery();
+        return `shared_pm.project_id IN ${subQuery}`;
+      })
+      .andWhere('user.id != :actingUserId', { actingUserId });
+
+    if (projectId) {
+      qb.andWhere(
+        (subQb) => {
+          const subQuery = subQb
+            .subQuery()
+            .select('target_pm.user_id')
+            .from(ProjectMember, 'target_pm')
+            .where('target_pm.project_id = :projectId')
+            .getQuery();
+          return `user.id NOT IN ${subQuery}`;
+        },
+        { projectId },
+      );
+    }
+
+    if (query && query.trim()) {
+      qb.andWhere(
+        '(user.email ILIKE :searchPattern OR user.name ILIKE :searchPattern)',
+        { searchPattern: `%${query.trim()}%` },
+      );
+    }
+
+    interface RawCollaborator {
+      id: string;
+      name: string;
+      email: string;
+      avatarUrl?: string | null;
+    }
+
+    const users = await qb
+      .select([
+        'DISTINCT user.id AS id',
+        'user.name AS name',
+        'user.email AS email',
+        'user.avatar_url AS "avatarUrl"',
+      ])
+      .limit(10)
+      .getRawMany<RawCollaborator>();
+
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      avatarUrl: u.avatarUrl || null,
+    }));
+  }
+
   async acceptInvitation(
     userId: string,
     dto: AcceptInvitationDto,
-  ): Promise<{ projectId: string; role: ProjectRole }> {
+  ): Promise<{ projectId: string; role: ProjectRole; alreadyMember: boolean }> {
     const tokenHash = crypto
       .createHash('sha256')
       .update(dto.token)
@@ -338,15 +592,17 @@ export class ProjectMemberService {
     const invitation = await this.invitationRepository.findOne({
       where: {
         tokenHash,
-        status: ProjectInvitationStatus.PENDING,
       },
     });
 
     if (!invitation) {
-      throw new NotFoundException('Invalid or expired invitation');
+      throw new NotFoundException('Invalid invitation link');
     }
 
-    if (invitation.expiresAt < new Date()) {
+    if (
+      invitation.status === ProjectInvitationStatus.EXPIRED ||
+      invitation.expiresAt < new Date()
+    ) {
       invitation.status = ProjectInvitationStatus.EXPIRED;
       await this.invitationRepository.save(invitation);
       throw new BadRequestException('Invitation has expired');
@@ -355,6 +611,49 @@ export class ProjectMemberService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    // Check if user is already a member
+    const existingMember = await this.memberRepository.findOne({
+      where: { projectId: invitation.projectId, userId },
+    });
+
+    if (existingMember) {
+      if (invitation.status === ProjectInvitationStatus.PENDING) {
+        invitation.status = ProjectInvitationStatus.ACCEPTED;
+        await this.invitationRepository.save(invitation);
+      }
+      return {
+        projectId: invitation.projectId,
+        role: existingMember.role,
+        alreadyMember: true,
+      };
+    }
+
+    if (invitation.status === ProjectInvitationStatus.REVOKED) {
+      const activePending = await this.invitationRepository.findOne({
+        where: {
+          projectId: invitation.projectId,
+          invitedEmail: invitation.invitedEmail,
+          status: ProjectInvitationStatus.PENDING,
+        },
+      });
+
+      if (activePending) {
+        throw new BadRequestException(
+          'This invitation link has been replaced by a more recent invitation. Please check your email for the latest link.',
+        );
+      }
+
+      throw new BadRequestException(
+        'This invitation link has been revoked by the project owner.',
+      );
+    }
+
+    if (invitation.status === ProjectInvitationStatus.ACCEPTED) {
+      throw new BadRequestException(
+        'This invitation has already been accepted',
+      );
     }
 
     if (user.email.toLowerCase() !== invitation.invitedEmail.toLowerCase()) {
@@ -367,14 +666,11 @@ export class ProjectMemberService {
       invitation.status = ProjectInvitationStatus.ACCEPTED;
       await manager.save(invitation);
 
-      const existingMember = await manager.findOne(ProjectMember, {
+      const member = await manager.findOne(ProjectMember, {
         where: { projectId: invitation.projectId, userId },
       });
 
-      if (existingMember) {
-        existingMember.role = invitation.role;
-        await manager.save(existingMember);
-      } else {
+      if (!member) {
         const newMember = manager.create(ProjectMember, {
           projectId: invitation.projectId,
           userId,
@@ -387,6 +683,7 @@ export class ProjectMemberService {
     return {
       projectId: invitation.projectId,
       role: invitation.role,
+      alreadyMember: false,
     };
   }
 

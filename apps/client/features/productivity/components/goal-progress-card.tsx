@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useProductivityGoals } from "@/features/productivity/hooks/use-productivity-goals";
 import {
   TargetIcon,
-  TrophyIcon,
   SlidersHorizontalIcon,
-  SparklesIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,9 +24,6 @@ export default function GoalProgressCard() {
       </div>
     );
   }
-
-  const dailyRemaining = Math.max(0, goals.daily.target - goals.daily.completed);
-  const weeklyRemaining = Math.max(0, goals.weekly.target - goals.weekly.completed);
 
   return (
     <div className="flex flex-col gap-4">
@@ -61,31 +56,8 @@ export default function GoalProgressCard() {
 
       {/* Progress Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <GoalMetricCard
-          title="Daily Goal"
-          backgroundIcon={TargetIcon}
-          completed={goals.daily.completed}
-          target={goals.daily.target}
-          ratio={goals.daily.ratio}
-          isAchieved={goals.daily.isAchieved}
-          achievedBadgeText="Goal Met"
-          achievedBadgeIcon={SparklesIcon}
-          achievedDescription="Great job! You achieved today's daily target."
-          unachievedDescription={`${dailyRemaining} more completed ${dailyRemaining === 1 ? "task" : "tasks"} to reach your goal.`}
-        />
-
-        <GoalMetricCard
-          title="Weekly Goal"
-          backgroundIcon={TrophyIcon}
-          completed={goals.weekly.completed}
-          target={goals.weekly.target}
-          ratio={goals.weekly.ratio}
-          isAchieved={goals.weekly.isAchieved}
-          achievedBadgeText="Target Smashed"
-          achievedBadgeIcon={TrophyIcon}
-          achievedDescription="Outstanding! You crushed this week's productivity goal."
-          unachievedDescription={`${weeklyRemaining} more completed ${weeklyRemaining === 1 ? "task" : "tasks"} to reach your goal.`}
-        />
+        <GoalMetricCard type="daily" goal={goals.daily} />
+        <GoalMetricCard type="weekly" goal={goals.weekly} />
       </div>
     </div>
   );

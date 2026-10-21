@@ -42,7 +42,6 @@ import {
   SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import AddProjectDialog from "@/features/projects/components/add-project-dialog";
 import { useModalStore } from "@/providers/MyStoreProvider";
 
 export function NavProjects() {
@@ -193,17 +192,14 @@ export function NavProjects() {
         })}
 
         <SidebarMenuItem>
-          <AddProjectDialog
-            trigger={
-              <SidebarMenuButton
-                tooltip="Add project"
-                className="text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 cursor-pointer"
-              >
-                <PlusIcon className="size-4 shrink-0 text-muted-foreground" />
-                <span>Add project</span>
-              </SidebarMenuButton>
-            }
-          />
+          <SidebarMenuButton
+            tooltip="Add project"
+            onClick={() => openModal({ type: "add-project" })}
+            className="text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 cursor-pointer"
+          >
+            <PlusIcon className="size-4 shrink-0 text-muted-foreground" />
+            <span>Add project</span>
+          </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
 
@@ -212,7 +208,6 @@ export function NavProjects() {
           open={Boolean(guardProject)}
           onOpenChange={(open) => !open && setGuardProject(null)}
           project={guardProject}
-          currentUserId={user?.id}
         />
       )}
     </SidebarGroup>

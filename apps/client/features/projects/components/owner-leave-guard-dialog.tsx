@@ -22,13 +22,13 @@ import { useTransferOwnership } from "@/features/projects/hooks/use-transfer-own
 import { useRemoveMember } from "@/features/projects/hooks/use-remove-member";
 import { useDeleteProject } from "@/features/projects/hooks/use-delete-project";
 import type { ProjectResponseDto } from "@todo/shared";
+import { useAuth } from "@/providers/AuthProvider";
 import { Loader2Icon, ShieldAlertIcon, Trash2Icon } from "lucide-react";
 
 interface OwnerLeaveGuardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: ProjectResponseDto;
-  currentUserId?: string;
   onSuccess?: () => void;
 }
 
@@ -36,9 +36,10 @@ export function OwnerLeaveGuardDialog({
   open,
   onOpenChange,
   project,
-  currentUserId,
   onSuccess,
 }: OwnerLeaveGuardDialogProps) {
+  const { user } = useAuth();
+  const currentUserId = user?.id;
   const otherMembers = (project.members || []).filter(
     (m) => m.userId !== currentUserId,
   );

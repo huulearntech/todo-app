@@ -1,6 +1,6 @@
 "use client";
 
-import { ComponentProps, Fragment } from "react";
+import { ComponentProps, Fragment, useState } from "react";
 import { Badge } from "@/components/reui/badge";
 import {
   KanbanColumn,
@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useProjectAbilityContext } from "@/features/projects/permissions";
+import EditSectionDialog from "@/features/sections/components/edit-section-dialog";
+import { DeleteSectionDialog } from "@/features/sections/components/delete-section-dialog";
 
 export interface TaskCardProps extends Omit<
   ComponentProps<typeof KanbanItem>,
@@ -60,8 +62,6 @@ export interface TaskColumnProps extends Omit<
   tasks: Task[];
   section?: SectionResponseDto;
   isOverlay?: boolean;
-  onEdit: (section: SectionResponseDto) => void;
-  onDelete: (section: SectionResponseDto) => void;
 }
 
 export function TaskColumn({
@@ -70,10 +70,11 @@ export function TaskColumn({
   section,
   tasks,
   isOverlay,
-  onEdit,
-  onDelete,
   ...props
 }: TaskColumnProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const ability = useProjectAbilityContext();
   const canUpdateSection = ability.can("section:update");
   const canMoveSection = canUpdateSection;
@@ -123,7 +124,7 @@ export function TaskColumn({
                   <DropdownMenuGroup>
                     {canUpdateSection && (
                       <DropdownMenuItem
-                        onClick={() => section && onEdit(section)}
+                        onClick={() => section && setIsEditing(true)}
                         className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
                       >
                         <PencilIcon className="size-3.5 text-muted-foreground" />
@@ -136,7 +137,7 @@ export function TaskColumn({
                     {canDeleteSection && (
                       <DropdownMenuItem
                         variant="destructive"
-                        onClick={() => section && onDelete(section)}
+                        onClick={() => section && setIsDeleting(true)}
                         className="flex items-center gap-2 rounded-lg cursor-pointer text-xs px-2 py-1.5"
                       >
                         <Trash2Icon className="size-3.5" />
@@ -171,6 +172,20 @@ export function TaskColumn({
           </KanbanColumnContent>
         </CardContent>
       </Card>
+
+      {isEditing && section && (
+        <EditSectionDialog
+          section={section}
+          onClose={() => setIsEditing(false)}
+        />
+      )}
+
+      {isDeleting && section && (
+        <DeleteSectionDialog
+          section={section}
+          onClose={() => setIsDeleting(false)}
+        />
+      )}
     </KanbanColumn>
   );
 }

@@ -13,7 +13,6 @@ import { PlusIcon } from "lucide-react";
 
 import {
   type TaskResponseDto as Task,
-  type SectionResponseDto,
 } from "@todo/shared";
 import { useProjectTasks } from "@/features/tasks/hooks/use-project-tasks";
 import { KanbanFilterBar } from "./kanban-filter-bar";
@@ -22,15 +21,16 @@ import { useMoveTasks } from "@/features/tasks/hooks/use-move-tasks";
 import { useMoveSection } from "@/features/sections/hooks/use-move-section";
 import { useAuth } from "@/providers/AuthProvider";
 import AddSectionForm, { type AddSectionFormHandle } from "@/features/sections/components/add-section-form";
-import EditSectionDialog from "@/features/sections/components/edit-section-dialog";
-import { DeleteSectionDialog } from "@/features/sections/components/delete-section-dialog";
-import { useTaskFilters } from "@/features/tasks/hooks/use-task-filters";
+import {
+  useTaskFilters,
+  TaskFiltersProvider,
+} from "@/features/tasks/hooks/use-task-filters";
 import { groupBySection } from "@/features/tasks/utils/kanban-helpers";
 import { TaskColumn } from "./kanban/kanban-column";
 import { KanbanBoardSkeleton } from "./kanban/kanban-board-skeleton";
 import { useProjectAbilityContext } from "@/features/projects/permissions";
 
-function DndKanban({ projectId }: { projectId: string }) {
+function DndKanbanBoard({ projectId }: { projectId: string }) {
   const ability = useProjectAbilityContext();
   const canCreateSection = ability.can("section:create");
 
@@ -53,17 +53,7 @@ function DndKanban({ projectId }: { projectId: string }) {
   } = useSections(projectId);
   const isLoading = tasksLoading || sectionsLoading;
 
-  const {
-    searchQuery,
-    setSearchQuery,
-    selectedPriorities,
-    handleTogglePriority,
-    selectedLabelIds,
-    handleToggleLabel,
-    handleClearFilters,
-    availableLabels,
-    matchesFilters,
-  } = useTaskFilters();
+  const { matchesFilters } = useTaskFilters();
 
   const serverColumns = useMemo(
     () => groupBySection(sections, projectTasks, matchesFilters),
@@ -74,8 +64,6 @@ function DndKanban({ projectId }: { projectId: string }) {
 
   const moveTasksMutation     = useMoveTasks(projectId);
   const moveSectionMutation   = useMoveSection(projectId);
-  const [sectionToEdit, setSectionToEdit] = useState<SectionResponseDto | null>(null);
-  const [sectionToDelete, setSectionToDelete] = useState<SectionResponseDto | null>(null);
 
   const handleFloatingAddSectionClick = () => {
     addSectionRef.current?.scrollIntoView();
@@ -156,16 +144,8 @@ function DndKanban({ projectId }: { projectId: string }) {
   return (
     <div className="relative flex-1 min-h-0 min-w-0 h-full w-full overflow-hidden flex flex-col">
       <KanbanFilterBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
         totalCount={totalTasksCount}
         filteredCount={filteredTasksCount}
-        selectedPriorities={selectedPriorities}
-        onTogglePriority={handleTogglePriority}
-        selectedLabelIds={selectedLabelIds}
-        onToggleLabel={handleToggleLabel}
-        availableLabels={availableLabels}
-        onClearFilters={handleClearFilters}
         completedHref={completedHref}
       />
 
@@ -189,8 +169,6 @@ function DndKanban({ projectId }: { projectId: string }) {
                   value={sectionId}
                   section={section}
                   tasks={tasks}
-                  onEdit={(sec) => setSectionToEdit(sec)}
-                  onDelete={(sec) => setSectionToDelete(sec)}
                 />
               );
             })}
@@ -220,24 +198,14 @@ function DndKanban({ projectId }: { projectId: string }) {
           </Button>
         </div>
       )}
-
-      {/* Edit Section Dialog */}
-      {sectionToEdit && (
-        <EditSectionDialog
-          section={sectionToEdit}
-          onClose={() => setSectionToEdit(null)}
-        />
-      )}
-
-      {/* Delete Section Dialog */}
-      {sectionToDelete && (
-        <DeleteSectionDialog
-          section={sectionToDelete}
-          onClose={() => setSectionToDelete(null)}
-        />
-      )}
     </div>
   );
 }
 
-export default DndKanban;
+export default function DndKanban({ projectId }: { projectId: string }) {
+  return (
+    <TaskFiltersProvider>
+      <DndKanbanBoard projectId={projectId} />
+    </TaskFiltersProvider>
+  );
+}

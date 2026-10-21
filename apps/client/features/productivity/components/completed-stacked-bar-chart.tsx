@@ -26,12 +26,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useCompletedTasksLast7Days } from "@/features/productivity/hooks/use-completed-tasks-last-7-days";
-import { CheckCircle2Icon, CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import {
   transformCompletedTasksForBarChart,
   buildChartConfig,
 } from "@/features/productivity/utils/chart-metrics";
 import { ChartMetricSummary } from "./chart-metric-summary";
+import { ProductivityChartEmptyState } from "./productivity-chart-empty-state";
 
 export default function CompletedStackedBarChart() {
   const { data, isLoading } = useCompletedTasksLast7Days({
@@ -90,13 +91,7 @@ export default function CompletedStackedBarChart() {
 
         <CardContent className="pt-4">
           {totalCompletedIn7Days === 0 ? (
-            <div className="h-[320px] flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-              <CheckCircle2Icon className="size-12 text-muted/60 mb-2" />
-              <p className="text-base font-medium">No tasks completed in the last 7 days</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                Complete tasks in your projects to see your activity timeline and project breakdowns here.
-              </p>
-            </div>
+            <ProductivityChartEmptyState />
           ) : (
             <ChartContainer config={chartConfig} className="w-full h-[360px] md:h-[420px]">
               <BarChart

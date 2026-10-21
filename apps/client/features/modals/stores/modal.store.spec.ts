@@ -54,6 +54,46 @@ describe("createModalStore", () => {
     });
   });
 
+  it("opens add-project modal", () => {
+    const store = createModalStore();
+
+    store.getState().openModal({
+      type: "add-project",
+    });
+
+    expect(store.getState().activeModal).toEqual({
+      type: "add-project",
+    });
+  });
+
+  it("opens share-project modal with required projectId", () => {
+    const store = createModalStore();
+
+    store.getState().openModal({
+      type: "share-project",
+      projectId: "proj-123",
+    });
+
+    expect(store.getState().activeModal).toEqual({
+      type: "share-project",
+      projectId: "proj-123",
+    });
+  });
+
+  it("opens delete-task modal with required task summary", () => {
+    const store = createModalStore();
+
+    store.getState().openModal({
+      type: "delete-task",
+      task: { id: "task-1", title: "Task to delete" },
+    });
+
+    expect(store.getState().activeModal).toEqual({
+      type: "delete-task",
+      task: { id: "task-1", title: "Task to delete" },
+    });
+  });
+
   it("closes modal and sets activeModal back to null", () => {
     const store = createModalStore();
     store.getState().openModal({ type: "add-task" });

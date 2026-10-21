@@ -7,11 +7,11 @@ import {
   Index,
 } from 'typeorm';
 
-import { BaseEntity }        from '@/src/common/database/base.entity';
-import { TrigramIndex }      from '@/src/common/decorators/trigram-index.decorator';
-import { User }              from '@/src/modules/users/user.entity';
-import { Section }           from '@/src/modules/sections/section.entity';
-import { ProjectMember }     from './entities/project-member.entity';
+import { BaseEntity } from '@/src/common/database/base.entity';
+import { TrigramIndex } from '@/src/common/decorators/trigram-index.decorator';
+import { User } from '@/src/modules/users/user.entity';
+import { Section } from '@/src/modules/sections/section.entity';
+import { ProjectMember } from './entities/project-member.entity';
 import { ProjectInvitation } from './entities/project-invitation.entity';
 
 @Entity('projects')

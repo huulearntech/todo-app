@@ -5,7 +5,23 @@ import { Autocomplete as AutocompletePrimitive } from "@base-ui/react";
 import { cn } from "@/lib/utils";
 
 const Autocomplete = AutocompletePrimitive.Root;
-const AutocompleteInput = AutocompletePrimitive.Input;
+
+function AutocompleteInput({
+  className,
+  ...props
+}: AutocompletePrimitive.Input.Props) {
+  return (
+    <AutocompletePrimitive.Input
+      data-slot="autocomplete-input"
+      className={cn(
+        "w-full min-w-0 border border-border/70 bg-background/80 hover:bg-background transition-colors outline-none h-9 rounded-xl px-3 py-1.5 text-xs placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 const useAutocompleteFilter = AutocompletePrimitive.useFilter;
 
 function AutocompleteContent({

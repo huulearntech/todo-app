@@ -3,10 +3,12 @@
 import { useLabels, EMPTY_LABELS } from "@/features/labels/hooks/use-labels";
 import { useLabelTasks } from "@/features/tasks/hooks/use-label-tasks";
 import { EMPTY_TASKS } from "@/features/tasks/hooks/use-project-tasks";
+import type { TaskResponseDto as Task } from "@todo/shared";
 import TaskCard from "@/features/tasks/components/task-card";
+import { LabelTaskEmptyState } from "./label-task-empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/reui/badge";
-import { TagIcon, CheckCircle2Icon } from "lucide-react";
+import { TagIcon } from "lucide-react";
 import { getColorConfig } from "@/lib/color-palette";
 
 export function LabelTaskListSkeleton() {
@@ -23,6 +25,26 @@ export function LabelTaskListSkeleton() {
         <Skeleton className="h-16 w-full rounded-xl" />
         <Skeleton className="h-16 w-full rounded-xl" />
       </div>
+    </div>
+  );
+}
+
+export function LabelTasksContent({
+  tasks,
+  labelName,
+}: {
+  tasks: Task[];
+  labelName: string;
+}) {
+  if (tasks.length === 0) {
+    return <LabelTaskEmptyState labelName={labelName} />;
+  }
+
+  return (
+    <div className="list-stack">
+      {tasks.map((task) => (
+        <TaskCard key={task.id} task={task} />
+      ))}
     </div>
   );
 }
@@ -95,25 +117,7 @@ export default function LabelTaskList({ labelId }: { labelId: string }) {
       </div>
 
       {/* Task List */}
-      {tasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-border/60 bg-accent/10 p-6">
-          <div className="flex size-12 items-center justify-center rounded-full bg-accent/40 mb-3 text-muted-foreground">
-            <CheckCircle2Icon className="size-6" />
-          </div>
-          <p className="empty-state-title">
-            No tasks with this label
-          </p>
-          <p className="empty-state-description">
-            Tasks tagged with "{label.name}" will appear here automatically.
-          </p>
-        </div>
-      ) : (
-        <div className="list-stack">
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </div>
-      )}
+      <LabelTasksContent tasks={tasks} labelName={label.name} />
     </div>
   );
 }

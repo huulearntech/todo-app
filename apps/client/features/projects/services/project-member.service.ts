@@ -7,6 +7,8 @@ import type {
   AcceptInvitationDto,
   TransferProjectDto,
   ProjectRole,
+  CollaboratorSuggestionDto,
+  InvitationDetailsResponseDto,
 } from "@todo/shared";
 
 export interface CreateInvitationResponse {
@@ -16,7 +18,9 @@ export interface CreateInvitationResponse {
 
 export interface AcceptInvitationResponse {
   projectId: string;
+  projectName?: string;
   role: ProjectRole;
+  alreadyMember?: boolean;
 }
 
 export const projectMemberService = {
@@ -93,6 +97,37 @@ export const projectMemberService = {
       success: boolean;
       newOwnerId: string;
     }>(`/projects/${projectId}/transfer`, dto);
+    return response.data;
+  },
+
+  resendInvitation: async (
+    projectId: string,
+    invitationId: string,
+  ): Promise<CreateInvitationResponse> => {
+    const response = await apiClient.post<CreateInvitationResponse>(
+      `/projects/${projectId}/invitations/${invitationId}/resend`,
+    );
+    return response.data;
+  },
+
+  getInvitationDetails: async (
+    token: string,
+  ): Promise<InvitationDetailsResponseDto> => {
+    const response = await apiClient.get<InvitationDetailsResponseDto>(
+      `/projects/invitations/details`,
+      { params: { token } },
+    );
+    return response.data;
+  },
+
+  getCollaboratorSuggestions: async (
+    projectId?: string,
+    query?: string,
+  ): Promise<CollaboratorSuggestionDto[]> => {
+    const response = await apiClient.get<CollaboratorSuggestionDto[]>(
+      `/projects/collaborators/suggestions`,
+      { params: { projectId, q: query } },
+    );
     return response.data;
   },
 };

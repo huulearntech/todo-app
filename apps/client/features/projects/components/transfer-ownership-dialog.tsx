@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/toast";
 import { useTransferOwnership } from "@/features/projects/hooks/use-transfer-ownership";
+import { useProject } from "@/features/projects/hooks/use-project";
 import type { ProjectMemberResponseDto } from "@todo/shared";
 import { Loader2Icon, ShieldAlertIcon } from "lucide-react";
 
@@ -19,7 +20,6 @@ interface TransferOwnershipDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  projectName: string;
   targetMember?: ProjectMemberResponseDto | null;
   onSuccess?: () => void;
 }
@@ -28,10 +28,11 @@ export function TransferOwnershipDialog({
   open,
   onOpenChange,
   projectId,
-  projectName,
   targetMember,
   onSuccess,
 }: TransferOwnershipDialogProps) {
+  const { data: project } = useProject(projectId);
+  const projectName = project?.name || "Project";
   const transferOwnership = useTransferOwnership(projectId);
 
   if (!targetMember) {

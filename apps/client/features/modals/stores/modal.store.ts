@@ -8,7 +8,10 @@ import type { TaskResponseDto as Task, ProjectResponseDto as Project } from "@to
 export type ActiveModal =
   | { type: "add-task"; projectId?: string; sectionId?: string }
   | { type: "edit-task"; task: Task }
-  | { type: "edit-project"; project: Project };
+  | { type: "delete-task"; task: { id: string; title: string } }
+  | { type: "add-project" }
+  | { type: "edit-project"; project: Project }
+  | { type: "share-project"; projectId: string };
 
 export type ModalStore = {
   activeModal: ActiveModal | null;

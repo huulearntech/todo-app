@@ -6,7 +6,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { Repository, DataSource } from 'typeorm';
+import { DataSource } from 'typeorm';
 import crypto from 'node:crypto';
 import { ProjectMemberService } from './project-member.service';
 import { ProjectMember } from './entities/project-member.entity';
@@ -371,7 +371,7 @@ describe('ProjectMemberService', () => {
   describe('acceptInvitation', () => {
     const rawToken = 'test-token-123';
 
-    it('should throw NotFoundException if tokenHash not found or not pending', async () => {
+    it('should throw NotFoundException if tokenHash not found', async () => {
       mockInvitationRepo.findOne.mockResolvedValue(null);
 
       await expect(
@@ -395,6 +395,64 @@ describe('ProjectMemberService', () => {
       expect(mockInvitationRepo.save).toHaveBeenCalledWith(expiredInv);
     });
 
+    it('should return alreadyMember: true idempotently if user is already a member', async () => {
+      const validInv = {
+        id: 'inv-1',
+        projectId: 'proj-1',
+        invitedEmail: 'invited@example.com',
+        role: ProjectRole.VIEWER,
+        expiresAt: new Date(Date.now() + 100000),
+        status: ProjectInvitationStatus.PENDING,
+      } as ProjectInvitation;
+      mockInvitationRepo.findOne.mockResolvedValue(validInv);
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'user-id',
+        email: 'invited@example.com',
+      });
+      mockMemberRepo.findOne.mockResolvedValue({
+        id: 'm-exist',
+        role: ProjectRole.EDITOR, // existing role is EDITOR, invite was VIEWER
+      });
+
+      const result = await service.acceptInvitation('user-id', {
+        token: rawToken,
+      });
+
+      expect(result).toEqual({
+        projectId: 'proj-1',
+        role: ProjectRole.EDITOR, // role is preserved, not downgraded
+        alreadyMember: true,
+      });
+      expect(validInv.status).toBe(ProjectInvitationStatus.ACCEPTED);
+      expect(mockInvitationRepo.save).toHaveBeenCalledWith(validInv);
+    });
+
+    it('should throw BadRequestException if token is REVOKED and active pending exists (superseded)', async () => {
+      const revokedInv = {
+        id: 'inv-old',
+        projectId: 'proj-1',
+        invitedEmail: 'invited@example.com',
+        status: ProjectInvitationStatus.REVOKED,
+      } as ProjectInvitation;
+      mockInvitationRepo.findOne
+        .mockResolvedValueOnce(revokedInv) // query token
+        .mockResolvedValueOnce({
+          id: 'inv-new',
+          status: ProjectInvitationStatus.PENDING,
+        }); // active pending check
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'user-id',
+        email: 'invited@example.com',
+      });
+      mockMemberRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.acceptInvitation('user-id', { token: rawToken }),
+      ).rejects.toThrow(
+        'This invitation link has been replaced by a more recent invitation',
+      );
+    });
+
     it('should throw ForbiddenException if accepting user email does not match invitedEmail', async () => {
       const validInv = {
         id: 'inv-1',
@@ -407,6 +465,7 @@ describe('ProjectMemberService', () => {
         id: 'user-id',
         email: 'wrong-user@example.com',
       });
+      mockMemberRepo.findOne.mockResolvedValue(null);
 
       await expect(
         service.acceptInvitation('user-id', { token: rawToken }),
@@ -427,6 +486,7 @@ describe('ProjectMemberService', () => {
         id: 'user-id',
         email: 'invited@example.com',
       });
+      mockMemberRepo.findOne.mockResolvedValue(null);
       mockTransactionManager.findOne.mockResolvedValue(null);
       mockTransactionManager.create.mockImplementation((_, data) => data);
 
@@ -437,9 +497,136 @@ describe('ProjectMemberService', () => {
       expect(result).toEqual({
         projectId: 'proj-1',
         role: ProjectRole.EDITOR,
+        alreadyMember: false,
       });
       expect(validInv.status).toBe(ProjectInvitationStatus.ACCEPTED);
       expect(mockTransactionManager.save).toHaveBeenCalledTimes(2); // save inv & save member
+    });
+  });
+
+  describe('resendInvitation', () => {
+    it('should revoke previous pending invitation and create a new one with fresh token', async () => {
+      accessService.assertCan.mockResolvedValue(ProjectRole.OWNER);
+      const oldInv = {
+        id: 'inv-old',
+        projectId: 'proj-1',
+        invitedEmail: 'collab@example.com',
+        role: ProjectRole.EDITOR,
+        status: ProjectInvitationStatus.PENDING,
+      } as ProjectInvitation;
+      mockInvitationRepo.findOne.mockResolvedValue(oldInv);
+      mockInvitationRepo.create.mockImplementation(
+        (dto) => dto as ProjectInvitation,
+      );
+      mockInvitationRepo.save.mockImplementation((inv) => ({
+        id: 'inv-new',
+        ...inv,
+      }));
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'owner-id',
+        name: 'Project Owner',
+        email: 'owner@example.com',
+      });
+      mockProjectRepo.findOne.mockResolvedValue({
+        id: 'proj-1',
+        name: 'Design System',
+      });
+
+      const res = await service.resendInvitation(
+        'owner-id',
+        'proj-1',
+        'inv-old',
+      );
+
+      expect(oldInv.status).toBe(ProjectInvitationStatus.REVOKED);
+      expect(res.token).toBeDefined();
+      expect(res.invitation.role).toBe(ProjectRole.EDITOR);
+      expect(res.invitation.status).toBe(ProjectInvitationStatus.PENDING);
+    });
+
+    it('should throw BadRequestException if invitation is not pending', async () => {
+      accessService.assertCan.mockResolvedValue(ProjectRole.OWNER);
+      mockInvitationRepo.findOne.mockResolvedValue({
+        id: 'inv-1',
+        status: ProjectInvitationStatus.ACCEPTED,
+      });
+
+      await expect(
+        service.resendInvitation('owner-id', 'proj-1', 'inv-1'),
+      ).rejects.toThrow('Only pending invitations can be resent');
+    });
+  });
+
+  describe('getInvitationDetails', () => {
+    it('should return not_found if tokenHash does not exist', async () => {
+      mockInvitationRepo.findOne.mockResolvedValue(null);
+
+      const res = await service.getInvitationDetails('non-existent');
+
+      expect(res.status).toBe('not_found');
+    });
+
+    it('should return already_member if logged-in caller is already a project member', async () => {
+      mockInvitationRepo.findOne.mockResolvedValue({
+        id: 'inv-1',
+        projectId: 'proj-1',
+        invitedEmail: 'alice@example.com',
+        role: ProjectRole.VIEWER,
+        project: { name: 'Alpha' },
+        invitedBy: { name: 'Bob' },
+        status: ProjectInvitationStatus.PENDING,
+      });
+      mockMemberRepo.findOne.mockResolvedValue({
+        id: 'm-1',
+        role: ProjectRole.ADMIN,
+      });
+
+      const res = await service.getInvitationDetails('token-123', 'alice-uuid');
+
+      expect(res.status).toBe('already_member');
+      expect(res.role).toBe(ProjectRole.ADMIN);
+      expect(res.projectName).toBe('Alpha');
+    });
+
+    it('should return superseded if invitation is REVOKED and a pending invite exists', async () => {
+      mockInvitationRepo.findOne
+        .mockResolvedValueOnce({
+          id: 'inv-old',
+          projectId: 'proj-1',
+          invitedEmail: 'alice@example.com',
+          role: ProjectRole.EDITOR,
+          project: { name: 'Alpha' },
+          status: ProjectInvitationStatus.REVOKED,
+        })
+        .mockResolvedValueOnce({
+          id: 'inv-new',
+          status: ProjectInvitationStatus.PENDING,
+        });
+      mockMemberRepo.findOne.mockResolvedValue(null);
+
+      const res = await service.getInvitationDetails('token-old');
+
+      expect(res.status).toBe('superseded');
+    });
+
+    it('should return valid if invitation is active and pending', async () => {
+      mockInvitationRepo.findOne.mockResolvedValue({
+        id: 'inv-1',
+        projectId: 'proj-1',
+        invitedEmail: 'alice@example.com',
+        role: ProjectRole.EDITOR,
+        expiresAt: new Date(Date.now() + 100000),
+        project: { name: 'Alpha' },
+        invitedBy: { name: 'Bob' },
+        status: ProjectInvitationStatus.PENDING,
+      });
+      mockMemberRepo.findOne.mockResolvedValue(null);
+
+      const res = await service.getInvitationDetails('token-123');
+
+      expect(res.status).toBe('valid');
+      expect(res.projectName).toBe('Alpha');
+      expect(res.role).toBe(ProjectRole.EDITOR);
     });
   });
 

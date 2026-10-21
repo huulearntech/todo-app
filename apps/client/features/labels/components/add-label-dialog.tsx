@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCreateLabel } from "@/features/labels/hooks/use-create-label";
@@ -21,18 +20,23 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2Icon, Plus } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 
 import { createTaskLabelSchema, type CreateTaskLabelDto } from "@todo/shared";
 
-export default function AddLabelDialog() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+export interface AddLabelDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
 
+export default function AddLabelDialog({
+  open,
+  onClose,
+}: AddLabelDialogProps) {
   const { control, handleSubmit, reset, formState: { isLoading } } = useForm<CreateTaskLabelDto>({
     resolver: zodResolver(createTaskLabelSchema),
     defaultValues: {
@@ -51,6 +55,8 @@ export default function AddLabelDialog() {
         description: "The label was created successfully.",
         type: "success",
       });
+      reset();
+      onClose();
     },
     onError: () => {
       toast.add({
@@ -59,22 +65,23 @@ export default function AddLabelDialog() {
         type: "error",
       });
     },
-    onSettled: () => {
-      reset();
-      setDialogOpen(false);
-    }
   });
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogTrigger
-        render={(props) => (
-          <Button {...props} className="gap-2 rounded-lg font-medium shrink-0">
-            <Plus className="size-4" />
-            <span>Add Label</span>
-          </Button>
-        )}
-      />
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          reset();
+          onClose();
+        }
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="card-heading">Add New Label</DialogTitle>

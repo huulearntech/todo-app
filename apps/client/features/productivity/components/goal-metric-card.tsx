@@ -1,7 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { CheckCircle2Icon } from "lucide-react";
+import { CheckCircle2Icon, TargetIcon, TrophyIcon, SparklesIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,32 +11,31 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CircularProgressIndicator } from "@/features/productivity/components/circular-progress-indicator";
 
-export interface GoalMetricCardProps {
-  title: string;
-  backgroundIcon: LucideIcon;
+export interface GoalProgressItem {
   completed: number;
   target: number;
   ratio: number;
   isAchieved: boolean;
-  achievedBadgeText: string;
-  achievedBadgeIcon: LucideIcon;
-  achievedDescription: string;
-  unachievedDescription: string;
 }
 
-export function GoalMetricCard({
-  title,
-  backgroundIcon: BackgroundIcon,
-  completed,
-  target,
-  ratio,
-  isAchieved,
-  achievedBadgeText,
-  achievedBadgeIcon: AchievedBadgeIcon,
-  achievedDescription,
-  unachievedDescription,
-}: GoalMetricCardProps) {
+export interface GoalMetricCardProps {
+  type: "daily" | "weekly";
+  goal: GoalProgressItem;
+}
+
+export function GoalMetricCard({ type, goal }: GoalMetricCardProps) {
+  const { completed, target, ratio, isAchieved } = goal;
+  const isDaily = type === "daily";
+  const title = isDaily ? "Daily Goal" : "Weekly Goal";
+  const BackgroundIcon = isDaily ? TargetIcon : TrophyIcon;
+  const achievedBadgeText = isDaily ? "Goal Met" : "Weekly Met";
   const remaining = Math.max(0, target - completed);
+  const achievedDescription = isDaily
+    ? "Great job! You achieved today's daily target."
+    : "Awesome achievement! You met your weekly target.";
+  const unachievedDescription = `${remaining} more completed ${
+    remaining === 1 ? "task" : "tasks"
+  } to reach your goal.`;
 
   return (
     <Card className="rounded-2xl border-border/60 bg-card/60 backdrop-blur-sm relative overflow-hidden transition-all hover:border-border">
@@ -52,7 +50,7 @@ export function GoalMetricCard({
           </CardTitle>
           {isAchieved ? (
             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1 text-xs">
-              <AchievedBadgeIcon className="size-3" />
+              <SparklesIcon className="size-3" />
               {achievedBadgeText}
             </Badge>
           ) : (

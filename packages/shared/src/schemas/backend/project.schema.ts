@@ -117,3 +117,34 @@ export const projectInvitationResponseSchema = z.object({
 export type ProjectInvitationResponseDto = z.infer<
   typeof projectInvitationResponseSchema
 >;
+
+export const invitationDetailsResponseSchema = z.object({
+  status: z.enum([
+    "valid",
+    "already_member",
+    "superseded",
+    "expired",
+    "revoked",
+    "not_found",
+  ]),
+  projectName: z.string().optional(),
+  invitedEmail: z.string().optional(),
+  role: z.enum(ProjectRole).optional(),
+  inviterName: z.string().optional(),
+  projectId: z.string().uuid().optional(),
+});
+
+export type InvitationDetailsResponseDto = z.infer<
+  typeof invitationDetailsResponseSchema
+>;
+
+export const collaboratorSuggestionSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  email: z.string(),
+  avatarUrl: z.string().nullable().optional(),
+});
+
+export type CollaboratorSuggestionDto = z.infer<
+  typeof collaboratorSuggestionSchema
+>;

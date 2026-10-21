@@ -2,19 +2,16 @@
 
 import { useState } from "react";
 import { useProjects, EMPTY_PROJECTS } from "@/features/projects/hooks/use-projects";
-import AddProjectDialog from "@/features/projects/components/add-project-dialog";
+import { useModalStore } from "@/providers/MyStoreProvider";
 import { ProjectList } from "@/features/projects/components/project-list";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FolderIcon, PlusIcon } from "lucide-react";
 
-export function ProjectsPageContent({
-  defaultProjectId,
-}: {
-  defaultProjectId: string;
-}) {
+export function ProjectsPageContent() {
   const [scope, setScope] = useState<"all" | "owned" | "shared">("all");
+  const openModal = useModalStore((state) => state.openModal);
   const { data: projects = EMPTY_PROJECTS, isLoading } = useProjects({
     isDefault: false,
     scope,
@@ -46,14 +43,13 @@ export function ProjectsPageContent({
           </div>
         </div>
 
-        <AddProjectDialog
-          trigger={
-            <Button className="gap-2 rounded-xl font-medium shrink-0 shadow-xs">
-              <PlusIcon className="size-4" />
-              <span>New Project</span>
-            </Button>
-          }
-        />
+        <Button
+          onClick={() => openModal({ type: "add-project" })}
+          className="gap-2 rounded-xl font-medium shrink-0 shadow-xs cursor-pointer"
+        >
+          <PlusIcon className="size-4" />
+          <span>New Project</span>
+        </Button>
       </div>
 
       {/* Scope Filter Tabs */}
@@ -79,7 +75,6 @@ export function ProjectsPageContent({
       <ProjectList
         projects={projects}
         isLoading={isLoading}
-        defaultProjectId={defaultProjectId}
       />
     </>
   );
@@ -87,4 +82,3 @@ export function ProjectsPageContent({
 
 // Backward compatibility alias
 export { ProjectsPageContent as ProjectsContent };
-
