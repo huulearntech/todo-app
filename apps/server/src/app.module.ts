@@ -24,7 +24,7 @@ import { ProductivityModule } from './modules/productivity/productivity.module';
 import { TrigramIndexModule } from './common/database/trigram-index.module';
 
 import { ZodValidationPipe } from 'nestjs-zod';
-import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 import { migrations } from './migrations';
 
@@ -84,7 +84,7 @@ import { migrations } from './migrations';
     },
     {
       provide: APP_FILTER,
-      useClass: TypeOrmExceptionFilter,
+      useClass: AllExceptionsFilter,
     },
     {
       provide: APP_GUARD,

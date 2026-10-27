@@ -1,6 +1,17 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   useProjectMembers,
   EMPTY_MEMBERS,
@@ -12,6 +23,20 @@ interface ProjectMemberAvatarStackProps {
   projectId: string;
   members?: ProjectMemberResponseDto[];
   maxDisplay?: number;
+}
+
+function getInitials(name?: string | null, email?: string | null) {
+  if (name && name.trim().length > 0) {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email && email.length > 0) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return "U";
 }
 
 export function ProjectMemberAvatarStack({
@@ -32,35 +57,50 @@ export function ProjectMemberAvatarStack({
   const remainingCount = members.length - maxDisplay;
 
   return (
-    <div className="flex items-center -space-x-1.5 overflow-hidden">
+    <AvatarGroup className="items-center">
       {displayedMembers.map((member) => {
-        const initials = (member.user?.name || member.user?.email || "U")
-          .slice(0, 2)
-          .toUpperCase();
+        const displayName = member.user?.name || member.user?.email || "Member";
+        const initials = getInitials(member.user?.name, member.user?.email);
+        const avatarUrl = member.user?.avatarUrl;
 
         return (
-          <Avatar
-            key={member.id}
-            size="sm"
-            className="ring-2 ring-background border border-border/40 shrink-0"
-            title={`${member.user?.name || member.user?.email} (${member.role})`}
-          >
-            <AvatarImage src="" />
-            <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <Tooltip key={member.id}>
+            <TooltipTrigger
+              render={
+                <Avatar size="sm" className="cursor-default">
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                  ) : null}
+                  <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              }
+            />
+            <TooltipContent side="bottom" className="text-xs">
+              <p className="font-medium">{displayName}</p>
+              <p className="text-[10px] text-muted-foreground capitalize">
+                {member.role}
+              </p>
+            </TooltipContent>
+          </Tooltip>
         );
       })}
 
       {remainingCount > 0 && (
-        <div
-          className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-[10px] font-medium text-muted-foreground ring-2 ring-background shrink-0"
-          title={`${remainingCount} more member${remainingCount > 1 ? "s" : ""}`}
-        >
-          +{remainingCount}
-        </div>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <AvatarGroupCount className="cursor-default">
+                +{remainingCount}
+              </AvatarGroupCount>
+            }
+          />
+          <TooltipContent side="bottom" className="text-xs">
+            {remainingCount} more member{remainingCount > 1 ? "s" : ""}
+          </TooltipContent>
+        </Tooltip>
       )}
-    </div>
+    </AvatarGroup>
   );
 }

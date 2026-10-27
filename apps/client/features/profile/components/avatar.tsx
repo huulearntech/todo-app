@@ -20,20 +20,7 @@ export default function Avatar({
   onAvatarUpdated,
   className,
 }: AvatarProps) {
-  const [prevAvatarUrl, setPrevAvatarUrl] = useState(avatarUrl);
-  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | undefined>(avatarUrl);
   const [isOpen, setIsOpen] = useState(false);
-
-  // Sync state if external avatarUrl prop updates
-  if (avatarUrl !== prevAvatarUrl) {
-    setPrevAvatarUrl(avatarUrl);
-    setCurrentAvatarUrl(avatarUrl);
-  }
-
-  const handleAvatarUpdated = (newUrl: string) => {
-    setCurrentAvatarUrl(newUrl);
-    onAvatarUpdated?.(newUrl);
-  };
 
   return (
     <>
@@ -50,10 +37,10 @@ export default function Avatar({
           <Image
             fill
             sizes="(max-width: 768px) 80px, 96px"
-            src={currentAvatarUrl || "/default-avatar.svg"}
+            src={avatarUrl || "/default-avatar.svg"}
             alt={name ? `${name}'s avatar` : "User Avatar"}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            unoptimized={!currentAvatarUrl?.includes("res.cloudinary.com")}
+            unoptimized={!avatarUrl?.includes("res.cloudinary.com")}
           />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
             <CameraIcon className="size-5" />
@@ -64,8 +51,8 @@ export default function Avatar({
       <AvatarUploadDialog
         open={isOpen}
         onOpenChange={setIsOpen}
-        currentAvatarUrl={currentAvatarUrl}
-        onAvatarUpdated={handleAvatarUpdated}
+        currentAvatarUrl={avatarUrl}
+        onAvatarUpdated={onAvatarUpdated}
       />
     </>
   );

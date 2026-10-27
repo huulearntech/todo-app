@@ -238,10 +238,17 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
               LIMIT 1;
 
               BEGIN
-                  v_rank := lexorank_between(
-                      v_previous.lexorank,
-                      v_next.lexorank
-                  );
+                  IF v_next.id IS NULL THEN
+                      v_rank := lexorank_between(
+                          v_previous.lexorank,
+                          NULL
+                      );
+                  ELSE
+                      v_rank := lexorank_between(
+                          v_previous.lexorank,
+                          v_next.lexorank
+                      );
+                  END IF;
               EXCEPTION WHEN SQLSTATE 'P0001' THEN
                   PERFORM rebalance_project_sections(v_project_id);
                   SELECT * INTO v_previous FROM sections WHERE id = p_previous_section_id;
@@ -251,7 +258,18 @@ export class CreateLexorankSectionFunctions1728200000000 implements MigrationInt
                     AND lexorank COLLATE "C" > v_previous.lexorank COLLATE "C"
                   ORDER BY lexorank COLLATE "C" ASC
                   LIMIT 1;
-                  v_rank := lexorank_between(v_previous.lexorank, v_next.lexorank);
+
+                  IF v_next.id IS NULL THEN
+                      v_rank := lexorank_between(
+                          v_previous.lexorank,
+                          NULL
+                      );
+                  ELSE
+                      v_rank := lexorank_between(
+                          v_previous.lexorank,
+                          v_next.lexorank
+                      );
+                  END IF;
               END;
           ELSE
               SELECT *

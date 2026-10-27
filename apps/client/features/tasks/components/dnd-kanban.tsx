@@ -29,6 +29,7 @@ import { groupBySection } from "@/features/tasks/utils/kanban-helpers";
 import { TaskColumn } from "./kanban/kanban-column";
 import { KanbanBoardSkeleton } from "./kanban/kanban-board-skeleton";
 import { useProjectAbilityContext } from "@/features/projects/permissions";
+import { WidgetErrorBoundary } from "@/components/ui/error-boundary";
 
 function DndKanbanBoard({ projectId }: { projectId: string }) {
   const ability = useProjectAbilityContext();
@@ -205,7 +206,9 @@ function DndKanbanBoard({ projectId }: { projectId: string }) {
 export default function DndKanban({ projectId }: { projectId: string }) {
   return (
     <TaskFiltersProvider>
-      <DndKanbanBoard projectId={projectId} />
+      <WidgetErrorBoundary fallbackTitle="Failed to load Kanban board">
+        <DndKanbanBoard projectId={projectId} />
+      </WidgetErrorBoundary>
     </TaskFiltersProvider>
   );
 }

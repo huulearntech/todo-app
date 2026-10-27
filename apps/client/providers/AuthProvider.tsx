@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/features/auth/services/auth.service";
 import type { UserResponseDto } from "@todo/shared";
@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   signOut: () => void;
   setUser: React.Dispatch<React.SetStateAction<UserResponseDto | null>>;
+  updateUser: (updatedUser: Partial<UserResponseDto>) => void;
 }
 
 interface AuthProviderProps {
@@ -79,8 +80,16 @@ export default function AuthProvider({ children, initialUser }: AuthProviderProp
     }
   };
 
+  const updateUser = useCallback(
+    (updated: Partial<UserResponseDto>) => {
+      setUser((prev) => (prev ? { ...prev, ...updated } : null));
+      router.refresh();
+    },
+    [router]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signOut, setUser }}>
+    <AuthContext.Provider value={{ user, isLoading, signOut, setUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

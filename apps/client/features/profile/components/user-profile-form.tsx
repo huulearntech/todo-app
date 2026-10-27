@@ -30,18 +30,18 @@ import {
   RotateCcwIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
 
 export interface UserProfileFormProps {
   user: UserResponseDto;
-  onUserUpdated?: (updated: UserResponseDto) => void;
   className?: string;
 }
 
 export default function UserProfileForm({
   user,
-  onUserUpdated,
   className,
 }: UserProfileFormProps) {
+  const { updateUser } = useAuth();
   const {
     control,
     handleSubmit,
@@ -77,7 +77,7 @@ export default function UserProfileForm({
 
       reset(data);
       if (response && response.data) {
-        onUserUpdated?.(response.data);
+        updateUser(response.data);
       }
     } catch (err: unknown) {
       const message =
@@ -113,7 +113,7 @@ export default function UserProfileForm({
                 avatarUrl={user.avatarUrl ?? undefined}
                 name={user.name}
                 onAvatarUpdated={(url) => {
-                  onUserUpdated?.({ ...user, avatarUrl: url });
+                  updateUser({ avatarUrl: url });
                 }}
               />
             </div>
